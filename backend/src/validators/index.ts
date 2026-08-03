@@ -21,6 +21,11 @@ export const listServicesQuerySchema = paginationQuerySchema.extend({
   sort: z.enum(['price_asc', 'price_desc', 'name_asc', 'newest']).optional(),
 })
 
+/** curated=true → only categories that still have at least one active service. */
+export const listCategoriesQuerySchema = z.object({
+  curated: z.enum(['true', 'false']).optional(),
+})
+
 // ---------------------------------------------------------------------------
 // Orders
 // ---------------------------------------------------------------------------
@@ -99,6 +104,18 @@ export const serviceBodySchema = z.object({
   isFeatured: z.boolean().default(false),
   sortOrder: z.number().int().default(0),
 })
+
+/** Bulk enable/disable services by ids and/or category. */
+export const bulkServiceStatusBodySchema = z
+  .object({
+    ids: z.array(z.string().min(1)).max(500).optional(),
+    categoryId: z.string().min(1).optional(),
+    isActive: z.boolean(),
+  })
+  .refine((d) => (d.ids?.length ?? 0) > 0 || Boolean(d.categoryId), {
+    message: 'Provide at least one service id or a categoryId',
+    path: ['ids'],
+  })
 
 // ---------------------------------------------------------------------------
 // Admin: categories

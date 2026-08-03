@@ -84,24 +84,14 @@ export class ServiceRepository extends BaseRepository<Service> {
     ])
   }
 
-  /** Creates or updates a service synced from the provider catalogue. */
-  async upsertFromProvider(input: {
-    providerServiceId: number
-    name: string
-    type: string
-    categoryId: string | null
-    pricePerUnit: number
-    min: number
-    max: number
-    refill: boolean
-    cancel: boolean
-    provider: string
-  }): Promise<ServiceDoc> {
-    return ServiceModel.findOneAndUpdate(
-      { providerServiceId: input.providerServiceId },
-      { $set: input },
-      { new: true, upsert: true, setDefaultsOnInsert: true },
-    ).exec()
+  /**
+   * Bulk enables/disables services matching a filter (used by the admin
+   * catalog-curation workflow, e.g. "disable every service in this category").
+   * Returns the number of documents whose isActive value actually changed.
+   */
+  async bulkSetStatus(filter: Record<string, unknown>, isActive: boolean): Promise<number> {
+    const result = await ServiceModel.updateMany(filter, { $set: { isActive } }).exec()
+    return result.modifiedCount
   }
 
   stats(): Promise<{ total: number; active: number }> {
@@ -125,32 +115,47 @@ export class CategoryRepository extends BaseRepository<Category> {
     return this.findOne({ slug })
   }
 
-  findByProviderName(name: string): Promise<CategoryDoc | null> {
-    return this.findOne({ name })
+  /**
+   * Active categories. When `curated` is true, only categories that still
+   * have at least one ACTIVE service are returned — so admins can bulk-disable
+   * every service of a category and have it disappear from the storefront.
+   */
+  async listActive(curated = false): Promise<CategoryDoc[]> {
+    const sort = { sortOrder: 1, name: 1 } as const
+    if (!curated) {
+      return CategoryModel.find({ isActive: true }).sort(sort).exec()
+    }
+    const categoryIds = await ServiceModel.distinct('category', { isActive: true }).exec()
+    return CategoryModel.find({ isActive: true, _id: { $in: categoryIds } }).sort(sort).exec()
   }
 
-  /** Returns an existing category by name, or creates it. */
-  async findOrCreateByName(name: string, platform = 'other'): Promise<CategoryDoc> {
-    const existing = await this.findByProviderName(name)
-    if (existing) return existing
-    const slug =
-      name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '') || 'category'
-    // Atomic upsert by the unique slug index. Two provider categories can
-    // slug to the same value (e.g. "Instagram Italy" / "Instagram Italia"),
-    // so a plain create() would crash with E11000 — upsert instead reuses
-    // the existing category and is also safe under concurrent syncs.
-    return CategoryModel.findOneAndUpdate(
-      { slug },
-      { $setOnInsert: { name, slug, platform } },
-      { upsert: true, new: true, setDefaultsOnInsert: true },
-    ).exec()
-  }
-
-  listActive(): Promise<CategoryDoc[]> {
-    return CategoryModel.find({ isActive: true }).sort({ sortOrder: 1, name: 1 }).exec()
+  /**
+   * Every category with per-category service counts (total + active) — used by
+   * the admin Categories table so admins can see, at a glance, which categories
+   * are empty or fully curated away. One aggregate pass over services.
+   */
+  async listWithCounts(): Promise<Array<Category & { serviceCount: number; activeServiceCount: number }>> {
+    const [categories, rows] = await Promise.all([
+      CategoryModel.find({}).sort({ sortOrder: 1, name: 1 }).exec(),
+      ServiceModel.aggregate<{ _id: unknown; serviceCount: number; activeServiceCount: number }>([
+        {
+          $group: {
+            _id: '$category',
+            serviceCount: { $sum: 1 },
+            activeServiceCount: { $sum: { $cond: [{ $eq: ['$isActive', true] }, 1, 0] } },
+          },
+        },
+      ]).exec(),
+    ])
+    const counts = new Map(rows.map((r) => [String(r._id), r]))
+    return categories.map((c) => {
+      const row = counts.get(c._id.toString())
+      return {
+        ...c.toObject(),
+        serviceCount: row?.serviceCount ?? 0,
+        activeServiceCount: row?.activeServiceCount ?? 0,
+      }
+    })
   }
 }
 

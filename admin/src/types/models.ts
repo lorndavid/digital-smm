@@ -18,6 +18,9 @@ export interface Category {
   icon: string
   sortOrder: number
   isActive: boolean
+  /** Added by the admin categories endpoint (service counts). */
+  serviceCount?: number
+  activeServiceCount?: number
 }
 
 export type ServiceType =

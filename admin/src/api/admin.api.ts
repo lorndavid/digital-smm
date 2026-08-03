@@ -46,9 +46,17 @@ export const adminApi = {
   updateService: async (id: string, data: Partial<Service>): Promise<Service> =>
     (await apiClient.put(`/admin/services/${id}`, data)).data,
   deleteService: async (id: string): Promise<void> => (await apiClient.delete(`/admin/services/${id}`)).data,
+  /** Bulk enable/disable services by ids and/or category (catalog curation). */
+  bulkUpdateServices: async (data: {
+    ids?: string[]
+    categoryId?: string
+    isActive: boolean
+  }): Promise<{ updated: number; isActive: boolean }> =>
+    (await apiClient.post('/admin/services/bulk-status', data)).data,
 
-  // Categories
-  listCategories: async (): Promise<Category[]> => (await apiClient.get('/admin/categories')).data,
+  // Categories (the backend wraps the list in { items } — unwrap it)
+  listCategories: async (): Promise<Category[]> =>
+    (await apiClient.get<{ items: Category[] }>('/admin/categories')).data.items,
   createCategory: async (data: Partial<Category>): Promise<Category> =>
     (await apiClient.post('/admin/categories', data)).data,
   updateCategory: async (id: string, data: Partial<Category>): Promise<Category> =>

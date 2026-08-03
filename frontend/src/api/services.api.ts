@@ -19,8 +19,10 @@ export const servicesApi = {
     return data
   },
 
-  async categories(): Promise<Category[]> {
-    const { data } = await apiClient.get<Category[]>('/categories')
+  async categories(params: { curated?: boolean } = {}): Promise<Category[]> {
+    const { data } = await apiClient.get<Category[]>('/categories', {
+      params: params.curated === undefined ? {} : { curated: String(params.curated) },
+    })
     return data
   },
 

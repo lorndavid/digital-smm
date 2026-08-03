@@ -19,6 +19,7 @@ import {
   adminListQuerySchema,
   adminLoginBodySchema,
   announcementBodySchema,
+  bulkServiceStatusBodySchema,
   categoryBodySchema,
   createAdminBodySchema,
   orderStatusBodySchema,
@@ -134,12 +135,41 @@ export const adminController = {
     res.json({ deleted: true })
   }),
 
+  /**
+   * Bulk enable/disable services by ids and/or by category — the catalog
+   * curation workflow for a large provider catalogue.
+   */
+  bulkSetServiceStatus: [
+    validate(bulkServiceStatusBodySchema),
+    asyncHandler(async (req, res) => {
+      const { ids, categoryId, isActive } = req.body as {
+        ids?: string[]
+        categoryId?: string
+        isActive: boolean
+      }
+      // Defense in depth: never allow updateMany({}) — that would disable
+      // the ENTIRE catalog. Validation also rejects this case, but the
+      // controller must not trust a future refactor to keep that guarantee.
+      if (!ids?.length && !categoryId) {
+        throw new ApiError(400, 'Provide at least one service id or a categoryId')
+      }
+      const filter: Record<string, unknown> = {}
+      const or: Array<Record<string, unknown>> = []
+      if (ids?.length) or.push({ _id: { $in: ids } })
+      if (categoryId) or.push({ category: categoryId })
+      if (or.length === 1) Object.assign(filter, or[0])
+      else if (or.length > 1) filter.$or = or
+      const updated = await serviceRepository.bulkSetStatus(filter, isActive)
+      res.json({ updated, isActive })
+    }),
+  ],
+
   // ------------------------------------------------------------------
   // Categories
   // ------------------------------------------------------------------
 
   listCategories: asyncHandler(async (_req, res) => {
-    const items = await categoryRepository.find({})
+    const items = await categoryRepository.listWithCounts()
     res.json({ items })
   }),
 

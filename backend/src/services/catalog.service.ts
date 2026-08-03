@@ -7,8 +7,8 @@ import {
 
 /** Public catalogue reads (services, categories, announcements). */
 export class CatalogService {
-  categories() {
-    return categoryRepository.listActive()
+  categories(curated = false) {
+    return categoryRepository.listActive(curated)
   }
 
   services(params: ListServicesParams) {

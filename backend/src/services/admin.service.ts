@@ -6,7 +6,20 @@ import {
   serviceRepository,
 } from '../repositories/catalog.repository.js'
 import { paymentRepository } from '../repositories/finance.repository.js'
+import { Types } from 'mongoose'
 import { SettingModel } from '../models/setting.model.js'
+import { CategoryModel } from '../models/category.model.js'
+import { ServiceModel } from '../models/service.model.js'
+
+/** Deterministic slug for a provider category name. */
+function slugFor(name: string): string {
+  return (
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '') || 'category'
+  )
+}
 
 /** Admin operations: dashboard stats, provider sync and platform settings. */
 export class AdminService {
@@ -41,40 +54,78 @@ export class AdminService {
     }
   }
 
-  /** Fetches the provider catalogue and upserts services + categories. */
+  /**
+   * Fetches the provider catalogue and upserts services + categories.
+   * Uses bulkWrite (chunked) so even a ~8k-service catalogue syncs in
+   * seconds instead of a sequential per-service loop.
+   */
   async syncProviderServices() {
     const provider = getSmmProvider()
     const providerServices = await provider.getServices()
 
+    // 1. Collect the unique category names once.
+    const names = new Set<string>()
+    for (const ps of providerServices) if (ps.category) names.add(ps.category)
+
+    // 2. Bulk-upsert categories by slug (atomic $setOnInsert — safe under
+    //    slug collisions like "Instagram Italy" / "Instagram Italia").
+    if (names.size > 0) {
+      await CategoryModel.bulkWrite(
+        [...names].map((name) => ({
+          updateOne: {
+            filter: { slug: slugFor(name) },
+            update: { $setOnInsert: { name, slug: slugFor(name), platform: 'other' } },
+            upsert: true,
+          },
+        })),
+        { ordered: false },
+      )
+    }
+
+    // 3. Read back slug → category id.
+    const categoryDocs = names.size
+      ? await CategoryModel.find({ slug: { $in: [...names].map(slugFor) } })
+          .select('slug')
+          .exec()
+      : []
+    const categoryIdBySlug = new Map(categoryDocs.map((c) => [c.slug, c._id.toString()]))
+
+    // 4. Bulk-upsert services in chunks.
     let created = 0
     let updated = 0
-    const categoryIds = new Map<string, string>()
-
-    for (const ps of providerServices) {
-      let categoryId: string | null = null
-      if (ps.category) {
-        if (!categoryIds.has(ps.category)) {
-          const category = await categoryRepository.findOrCreateByName(ps.category)
-          categoryIds.set(ps.category, category._id.toString())
-        }
-        categoryId = categoryIds.get(ps.category) ?? null
-      }
-
-      const existing = await serviceRepository.findByProviderId(ps.providerServiceId)
-      await serviceRepository.upsertFromProvider({
-        providerServiceId: ps.providerServiceId,
-        name: ps.name,
-        type: ps.type,
-        categoryId,
-        pricePerUnit: ps.rate,
-        min: ps.min,
-        max: ps.max,
-        refill: ps.refill,
-        cancel: ps.cancel,
-        provider: provider.name,
-      })
-      if (existing) updated += 1
-      else created += 1
+    const chunkSize = 500
+    for (let i = 0; i < providerServices.length; i += chunkSize) {
+      const chunk = providerServices.slice(i, i + chunkSize)
+      const result = await ServiceModel.bulkWrite(
+        chunk.map((ps) => {
+          const categorySlug = ps.category ? slugFor(ps.category) : undefined
+          const categoryId = categorySlug ? categoryIdBySlug.get(categorySlug) : undefined
+          return {
+            updateOne: {
+              filter: { providerServiceId: ps.providerServiceId },
+              update: {
+                $set: {
+                  name: ps.name,
+                  type: ps.type,
+                  category: categoryId ? new Types.ObjectId(categoryId) : null,
+                  pricePerUnit: ps.rate,
+                  min: ps.min,
+                  max: ps.max,
+                  refill: ps.refill,
+                  cancel: ps.cancel,
+                  provider: provider.name,
+                },
+              },
+              upsert: true,
+            },
+          }
+        }),
+        { ordered: false },
+      )
+      created += result.upsertedCount
+      // matchedCount = every service that already existed (even if its data
+      // was identical); modifiedCount would under-report on re-syncs.
+      updated += result.matchedCount
     }
 
     return { provider: provider.name, created, updated, total: providerServices.length }

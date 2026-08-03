@@ -12,16 +12,31 @@ export const useServicesStore = defineStore('services', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
   const activeCategory = ref<string>('all')
+  /** Hide categories that have no active services (admin curated them away). */
+  const curatedOnly = ref(true)
 
   const message = (err: unknown, fallback: string) =>
     err instanceof ApiRequestError ? err.message : fallback
 
   async function fetchCategories(): Promise<void> {
     try {
-      categories.value = await servicesApi.categories()
+      categories.value = await servicesApi.categories({ curated: curatedOnly.value })
     } catch (err) {
       error.value = message(err, 'Failed to load categories')
     }
+  }
+
+  /**
+   * Toggles the curated view: only categories with active services are shown.
+   * If the currently selected category disappears, the filter resets to "all".
+   */
+  async function setCuratedOnly(value: boolean): Promise<void> {
+    curatedOnly.value = value
+    if (value && activeCategory.value !== 'all') {
+      const stillThere = categories.value.some((c) => c._id === activeCategory.value)
+      if (!stillThere) activeCategory.value = 'all'
+    }
+    await fetchCategories()
   }
 
   async function fetchServices(params: {
@@ -65,9 +80,11 @@ export const useServicesStore = defineStore('services', () => {
     loading,
     error,
     activeCategory,
+    curatedOnly,
     fetchCategories,
     fetchServices,
     fetchFeatured,
     selectCategory,
+    setCuratedOnly,
   }
 })

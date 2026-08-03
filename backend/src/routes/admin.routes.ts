@@ -22,6 +22,7 @@ adminRoutes.post('/admin/services/sync', adminController.syncServices)
 // Services
 adminRoutes.get('/admin/services', ...adminController.listServices)
 adminRoutes.post('/admin/services', ...adminController.createService)
+adminRoutes.post('/admin/services/bulk-status', ...adminController.bulkSetServiceStatus)
 adminRoutes.put('/admin/services/:id', ...adminController.updateService)
 adminRoutes.delete('/admin/services/:id', adminController.deleteService)
 

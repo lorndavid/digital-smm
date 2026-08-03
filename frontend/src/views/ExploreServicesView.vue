@@ -79,6 +79,14 @@ function selectCategory(categoryId: string): void {
   void load()
 }
 
+/** Curated view hides categories whose services were all disabled by admins. */
+async function onToggleCurated(): Promise<void> {
+  await store.setCuratedOnly(!store.curatedOnly)
+  page.value = 1
+  showMore.value = false
+  void load()
+}
+
 function changeSort(): void {
   page.value = 1
   void load()
@@ -168,6 +176,28 @@ onMounted(async () => {
           @click="selectCategory(category._id)"
         >
           {{ category.name }}
+        </button>
+
+        <!-- Curated toggle: hide categories with no active services -->
+        <button
+          class="ml-auto flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors"
+          role="switch"
+          :aria-checked="store.curatedOnly"
+          :title="store.curatedOnly ? 'Only categories with active services' : 'Show all categories'"
+          @click="onToggleCurated"
+        >
+          <span
+            class="relative h-5 w-9 rounded-full transition-colors duration-200"
+            :class="store.curatedOnly ? 'bg-gradient-to-r from-brand-500 to-brand-600 shadow-glow' : 'bg-white/10'"
+          >
+            <span
+              class="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200"
+              :class="store.curatedOnly ? 'translate-x-[18px]' : 'translate-x-0.5'"
+            />
+          </span>
+          <span class="text-xs" :class="store.curatedOnly ? 'text-white' : 'text-white/50'">
+            Curated only
+          </span>
         </button>
 
         <!-- The rest -->

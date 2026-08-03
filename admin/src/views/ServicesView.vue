@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
-import { Plus, Pencil, Search, Trash2 } from '@lucide/vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { CheckSquare, Layers, Pencil, Plus, Power, Search, Square, Trash2 } from '@lucide/vue'
 import { adminApi } from '@/api/admin.api'
 import { useToast } from '@/composables/useToast'
 import { errorMessage, formatMoney, formatNumber } from '@/utils/format'
@@ -17,6 +18,8 @@ import BaseEmptyState from '@/components/ui/BaseEmptyState.vue'
 import FormToggle from '@/components/ui/FormToggle.vue'
 
 const toast = useToast()
+const route = useRoute()
+const router = useRouter()
 
 const items = ref<Service[]>([])
 const categories = ref<Category[]>([])
@@ -24,8 +27,22 @@ const total = ref(0)
 const loading = ref(true)
 const saving = ref(false)
 const search = ref('')
+const categoryFilter = ref('all')
 const page = ref(1)
 const pageSize = 10
+
+// ---------------------------------------------------------------------------
+// Bulk curation state
+// ---------------------------------------------------------------------------
+const selectedIds = ref<Set<string>>(new Set())
+const bulkActing = ref(false)
+const confirmOpen = ref(false)
+const pendingAction = ref<{
+  label: string
+  detail: string
+  isActive: boolean
+  scope: 'ids' | 'category'
+} | null>(null)
 
 const modalOpen = ref(false)
 const editingId = ref<string | null>(null)
@@ -47,6 +64,17 @@ const form = reactive({
 })
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
+
+const selectedCategory = computed<Category | null>(
+  () => categories.value.find((c) => c._id === categoryFilter.value) ?? null,
+)
+
+const allOnPageSelected = computed(
+  () => items.value.length > 0 && items.value.every((s) => selectedIds.value.has(s._id)),
+)
+
+const pageInactiveCount = computed(() => items.value.filter((s) => !s.isActive).length)
+
 
 function openCreate(): void {
   editingId.value = null
@@ -97,9 +125,13 @@ async function load(): Promise<void> {
       page: page.value,
       limit: pageSize,
       search: search.value || undefined,
+      category: categoryFilter.value === 'all' ? undefined : categoryFilter.value,
     })
     items.value = result.items
     total.value = result.total
+    // Drop selections that are no longer on the page.
+    const valid = new Set(items.value.map((s) => s._id))
+    selectedIds.value = new Set([...selectedIds.value].filter((id) => valid.has(id)))
   } catch (err) {
     toast.error(errorMessage(err, 'Failed to load services'))
   } finally {
@@ -157,6 +189,87 @@ async function remove(service: Service): Promise<void> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Bulk curation
+// ---------------------------------------------------------------------------
+
+function toggleRow(id: string): void {
+  const next = new Set(selectedIds.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  selectedIds.value = next
+}
+
+function toggleAllOnPage(): void {
+  if (allOnPageSelected.value) {
+    const next = new Set(selectedIds.value)
+    for (const s of items.value) next.delete(s._id)
+    selectedIds.value = next
+  } else {
+    const next = new Set(selectedIds.value)
+    for (const s of items.value) next.add(s._id)
+    selectedIds.value = next
+  }
+}
+
+function requestBulk(ids: string[], isActive: boolean): void {
+  pendingAction.value = {
+    label: isActive ? 'Enable' : 'Disable',
+    detail: `${ids.length} selected service${ids.length === 1 ? '' : 's'}`,
+    isActive,
+    scope: 'ids',
+  }
+  confirmOpen.value = true
+}
+
+function requestBulkByCategory(isActive: boolean): void {
+  if (!selectedCategory.value) return
+  const name = selectedCategory.value.name
+  pendingAction.value = {
+    label: isActive ? 'Enable all' : 'Disable all',
+    detail: `Every service in “${name}”${isActive ? '' : ' — currently active ones only'}`,
+    isActive,
+    scope: 'category',
+  }
+  confirmOpen.value = true
+}
+
+async function runBulk(): Promise<void> {
+  const action = pendingAction.value
+  if (!action) return
+  bulkActing.value = true
+  try {
+    const payload: { ids?: string[]; categoryId?: string; isActive: boolean } = {
+      isActive: action.isActive,
+    }
+    if (action.scope === 'category') {
+      payload.categoryId = selectedCategory.value?._id
+    } else {
+      payload.ids = [...selectedIds.value]
+    }
+    const result = await adminApi.bulkUpdateServices(payload)
+    toast.success(
+      `${action.label}ed ${result.updated} service${result.updated === 1 ? '' : 's'}`,
+    )
+    selectedIds.value = new Set()
+    confirmOpen.value = false
+    pendingAction.value = null
+    await load()
+  } catch (err) {
+    toast.error(errorMessage(err, 'Bulk update failed'))
+  } finally {
+    bulkActing.value = false
+  }
+}
+
+// Reload whenever the category filter changes (watcher is more robust than
+// relying on the select's event bubbling through the component boundary).
+watch(categoryFilter, () => {
+  page.value = 1
+  selectedIds.value = new Set()
+  void load()
+})
+
 function goToPage(p: number): void {
   page.value = p
   void load()
@@ -168,6 +281,13 @@ onMounted(async () => {
   } catch {
     categories.value = []
   }
+  // Support deep links from the Categories page: /services?category=<id>
+  const fromQuery = typeof route.query.category === 'string' ? route.query.category : ''
+  if (fromQuery && categories.value.some((c) => c._id === fromQuery)) {
+    categoryFilter.value = fromQuery
+  } else if (fromQuery) {
+    categoryFilter.value = fromQuery // still pass through; backend will filter
+  }
   await load()
 })
 </script>
@@ -177,62 +297,147 @@ onMounted(async () => {
     <div class="flex flex-wrap items-center justify-between gap-4">
       <div>
         <h1 class="font-display text-2xl font-bold text-(--a-text)">Services</h1>
-        <p class="mt-1 text-sm text-(--a-muted)">Manage the service catalog and pricing.</p>
+        <p class="mt-1 text-sm text-(--a-muted)">
+          Manage the catalog — bulk enable/disable by category to curate what customers see. ({{ total }} services)
+        </p>
       </div>
-      <BaseButton @click="openCreate"><Plus class="h-4 w-4" /> Add service</BaseButton>
+      <div class="flex gap-2">
+        <BaseButton variant="outline" @click="router.push('/categories')">
+          <Layers class="h-4 w-4" /> Categories
+        </BaseButton>
+        <BaseButton @click="openCreate"><Plus class="h-4 w-4" /> Add service</BaseButton>
+      </div>
     </div>
 
-    <div class="relative max-w-xs">
-      <Search class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-(--a-muted-3)" />
-      <input
-        v-model="search"
-        type="search"
-        placeholder="Search services…"
-        class="h-11 w-full rounded-xl border border-(--a-border) bg-(--a-soft) pl-10 pr-4 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
-        @keyup.enter="page = 1; void load()"
-      />
+    <!-- Filters -->
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div class="relative flex-1">
+        <Search class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-(--a-muted-3)" />
+        <input
+          v-model="search"
+          type="search"
+          placeholder="Search services…"
+          class="h-11 w-full rounded-xl border border-(--a-border) bg-(--a-soft) pl-10 pr-4 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
+          @keyup.enter="page = 1; void load()"
+        />
+      </div>
+      <div class="sm:w-72">
+        <BaseSelect
+          v-model="categoryFilter"
+          :options="[{ value: 'all', label: 'All categories' }, ...categories.map((c) => ({ value: c._id, label: c.name }))]"
+        />
+      </div>
+    </div>
+
+    <!-- Bulk action bar -->
+    <div
+      v-if="selectedIds.size > 0 || (selectedCategory && categoryFilter !== 'all')"
+      class="glass-strong flex flex-wrap items-center gap-3 rounded-2xl border-brand-400/30 p-3 shadow-card"
+    >
+      <CheckSquare class="h-4 w-4 text-brand-300" />
+      <span class="text-sm font-semibold text-(--a-text)">
+        {{ selectedIds.size > 0 ? `${selectedIds.size} selected` : `Filtered: ${selectedCategory?.name}` }}
+      </span>
+      <span class="mx-1 hidden h-5 w-px bg-(--a-border) sm:block" />
+      <template v-if="selectedIds.size > 0">
+        <BaseButton size="sm" variant="outline" :disabled="bulkActing" @click="requestBulk([...selectedIds], true)">
+          Enable selected
+        </BaseButton>
+        <BaseButton size="sm" variant="danger" :disabled="bulkActing" @click="requestBulk([...selectedIds], false)">
+          Disable selected
+        </BaseButton>
+      </template>
+      <template v-if="selectedCategory && categoryFilter !== 'all'">
+        <span class="mx-1 hidden h-5 w-px bg-(--a-border) sm:block" />
+        <BaseButton size="sm" variant="outline" :disabled="bulkActing" @click="requestBulkByCategory(true)">
+          Enable all in category
+        </BaseButton>
+        <BaseButton size="sm" variant="danger" :disabled="bulkActing" @click="requestBulkByCategory(false)">
+          Disable all in category
+        </BaseButton>
+        <span class="text-xs text-(--a-muted-2)">
+          ~{{ total }} services · {{ pageInactiveCount }} inactive on this page
+        </span>
+      </template>
+      <button
+        v-if="selectedIds.size > 0"
+        class="ml-auto text-xs font-medium text-(--a-muted) transition-colors hover:text-(--a-text)"
+        @click="selectedIds = new Set()"
+      >
+        Clear selection
+      </button>
     </div>
 
     <div v-if="loading" class="space-y-3">
       <BaseSkeleton v-for="n in 6" :key="n" class="h-16 w-full" />
     </div>
 
-    <BaseEmptyState v-else-if="items.length === 0" title="No services" message="Add a service or sync the provider catalogue from the dashboard." />
+    <BaseEmptyState v-else-if="items.length === 0" title="No services" message="Add a service, sync the provider catalogue, or pick a different category filter." />
 
     <div v-else class="glass overflow-hidden rounded-2xl shadow-card">
       <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">
           <thead class="border-b border-(--a-border) text-xs uppercase tracking-wider text-(--a-muted-2)">
             <tr>
+              <th class="w-12 px-4 py-3">
+                <button
+                  class="flex h-6 w-6 items-center justify-center rounded-md transition-colors hover:bg-(--a-hover)"
+                  :aria-label="allOnPageSelected ? 'Deselect all on page' : 'Select all on page'"
+                  @click="toggleAllOnPage"
+                >
+                  <Square v-if="!allOnPageSelected" class="h-4 w-4" />
+                  <CheckSquare v-else class="h-4 w-4 text-brand-300" />
+                </button>
+              </th>
               <th class="px-5 py-3 font-medium">Service</th>
               <th class="px-5 py-3 font-medium">Type</th>
               <th class="px-5 py-3 font-medium">Price / 1k</th>
               <th class="px-5 py-3 font-medium">Range</th>
-              <th class="px-5 py-3 font-medium">Flags</th>
+              <th class="px-5 py-3 font-medium">Status</th>
               <th class="px-5 py-3 text-right font-medium">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-(--a-border)">
-            <tr v-for="service in items" :key="service._id" class="transition-colors hover:bg-(--a-hover)">
+            <tr
+              v-for="service in items"
+              :key="service._id"
+              class="transition-colors"
+              :class="selectedIds.has(service._id) ? 'bg-brand-500/[0.07]' : 'hover:bg-(--a-hover)'"
+            >
+              <td class="px-4 py-3.5">
+                <button
+                  class="flex h-6 w-6 items-center justify-center rounded-md transition-colors hover:bg-(--a-hover)"
+                  :aria-label="selectedIds.has(service._id) ? 'Deselect' : 'Select'"
+                  @click="toggleRow(service._id)"
+                >
+                  <Square v-if="!selectedIds.has(service._id)" class="h-4 w-4 text-(--a-muted-3)" />
+                  <CheckSquare v-else class="h-4 w-4 text-brand-300" />
+                </button>
+              </td>
               <td class="px-5 py-3.5">
                 <p class="font-medium text-(--a-text)">{{ service.name }}</p>
                 <p class="text-xs text-(--a-muted-2)">
                   {{ service.category && typeof service.category === 'object' ? service.category.name : '—' }}
-                  <span v-if="!service.isActive" class="ml-1 text-rose-300">· inactive</span>
                 </p>
               </td>
               <td class="px-5 py-3.5 text-(--a-muted)">{{ service.type }}</td>
               <td class="px-5 py-3.5 font-semibold text-(--a-text)">{{ formatMoney(service.pricePerUnit * 1000) }}</td>
               <td class="px-5 py-3.5 text-(--a-muted)">{{ formatNumber(service.min) }}–{{ formatNumber(service.max) }}</td>
               <td class="px-5 py-3.5">
-                <div class="flex flex-wrap gap-1.5">
-                  <BaseBadge v-if="service.refill" tone="success" dot>Refill</BaseBadge>
-                  <BaseBadge v-if="service.cancel" tone="info" dot>Cancel</BaseBadge>
-                  <BaseBadge v-if="service.isFeatured" tone="brand">Featured</BaseBadge>
-                </div>
+                <BaseBadge :tone="service.isActive ? 'success' : 'neutral'" dot>
+                  {{ service.isActive ? 'Active' : 'Inactive' }}
+                </BaseBadge>
               </td>
               <td class="px-5 py-3.5">
                 <div class="flex justify-end gap-2">
+                  <button
+                    class="flex h-8 w-8 items-center justify-center rounded-lg text-(--a-muted) transition-colors hover:bg-(--a-hover) hover:text-(--a-text)"
+                    aria-label="Toggle active"
+                    :title="service.isActive ? 'Disable' : 'Enable'"
+                    @click="requestBulk([service._id], !service.isActive)"
+                  >
+                    <Power class="h-4 w-4" />
+                  </button>
                   <button class="flex h-8 w-8 items-center justify-center rounded-lg text-(--a-muted) transition-colors hover:bg-(--a-hover) hover:text-(--a-text)" aria-label="Edit" @click="openEdit(service)">
                     <Pencil class="h-4 w-4" />
                   </button>
@@ -252,6 +457,25 @@ onMounted(async () => {
       <span class="text-sm text-(--a-muted)">Page {{ page }} / {{ totalPages }}</span>
       <button class="rounded-xl border border-(--a-border) px-4 py-2 text-sm text-(--a-text-soft) hover:border-brand-400/50 disabled:opacity-30" :disabled="page >= totalPages" @click="goToPage(page + 1)">Next</button>
     </div>
+
+    <!-- Bulk confirm modal -->
+    <BaseModal :open="confirmOpen" :title="`${pendingAction?.label ?? ''} services?`" @close="confirmOpen = false">
+      <div class="space-y-4">
+        <p class="text-sm text-(--a-muted)">
+          This will <strong class="text-(--a-text)">{{ pendingAction?.label.toLowerCase() }}</strong>
+          {{ pendingAction?.detail }}.
+          <span v-if="pendingAction && !pendingAction.isActive" class="mt-1 block text-xs text-amber-300">
+            Disabled services disappear from the customer storefront immediately. Existing orders are not affected.
+          </span>
+        </p>
+        <div class="flex justify-end gap-3 pt-2">
+          <BaseButton variant="ghost" :disabled="bulkActing" @click="confirmOpen = false">Cancel</BaseButton>
+          <BaseButton :variant="pendingAction?.isActive ? 'primary' : 'danger'" :loading="bulkActing" @click="runBulk">
+            {{ pendingAction?.label }} now
+          </BaseButton>
+        </div>
+      </div>
+    </BaseModal>
 
     <!-- Create / edit modal -->
     <BaseModal :open="modalOpen" :title="editingId ? 'Edit service' : 'Add service'" :max-width="'max-w-2xl'" @close="modalOpen = false">

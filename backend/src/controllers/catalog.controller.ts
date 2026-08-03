@@ -1,7 +1,7 @@
 import { catalogService } from '../services/catalog.service.js'
 import { asyncHandler } from '../utils/async-handler.js'
 import { validateQuery } from '../middleware/validate.middleware.js'
-import { listServicesQuerySchema } from '../validators/index.js'
+import { listCategoriesQuerySchema, listServicesQuerySchema } from '../validators/index.js'
 
 export const catalogController = {
   getServices: [
@@ -20,9 +20,13 @@ export const catalogController = {
     }),
   ],
 
-  getCategories: asyncHandler(async (_req, res) => {
-    res.json(await catalogService.categories())
-  }),
+  getCategories: [
+    validateQuery(listCategoriesQuerySchema),
+    asyncHandler(async (req, res) => {
+      const q = req.validatedQuery ?? {}
+      res.json(await catalogService.categories(q.curated === 'true'))
+    }),
+  ],
 
   getAnnouncements: asyncHandler(async (_req, res) => {
     res.json(await catalogService.announcements())
