@@ -1,0 +1,135 @@
+@import "tailwindcss";
+
+@theme {
+  --color-night: #050816;
+  --color-night-soft: #0a1024;
+  --color-night-card: #0d1430;
+
+  --color-brand-50: #f4f1ff;
+  --color-brand-100: #ebe5ff;
+  --color-brand-200: #d9cfff;
+  --color-brand-300: #bfa9ff;
+  --color-brand-400: #a27bff;
+  --color-brand-500: #6c3bff;
+  --color-brand-600: #5b21f0;
+  --color-brand-700: #4d16cf;
+  --color-brand-800: #4014a6;
+  --color-brand-900: #361386;
+  --color-brand-950: #200a5c;
+
+  --color-secondary-200: #9ff6ff;
+  --color-secondary-300: #5df0ff;
+  --color-secondary-400: #2eeaff;
+  --color-secondary-500: #00e5ff;
+  --color-secondary-600: #00b4cc;
+  --color-secondary-700: #0090a6;
+
+  --color-accent-400: #60a5fa;
+  --color-accent-500: #3b82f6;
+  --color-accent-600: #2563eb;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-night);
+  color: #fff;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  background-image:
+    radial-gradient(1100px 500px at 85% -10%, rgba(108, 59, 255, 0.14), transparent 60%),
+    radial-gradient(900px 480px at 0% 0%, rgba(0, 229, 255, 0.08), transparent 55%);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+::selection {
+  background: rgba(108, 59, 255, 0.55);
+  color: #fff;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #050816;
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #4d16cf, #00b4cc);
+  border-radius: 999px;
+  border: 2px solid #050816;
+}
+
+@utility glass {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+@utility glass-strong {
+  background: rgba(13, 20, 48, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+@utility text-gradient {
+  background-image: linear-gradient(92deg, #a27bff 0%, #6c3bff 35%, #00e5ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility shadow-glow {
+  box-shadow:
+    0 0 0 1px rgba(108, 59, 255, 0.25),
+    0 8px 40px -8px rgba(108, 59, 255, 0.55);
+}
+
+@utility shadow-card {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 20px 50px -24px rgba(0, 0, 0, 0.8);
+}
+
+@keyframes gradient-shift {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 9s ease infinite;
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+  animation: shimmer 1.6s infinite;
+}

@@ -1,0 +1,152 @@
+import { z } from 'zod'
+import { ORDER_STATUSES, ServiceType } from '../types/index.js'
+
+// ---------------------------------------------------------------------------
+// Shared
+// ---------------------------------------------------------------------------
+
+export const paginationQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+})
+
+// ---------------------------------------------------------------------------
+// Public catalogue
+// ---------------------------------------------------------------------------
+
+export const listServicesQuerySchema = paginationQuerySchema.extend({
+  category: z.string().optional(),
+  search: z.string().optional(),
+  featured: z.enum(['true', 'false']).optional(),
+})
+
+// ---------------------------------------------------------------------------
+// Orders
+// ---------------------------------------------------------------------------
+
+export const createOrderBodySchema = z.object({
+  serviceId: z.string().min(1, 'serviceId is required'),
+  link: z.string().optional(),
+  quantity: z.number().int().positive().optional(),
+  params: z.record(z.string(), z.unknown()).default({}),
+})
+
+export const orderStatusBodySchema = z.object({
+  status: z.enum(ORDER_STATUSES),
+})
+
+// ---------------------------------------------------------------------------
+// Payments
+// ---------------------------------------------------------------------------
+
+export const createPaymentBodySchema = z.object({
+  purpose: z.enum(['topup', 'order']),
+  amount: z.number().positive().optional(),
+  serviceId: z.string().optional(),
+  /** Reuse an existing pending order (retry / new QR). */
+  orderId: z.string().optional(),
+  link: z.string().optional(),
+  quantity: z.number().int().positive().optional(),
+  params: z.record(z.string(), z.unknown()).default({}),
+})
+
+export const verifyPaymentBodySchema = z.object({
+  reference: z.string().min(1, 'Payment reference is required'),
+})
+
+export const cancelPaymentBodySchema = z.object({
+  reference: z.string().min(1, 'Payment reference is required'),
+})
+
+export const paymentStatusQuerySchema = z.object({
+  reference: z.string().min(1, 'Payment reference is required'),
+})
+
+export const retryPaymentBodySchema = z.object({
+  orderId: z.string().min(1, 'orderId is required'),
+})
+
+// ---------------------------------------------------------------------------
+// Profile
+// ---------------------------------------------------------------------------
+
+export const updateProfileBodySchema = z.object({
+  name: z.string().trim().max(120).optional(),
+  avatarUrl: z.union([z.url(), z.literal('')]).optional(),
+})
+
+// ---------------------------------------------------------------------------
+// Admin: services
+// ---------------------------------------------------------------------------
+
+export const serviceBodySchema = z.object({
+  name: z.string().min(1).max(200),
+  type: z.nativeEnum(ServiceType).default(ServiceType.Default),
+  providerServiceId: z.number().int().positive().optional().nullable(),
+  categoryId: z.string().optional().nullable(),
+  description: z.string().max(1000).default(''),
+  image: z.string().default(''),
+  pricePerUnit: z.number().min(0),
+  currency: z.string().default('USD'),
+  min: z.number().int().min(0).default(0),
+  max: z.number().int().min(0).default(0),
+  refill: z.boolean().default(false),
+  cancel: z.boolean().default(false),
+  deliveryTime: z.string().default(''),
+  provider: z.string().default('smmwiz'),
+  isActive: z.boolean().default(true),
+  isFeatured: z.boolean().default(false),
+  sortOrder: z.number().int().default(0),
+})
+
+// ---------------------------------------------------------------------------
+// Admin: categories
+// ---------------------------------------------------------------------------
+
+export const categoryBodySchema = z.object({
+  name: z.string().min(1).max(100),
+  slug: z
+    .string()
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug must be lowercase with dashes')
+    .optional(),
+  platform: z
+    .enum(['tiktok', 'facebook', 'instagram', 'youtube', 'telegram', 'other'])
+    .default('other'),
+  description: z.string().default(''),
+  icon: z.string().default(''),
+  sortOrder: z.number().int().default(0),
+  isActive: z.boolean().default(true),
+})
+
+// ---------------------------------------------------------------------------
+// Admin: announcements
+// ---------------------------------------------------------------------------
+
+export const announcementBodySchema = z.object({
+  title: z.string().min(1).max(200),
+  body: z.string().default(''),
+  type: z.enum(['info', 'success', 'warning', 'critical']).default('info'),
+  isActive: z.boolean().default(true),
+  expiresAt: z.string().datetime({ offset: true }).optional().nullable(),
+})
+
+// ---------------------------------------------------------------------------
+// Admin: users, settings
+// ---------------------------------------------------------------------------
+
+export const userUpdateBodySchema = z.object({
+  role: z.enum(['customer', 'admin']).optional(),
+  isActive: z.boolean().optional(),
+})
+
+export const settingBodySchema = z.object({
+  key: z.string().min(1),
+  value: z.unknown(),
+  description: z.string().optional(),
+})
+
+export const adminListQuerySchema = paginationQuerySchema.extend({
+  search: z.string().optional(),
+  status: z.string().optional(),
+  category: z.string().optional(),
+})
