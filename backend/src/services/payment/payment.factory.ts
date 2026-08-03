@@ -20,7 +20,7 @@ export function getPaymentProvider(): PaymentProvider {
     switch (env.PAYMENT_PROVIDER) {
       case 'cutluy': {
         if (!isCutLuyConfigured()) {
-          logger.warn('[payment] PAYMENT_PROVIDER=cutluy but CUTLUY_API_KEY/CUTLUY_WEBHOOK_SECRET missing — falling back to mock')
+          logger.warn('[payment] PAYMENT_PROVIDER=cutluy but CUTLUY_API_KEY missing — falling back to mock')
           instance = new MockPaymentProvider()
         } else {
           instance = new CutLuyPaymentProvider()

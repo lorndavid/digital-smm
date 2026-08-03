@@ -32,8 +32,8 @@ function openTopUp(): void {
 }
 
 function validateAmount(): boolean {
-  if (!amount.value || amount.value <= 0) {
-    error.value = 'Enter a valid amount'
+  if (!amount.value || amount.value < 0.01) {
+    error.value = 'Minimum top-up is $0.01 USD'
     return false
   }
   return true

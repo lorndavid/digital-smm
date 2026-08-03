@@ -90,6 +90,18 @@ export class PaymentService {
       }
     }
 
+    // KHQR providers (CutLuy) enforce a minimum charge of $0.01 USD. Real
+    // SMMWiz per-unit rates are tiny, so small-quantity orders can total less
+    // than that. Fail fast with a clear message instead of a provider 400.
+    if (amount < 0.01) {
+      throw new ApiError(
+        400,
+        options.purpose === 'topup'
+          ? 'Minimum top-up is $0.01 USD'
+          : 'Order total is below the $0.01 USD minimum — increase the quantity',
+      )
+    }
+
     const referenceId = makeReference()
     const metadata: Record<string, unknown> =
       options.purpose === 'topup'

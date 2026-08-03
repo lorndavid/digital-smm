@@ -44,6 +44,37 @@ const isTerminal = computed(() => ['paid', 'expired', 'failed', 'refunded'].incl
 const isOrder = computed(() => payment.value?.purpose === 'order')
 
 // ---------------------------------------------------------------------------
+// Auto-close on expiry: when the QR expires unpaid, close the checkout
+// automatically so the customer isn't left staring at a dead QR.
+// ---------------------------------------------------------------------------
+
+const closingIn = ref<number | null>(null)
+let closeTimer: ReturnType<typeof setInterval> | null = null
+
+function startCloseCountdown(seconds = 10): void {
+  stopCloseCountdown()
+  closingIn.value = seconds
+  closeTimer = setInterval(() => {
+    if (closingIn.value === null || closingIn.value <= 1) {
+      stopCloseCountdown()
+      router.push(isOrder.value ? '/dashboard/orders' : '/dashboard/wallet')
+      return
+    }
+    closingIn.value -= 1
+  }, 1000)
+}
+
+function stopCloseCountdown(): void {
+  if (closeTimer) clearInterval(closeTimer)
+  closeTimer = null
+  closingIn.value = null
+}
+
+watch(status, (s) => {
+  if ((s === 'expired' || s === 'failed') && !isPaid.value) startCloseCountdown()
+})
+
+// ---------------------------------------------------------------------------
 // Countdown
 // ---------------------------------------------------------------------------
 
@@ -112,6 +143,7 @@ async function init(): Promise<void> {
     loading.value = false
     return
   }
+  stopCloseCountdown()
   loading.value = true
   error.value = ''
   try {
@@ -142,6 +174,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload)
+  stopCloseCountdown()
 })
 
 // ---------------------------------------------------------------------------
@@ -413,6 +446,9 @@ const countdownDanger = computed(() => countdown.value.total > 0 && countdown.va
               <p class="mt-1 text-sm text-white/55">
                 No money was charged. Generate a fresh QR to try again.
               </p>
+              <p v-if="closingIn !== null" class="mt-2 text-xs text-white/40">
+                Closing automatically in {{ closingIn }}s…
+              </p>
               <BaseButton v-if="isOrder && order" class="mt-4" :loading="actionBusy" @click="retryPayment">
                 <RefreshCcw class="h-4 w-4" /> Generate new QR
               </BaseButton>
@@ -435,9 +471,19 @@ const countdownDanger = computed(() => countdown.value.total > 0 && countdown.va
           <!-- Right: QR card -->
           <div class="glass-strong rounded-3xl p-6 shadow-glow sm:p-8">
             <div class="text-center">
-              <div class="flex items-center justify-center gap-2 text-sm text-white/50">
+              <!-- Coin header: KHQR + USD currency -->
+              <div class="relative mx-auto mb-1 flex h-14 w-14 items-center justify-center">
+                <div class="coin-glow absolute inset-0 rounded-full bg-gradient-to-br from-amber-300/60 via-yellow-400/40 to-amber-600/60 blur-lg" />
+                <div class="coin relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-amber-200 via-yellow-400 to-amber-600 shadow-[0_8px_24px_-6px_rgba(251,191,36,0.7)] ring-4 ring-amber-300/30">
+                  <span class="font-display text-xl font-black text-amber-950">$</span>
+                </div>
+                <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-night-soft px-2 py-0.5 text-[9px] font-black tracking-widest text-amber-300 ring-1 ring-amber-400/40">
+                  KHQR
+                </span>
+              </div>
+              <div class="mt-2 flex items-center justify-center gap-2 text-sm text-white/50">
                 <QrCode class="h-4 w-4 text-secondary-400" />
-                Scan to pay
+                Scan to pay · USD
               </div>
 
               <!-- Countdown -->
@@ -529,6 +575,33 @@ const countdownDanger = computed(() => countdown.value.total > 0 && countdown.va
 </template>
 
 <style scoped>
+.coin {
+  animation: coin-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.coin-glow {
+  animation: coin-glow-pulse 2.5s ease-in-out infinite;
+}
+@keyframes coin-in {
+  from {
+    transform: scale(0.5) rotate(-18deg);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+@keyframes coin-glow-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.1);
+  }
+}
 .check-pop {
   animation: check-pop 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
 }

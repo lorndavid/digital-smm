@@ -1,24 +1,35 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useSignIn } from '@clerk/vue'
-import { Globe, ShieldCheck } from '@lucide/vue'
+import { useRoute, useRouter } from 'vue-router'
+import { KeyRound, Mail, ShieldCheck } from '@lucide/vue'
+import { useAuthStore } from '@/stores/auth.store'
+import { errorMessage } from '@/utils/format'
 import BaseButton from '@/components/ui/BaseButton.vue'
 
-const { isLoaded, signIn } = useSignIn()
-const error = ref('')
-const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
+const router = useRouter()
+const route = useRoute()
+const authStore = useAuthStore()
 
-async function continueWithGoogle(): Promise<void> {
-  if (!signIn.value) return
+const email = ref('')
+const password = ref('')
+const error = ref('')
+const submitting = ref(false)
+
+async function submit(): Promise<void> {
   error.value = ''
+  if (!email.value.trim() || !password.value) {
+    error.value = 'Enter your email and password'
+    return
+  }
+  submitting.value = true
   try {
-    await signIn.value.authenticateWithRedirect({
-      strategy: 'oauth_google',
-      redirectUrl: '/login',
-      redirectUrlComplete: '/',
-    })
+    await authStore.login(email.value.trim(), password.value)
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
+    await router.push(redirect)
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Unable to start Google sign-in'
+    error.value = errorMessage(err, 'Sign-in failed')
+  } finally {
+    submitting.value = false
   }
 }
 </script>
@@ -32,28 +43,46 @@ async function continueWithGoogle(): Promise<void> {
       <div class="glass-strong rounded-3xl p-8 shadow-glow sm:p-10">
         <div class="flex flex-col items-center text-center">
           <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-secondary-500 shadow-glow">
-            <ShieldCheck class="h-7 w-7 text-white" />
+            <ShieldCheck class="h-7 w-7 text-(--a-text)" />
           </div>
-          <h1 class="font-display mt-5 text-2xl font-bold text-white">VidSMM Admin</h1>
-          <p class="mt-2 text-sm text-white/50">
-            Restricted area. Sign in with your Google account to continue.
+          <h1 class="font-display mt-5 text-2xl font-bold text-(--a-text)">VidSMM Admin</h1>
+          <p class="mt-2 text-sm text-(--a-muted)">
+            Restricted area — sign in with your admin email and password.
           </p>
         </div>
 
-        <div v-if="!publishableKey" class="mt-8 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-5 text-center">
-          <p class="text-sm font-medium text-amber-200">Clerk is not configured</p>
-          <p class="mt-1 text-xs leading-relaxed text-amber-200/70">
-            Add <code class="rounded bg-white/10 px-1.5 py-0.5">VITE_CLERK_PUBLISHABLE_KEY</code> to admin/.env.
-          </p>
-        </div>
+        <form class="mt-8 space-y-4" @submit.prevent="submit">
+          <div class="relative">
+            <Mail class="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-(--a-muted-3)" />
+            <input
+              v-model="email"
+              type="email"
+              required
+              autocomplete="username"
+              placeholder="admin@example.com"
+              class="h-11 w-full rounded-xl border border-(--a-border) bg-(--a-soft) pl-11 pr-4 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
+            />
+          </div>
+          <div class="relative">
+            <KeyRound class="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-(--a-muted-3)" />
+            <input
+              v-model="password"
+              type="password"
+              required
+              autocomplete="current-password"
+              placeholder="Password"
+              class="h-11 w-full rounded-xl border border-(--a-border) bg-(--a-soft) pl-11 pr-4 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
+            />
+          </div>
 
-        <div v-else class="mt-8">
-          <BaseButton size="lg" block variant="outline" :loading="isLoaded === false" @click="continueWithGoogle">
-            <Globe class="h-5 w-5 text-secondary-400" /> Continue with Google
+          <p v-if="error" class="rounded-xl border border-rose-400/30 bg-rose-400/10 px-4 py-2.5 text-sm text-rose-300">
+            {{ error }}
+          </p>
+
+          <BaseButton type="submit" size="lg" block :loading="submitting">
+            <KeyRound class="h-4 w-4" /> Sign in
           </BaseButton>
-        </div>
-
-        <p v-if="error" class="mt-4 text-center text-sm text-rose-300">{{ error }}</p>
+        </form>
       </div>
     </div>
   </div>

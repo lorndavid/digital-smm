@@ -1,16 +1,13 @@
 <script setup lang="ts">
-import { useClerkSession } from '@/composables/useClerkSession'
+import { onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth.store'
 import ToastHost from '@/components/ui/ToastHost.vue'
 
-const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 const authStore = useAuthStore()
 
-if (publishableKey) {
-  useClerkSession()
-} else {
-  authStore.setLoaded(true, false)
-}
+onMounted(() => {
+  void authStore.restore()
+})
 </script>
 
 <template>

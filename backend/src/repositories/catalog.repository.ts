@@ -12,6 +12,8 @@ import { BaseRepository } from './base.repository.js'
 // Services
 // ---------------------------------------------------------------------------
 
+export type ServiceSort = 'price_asc' | 'price_desc' | 'name_asc' | 'newest'
+
 export interface ListServicesParams {
   category?: string
   search?: string
@@ -19,6 +21,7 @@ export interface ListServicesParams {
   includeInactive?: boolean
   page?: number
   limit?: number
+  sort?: ServiceSort
 }
 
 export class ServiceRepository extends BaseRepository<Service> {
@@ -40,10 +43,21 @@ export class ServiceRepository extends BaseRepository<Service> {
     const limit = params.limit ?? 50
     const skip = (page - 1) * limit
 
+    const sort: Record<string, 1 | -1> =
+      params.sort === 'price_asc'
+        ? { pricePerUnit: 1 }
+        : params.sort === 'price_desc'
+          ? { pricePerUnit: -1 }
+          : params.sort === 'name_asc'
+            ? { name: 1 }
+            : params.sort === 'newest'
+              ? { createdAt: -1 }
+              : { sortOrder: 1, createdAt: -1 }
+
     const [docs, total] = await Promise.all([
       ServiceModel.find(filter)
         .populate<{ category: CategoryDoc }>('category')
-        .sort({ sortOrder: 1, createdAt: -1 })
+        .sort(sort)
         .skip(skip)
         .limit(limit)
         .exec(),
@@ -119,11 +133,20 @@ export class CategoryRepository extends BaseRepository<Category> {
   async findOrCreateByName(name: string, platform = 'other'): Promise<CategoryDoc> {
     const existing = await this.findByProviderName(name)
     if (existing) return existing
-    const slug = name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '')
-    return CategoryModel.create({ name, slug: slug || 'category', platform })
+    const slug =
+      name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '') || 'category'
+    // Atomic upsert by the unique slug index. Two provider categories can
+    // slug to the same value (e.g. "Instagram Italy" / "Instagram Italia"),
+    // so a plain create() would crash with E11000 — upsert instead reuses
+    // the existing category and is also safe under concurrent syncs.
+    return CategoryModel.findOneAndUpdate(
+      { slug },
+      { $setOnInsert: { name, slug, platform } },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    ).exec()
   }
 
   listActive(): Promise<CategoryDoc[]> {

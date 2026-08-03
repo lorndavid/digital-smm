@@ -176,19 +176,19 @@ onMounted(async () => {
   <div class="mx-auto max-w-6xl space-y-5">
     <div class="flex flex-wrap items-center justify-between gap-4">
       <div>
-        <h1 class="font-display text-2xl font-bold text-white">Services</h1>
-        <p class="mt-1 text-sm text-white/50">Manage the service catalog and pricing.</p>
+        <h1 class="font-display text-2xl font-bold text-(--a-text)">Services</h1>
+        <p class="mt-1 text-sm text-(--a-muted)">Manage the service catalog and pricing.</p>
       </div>
       <BaseButton @click="openCreate"><Plus class="h-4 w-4" /> Add service</BaseButton>
     </div>
 
     <div class="relative max-w-xs">
-      <Search class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
+      <Search class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-(--a-muted-3)" />
       <input
         v-model="search"
         type="search"
         placeholder="Search services…"
-        class="h-11 w-full rounded-xl border border-white/10 bg-white/5 pl-10 pr-4 text-sm text-white placeholder:text-white/30 focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
+        class="h-11 w-full rounded-xl border border-(--a-border) bg-(--a-soft) pl-10 pr-4 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
         @keyup.enter="page = 1; void load()"
       />
     </div>
@@ -202,7 +202,7 @@ onMounted(async () => {
     <div v-else class="glass overflow-hidden rounded-2xl shadow-card">
       <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">
-          <thead class="border-b border-white/10 text-xs uppercase tracking-wider text-white/40">
+          <thead class="border-b border-(--a-border) text-xs uppercase tracking-wider text-(--a-muted-2)">
             <tr>
               <th class="px-5 py-3 font-medium">Service</th>
               <th class="px-5 py-3 font-medium">Type</th>
@@ -212,18 +212,18 @@ onMounted(async () => {
               <th class="px-5 py-3 text-right font-medium">Actions</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-white/[0.06]">
-            <tr v-for="service in items" :key="service._id" class="transition-colors hover:bg-white/[0.03]">
+          <tbody class="divide-y divide-(--a-border)">
+            <tr v-for="service in items" :key="service._id" class="transition-colors hover:bg-(--a-hover)">
               <td class="px-5 py-3.5">
-                <p class="font-medium text-white">{{ service.name }}</p>
-                <p class="text-xs text-white/40">
+                <p class="font-medium text-(--a-text)">{{ service.name }}</p>
+                <p class="text-xs text-(--a-muted-2)">
                   {{ service.category && typeof service.category === 'object' ? service.category.name : '—' }}
                   <span v-if="!service.isActive" class="ml-1 text-rose-300">· inactive</span>
                 </p>
               </td>
-              <td class="px-5 py-3.5 text-white/60">{{ service.type }}</td>
-              <td class="px-5 py-3.5 font-semibold text-white">{{ formatMoney(service.pricePerUnit * 1000) }}</td>
-              <td class="px-5 py-3.5 text-white/60">{{ formatNumber(service.min) }}–{{ formatNumber(service.max) }}</td>
+              <td class="px-5 py-3.5 text-(--a-muted)">{{ service.type }}</td>
+              <td class="px-5 py-3.5 font-semibold text-(--a-text)">{{ formatMoney(service.pricePerUnit * 1000) }}</td>
+              <td class="px-5 py-3.5 text-(--a-muted)">{{ formatNumber(service.min) }}–{{ formatNumber(service.max) }}</td>
               <td class="px-5 py-3.5">
                 <div class="flex flex-wrap gap-1.5">
                   <BaseBadge v-if="service.refill" tone="success" dot>Refill</BaseBadge>
@@ -233,10 +233,10 @@ onMounted(async () => {
               </td>
               <td class="px-5 py-3.5">
                 <div class="flex justify-end gap-2">
-                  <button class="flex h-8 w-8 items-center justify-center rounded-lg text-white/50 transition-colors hover:bg-white/10 hover:text-white" aria-label="Edit" @click="openEdit(service)">
+                  <button class="flex h-8 w-8 items-center justify-center rounded-lg text-(--a-muted) transition-colors hover:bg-(--a-hover) hover:text-(--a-text)" aria-label="Edit" @click="openEdit(service)">
                     <Pencil class="h-4 w-4" />
                   </button>
-                  <button class="flex h-8 w-8 items-center justify-center rounded-lg text-white/50 transition-colors hover:bg-rose-500/20 hover:text-rose-300" aria-label="Delete" @click="remove(service)">
+                  <button class="flex h-8 w-8 items-center justify-center rounded-lg text-(--a-muted) transition-colors hover:bg-rose-500/20 hover:text-rose-300" aria-label="Delete" @click="remove(service)">
                     <Trash2 class="h-4 w-4" />
                   </button>
                 </div>
@@ -248,9 +248,9 @@ onMounted(async () => {
     </div>
 
     <div v-if="totalPages > 1" class="flex items-center justify-center gap-3 pt-2">
-      <button class="rounded-xl border border-white/10 px-4 py-2 text-sm text-white/70 hover:border-brand-400/50 disabled:opacity-30" :disabled="page <= 1" @click="goToPage(page - 1)">Prev</button>
-      <span class="text-sm text-white/50">Page {{ page }} / {{ totalPages }}</span>
-      <button class="rounded-xl border border-white/10 px-4 py-2 text-sm text-white/70 hover:border-brand-400/50 disabled:opacity-30" :disabled="page >= totalPages" @click="goToPage(page + 1)">Next</button>
+      <button class="rounded-xl border border-(--a-border) px-4 py-2 text-sm text-(--a-text-soft) hover:border-brand-400/50 disabled:opacity-30" :disabled="page <= 1" @click="goToPage(page - 1)">Prev</button>
+      <span class="text-sm text-(--a-muted)">Page {{ page }} / {{ totalPages }}</span>
+      <button class="rounded-xl border border-(--a-border) px-4 py-2 text-sm text-(--a-text-soft) hover:border-brand-400/50 disabled:opacity-30" :disabled="page >= totalPages" @click="goToPage(page + 1)">Next</button>
     </div>
 
     <!-- Create / edit modal -->

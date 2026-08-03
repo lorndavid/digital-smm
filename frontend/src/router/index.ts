@@ -21,6 +21,14 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   {
+    // Landing page for CutLuy hosted-checkout redirects
+    // (?status=&payment_id=&reference_id=). Kept auth-free so redirects work
+    // even when the customer isn't signed in.
+    path: '/payment-result',
+    name: 'payment-result',
+    component: () => import('@/views/PaymentResultView.vue'),
+  },
+  {
     path: '/dashboard',
     component: () => import('@/views/DashboardLayoutView.vue'),
     meta: { requiresAuth: true },

@@ -16,3 +16,22 @@ export const checkoutLimiter = rateLimit({
   standardHeaders: 'draft-8',
   legacyHeaders: false,
 })
+
+/**
+ * Stricter limiter for admin-management mutations (create admin, assign
+ * roles).
+ */
+export const adminMutationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+})
+
+/** Login limiter — throttles password guessing attempts. */
+export const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+})

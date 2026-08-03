@@ -12,6 +12,13 @@ const optionalUrl = z.preprocess(
   z.url().optional(),
 )
 
+/** Treat an empty string as an unset optional value. */
+const optionalString = <T extends z.ZodTypeAny>(schema: T): z.ZodOptional<T> =>
+  z.preprocess(
+    (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
+    schema.optional(),
+  ) as unknown as z.ZodOptional<T>
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(4000),
@@ -19,10 +26,35 @@ const envSchema = z.object({
   // MongoDB Atlas connection string
   MONGODB_URI: z.string().min(1, 'MONGODB_URI is required (MongoDB Atlas connection string)'),
 
-  // Clerk JWT verification
+  // Optional explicit DNS servers (comma-separated, e.g. '1.1.1.1,8.8.8.8').
+  // On some Windows/ISP setups Node's resolver (c-ares) fails SRV lookups with
+  // `querySrv ECONNREFUSED` even though the OS resolves fine — pinning DNS here
+  // fixes that. Leave empty to use the system resolver.
+  DNS_SERVERS: z
+    .string()
+    .default('')
+    .transform((v) => v.split(',').map((s) => s.trim()).filter(Boolean))
+    .refine(
+      (servers) => servers.every((s) => /^(\d{1,3}(\.\d{1,3}){3}|[0-9a-fA-F:]+)$/.test(s)),
+      {
+        message:
+          'DNS_SERVERS must be a comma-separated list of valid IP addresses (e.g. 1.1.1.1,8.8.8.8)',
+      },
+    ),
+
+  // Clerk JWT verification (customer auth only)
   CLERK_JWKS_URL: z.url('CLERK_JWKS_URL must be a valid URL, e.g. https://<domain>/.well-known/jwks.json'),
   CLERK_ISSUER: optionalUrl,
-  CLERK_ADMIN_ROLE: z.string().default('admin'),
+
+  // Admin auth (email + password, stored in MongoDB)
+  // Secret used to sign/verify admin session JWTs (HS256).
+  ADMIN_JWT_SECRET: z.string().min(16, 'ADMIN_JWT_SECRET must be at least 16 characters'),
+  ADMIN_JWT_EXPIRES_IN: z.string().default('12h'),
+  // Optional: auto-create the first super admin on boot when no admin exists.
+  SUPER_ADMIN_EMAIL: optionalString(z.string().email('SUPER_ADMIN_EMAIL must be a valid email')),
+  SUPER_ADMIN_PASSWORD: optionalString(
+    z.string().min(8, 'SUPER_ADMIN_PASSWORD must be at least 8 characters'),
+  ),
 
   // CORS
   CORS_ORIGINS: z.string().default('http://localhost:5173,http://localhost:5174'),

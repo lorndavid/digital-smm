@@ -2,10 +2,12 @@ import { createApp } from './app.js'
 import { env } from './config/env.js'
 import { connectDatabase, disconnectDatabase } from './config/database.js'
 import { startOrderSyncJob, stopOrderSyncJob } from './jobs/order-sync.job.js'
+import { seedSuperAdmin } from './services/admin-auth.service.js'
 import { logger } from './utils/logger.js'
 
 async function bootstrap(): Promise<void> {
   await connectDatabase()
+  await seedSuperAdmin()
 
   const app = createApp()
   const server = app.listen(env.PORT, () => {

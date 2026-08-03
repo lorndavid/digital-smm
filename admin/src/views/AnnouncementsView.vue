@@ -120,8 +120,8 @@ onMounted(() => void load())
   <div class="mx-auto max-w-4xl space-y-5">
     <div class="flex flex-wrap items-center justify-between gap-4">
       <div>
-        <h1 class="font-display text-2xl font-bold text-white">Announcements</h1>
-        <p class="mt-1 text-sm text-white/50">Publish notices shown on the customer dashboard.</p>
+        <h1 class="font-display text-2xl font-bold text-(--a-text)">Announcements</h1>
+        <p class="mt-1 text-sm text-(--a-muted)">Publish notices shown on the customer dashboard.</p>
       </div>
       <BaseButton @click="openCreate"><Plus class="h-4 w-4" /> New announcement</BaseButton>
     </div>
@@ -140,21 +140,21 @@ onMounted(() => void load())
           </div>
           <div>
             <div class="flex flex-wrap items-center gap-2">
-              <p class="font-medium text-white">{{ announcement.title }}</p>
+              <p class="font-medium text-(--a-text)">{{ announcement.title }}</p>
               <BaseBadge :tone="typeTone[announcement.type] ?? 'info'">{{ announcement.type }}</BaseBadge>
               <BaseBadge :tone="announcement.isActive ? 'success' : 'neutral'" dot>
                 {{ announcement.isActive ? 'Active' : 'Draft' }}
               </BaseBadge>
             </div>
-            <p v-if="announcement.body" class="mt-1 text-sm text-white/50">{{ announcement.body }}</p>
-            <p class="mt-1 text-xs text-white/30">{{ formatDate(announcement.createdAt) }}</p>
+            <p v-if="announcement.body" class="mt-1 text-sm text-(--a-muted)">{{ announcement.body }}</p>
+            <p class="mt-1 text-xs text-(--a-muted-3)">{{ formatDate(announcement.createdAt) }}</p>
           </div>
         </div>
         <div class="flex shrink-0 gap-2">
-          <button class="flex h-8 w-8 items-center justify-center rounded-lg text-white/50 hover:bg-white/10 hover:text-white" aria-label="Edit" @click="openEdit(announcement)">
+          <button class="flex h-8 w-8 items-center justify-center rounded-lg text-(--a-muted) hover:bg-(--a-hover) hover:text-(--a-text)" aria-label="Edit" @click="openEdit(announcement)">
             <Pencil class="h-4 w-4" />
           </button>
-          <button class="flex h-8 w-8 items-center justify-center rounded-lg text-white/50 hover:bg-rose-500/20 hover:text-rose-300" aria-label="Delete" @click="remove(announcement)">
+          <button class="flex h-8 w-8 items-center justify-center rounded-lg text-(--a-muted) hover:bg-rose-500/20 hover:text-rose-300" aria-label="Delete" @click="remove(announcement)">
             <Trash2 class="h-4 w-4" />
           </button>
         </div>

@@ -97,8 +97,8 @@ onMounted(() => void load())
   <div class="mx-auto max-w-3xl space-y-5">
     <div class="flex flex-wrap items-center justify-between gap-4">
       <div>
-        <h1 class="font-display text-2xl font-bold text-white">Settings</h1>
-        <p class="mt-1 text-sm text-white/50">
+        <h1 class="font-display text-2xl font-bold text-(--a-text)">Settings</h1>
+        <p class="mt-1 text-sm text-(--a-muted)">
           Platform key/value settings. Secrets (like the SMM API key) should stay in backend
           environment variables.
         </p>
@@ -112,20 +112,20 @@ onMounted(() => void load())
 
     <BaseEmptyState v-else-if="items.length === 0" title="No settings" message="Add platform settings to get started." />
 
-    <div v-else class="glass divide-y divide-white/[0.06] overflow-hidden rounded-2xl shadow-card">
+    <div v-else class="glass divide-y divide-(--a-border) overflow-hidden rounded-2xl shadow-card">
       <button
         v-for="setting in items"
         :key="setting.key"
-        class="flex w-full items-start justify-between gap-4 px-6 py-4 text-left transition-colors hover:bg-white/[0.03]"
+        class="flex w-full items-start justify-between gap-4 px-6 py-4 text-left transition-colors hover:bg-(--a-hover)"
         @click="openEdit(setting)"
       >
         <div class="min-w-0">
-          <p class="flex items-center gap-2 font-medium text-white">
+          <p class="flex items-center gap-2 font-medium text-(--a-text)">
             <SettingsIcon class="h-4 w-4 text-brand-300" /> {{ setting.key }}
           </p>
-          <p v-if="setting.description" class="mt-0.5 text-xs text-white/40">{{ setting.description }}</p>
+          <p v-if="setting.description" class="mt-0.5 text-xs text-(--a-muted-2)">{{ setting.description }}</p>
         </div>
-        <code class="max-w-[40%] truncate rounded-lg bg-white/5 px-2.5 py-1 text-xs text-white/60">
+        <code class="max-w-[40%] truncate rounded-lg bg-(--a-soft) px-2.5 py-1 text-xs text-(--a-muted)">
           {{ displayValue(setting.value) }}
         </code>
       </button>

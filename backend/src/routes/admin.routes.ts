@@ -1,12 +1,20 @@
 import { Router } from 'express'
 import { adminController } from '../controllers/admin.controller.js'
-import { adminOnly } from '../middleware/admin.middleware.js'
+import { adminOnly, requireSuperAdmin } from '../middleware/admin.middleware.js'
+import { adminMutationLimiter, loginLimiter } from '../middleware/rate-limit.middleware.js'
 
 export const adminRoutes = Router()
 
-// Everything below requires an admin role claim in the Clerk session token.
-// Scoped to /admin so the guard does not intercept unrelated /api paths.
+// Public admin auth — no JWT required.
+adminRoutes.post('/admin/auth/login', loginLimiter, ...adminController.login)
+
+// Everything below requires a valid admin session JWT (email + password,
+// stored in MongoDB). Scoped to /admin so the guard does not intercept
+// unrelated /api paths.
 adminRoutes.use('/admin', adminOnly)
+
+// Current admin profile.
+adminRoutes.get('/admin/auth/me', adminController.me)
 
 adminRoutes.get('/admin/stats', adminController.dashboard)
 adminRoutes.post('/admin/services/sync', adminController.syncServices)
@@ -23,9 +31,31 @@ adminRoutes.post('/admin/categories', ...adminController.createCategory)
 adminRoutes.put('/admin/categories/:id', ...adminController.updateCategory)
 adminRoutes.delete('/admin/categories/:id', adminController.deleteCategory)
 
-// Users
+// Users (list, detail + per-user activity history)
 adminRoutes.get('/admin/users', ...adminController.listUsers)
+adminRoutes.get('/admin/users/:id', adminController.getUserDetail)
+adminRoutes.get('/admin/users/:id/orders', ...adminController.getUserOrders)
+adminRoutes.get('/admin/users/:id/payments', ...adminController.getUserPayments)
 adminRoutes.put('/admin/users/:id', ...adminController.updateUser)
+
+// Admins & roles (super admin only) — stored in MongoDB.
+// requireAdminAuth already ran for the whole /admin prefix via `adminOnly`;
+// only the extra role gate is applied per-route.
+adminRoutes.get('/admin/admins', requireSuperAdmin, ...adminController.listAdmins)
+adminRoutes.post('/admin/admins', requireSuperAdmin, adminMutationLimiter, ...adminController.createAdmin)
+adminRoutes.put(
+  '/admin/admins/:id/role',
+  requireSuperAdmin,
+  adminMutationLimiter,
+  ...adminController.setAdminRole,
+)
+adminRoutes.delete(
+  '/admin/admins/:id/role',
+  requireSuperAdmin,
+  adminMutationLimiter,
+  adminController.removeAdminRole,
+)
+adminRoutes.get('/admin/audit-logs', requireSuperAdmin, ...adminController.listAuditLogs)
 
 // Orders
 adminRoutes.get('/admin/orders', ...adminController.listOrders)

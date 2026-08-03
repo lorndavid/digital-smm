@@ -62,9 +62,49 @@ export interface AdminUser {
   email: string
   name: string
   avatarUrl: string
-  role: 'customer' | 'admin'
+  role: 'customer' | 'admin' | 'super_admin'
   isActive: boolean
   lastLoginAt: string | null
+  createdAt: string
+}
+
+export type ManagedRole = 'admin' | 'super_admin'
+
+export interface UserWallet {
+  balance: number
+  totalTopUp?: number
+  totalSpent?: number
+}
+
+/** Admin user detail: profile + embedded wallet summary. */
+export interface UserDetail {
+  user: AdminUser & { wallet?: UserWallet | null }
+}
+
+export interface AdminIdentity {
+  id: string
+  email: string
+  name: string
+  role: ManagedRole
+}
+
+/** A user managed via the Clerk Backend API (Admins & Roles page). */
+export interface AdminAccount {
+  id: string
+  email: string
+  name: string
+  role: 'customer' | 'admin' | 'super_admin'
+  createdAt: string
+}
+
+export interface AdminAuditLog {
+  _id: string
+  actorClerkId: string
+  actorEmail: string
+  action: 'admin.create' | 'admin.set_role' | 'admin.remove_role'
+  targetClerkId: string | null
+  targetEmail: string
+  details: { role?: string; name?: string }
   createdAt: string
 }
 

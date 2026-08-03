@@ -1,9 +1,13 @@
 import { apiClient } from './client'
 import type {
+  AdminAccount,
+  AdminAuditLog,
+  AdminIdentity,
   AdminUser,
   Announcement,
   Category,
   DashboardStats,
+  ManagedRole,
   Order,
   OrderStatus,
   Paginated,
@@ -12,6 +16,7 @@ import type {
   Service,
   Setting,
   SyncResult,
+  UserDetail,
 } from '@/types/models'
 
 interface ListParams {
@@ -24,6 +29,11 @@ interface ListParams {
 
 /** Typed access to the admin API. */
 export const adminApi = {
+  // Auth (email + password, stored in MongoDB)
+  login: async (email: string, password: string): Promise<{ token: string; admin: AdminIdentity }> =>
+    (await apiClient.post('/admin/auth/login', { email, password })).data,
+  me: async (): Promise<AdminIdentity> => (await apiClient.get('/admin/auth/me')).data,
+
   // Dashboard
   stats: async (): Promise<DashboardStats> => (await apiClient.get('/admin/stats')).data,
   syncServices: async (): Promise<SyncResult> => (await apiClient.post('/admin/services/sync')).data,
@@ -45,11 +55,33 @@ export const adminApi = {
     (await apiClient.put(`/admin/categories/${id}`, data)).data,
   deleteCategory: async (id: string): Promise<void> => (await apiClient.delete(`/admin/categories/${id}`)).data,
 
-  // Users
+  // Users (role is managed via /admin/admins — never here)
   listUsers: async (params: ListParams = {}): Promise<Paginated<AdminUser>> =>
     (await apiClient.get('/admin/users', { params })).data,
-  updateUser: async (id: string, data: { role?: string; isActive?: boolean }): Promise<AdminUser> =>
+  updateUser: async (id: string, data: { isActive?: boolean }): Promise<AdminUser> =>
     (await apiClient.put(`/admin/users/${id}`, data)).data,
+  getUserDetail: async (id: string): Promise<UserDetail> =>
+    (await apiClient.get(`/admin/users/${id}`)).data,
+  getUserOrders: async (id: string, params: ListParams = {}): Promise<Paginated<Order>> =>
+    (await apiClient.get(`/admin/users/${id}/orders`, { params })).data,
+  getUserPayments: async (id: string, params: ListParams = {}): Promise<Paginated<Payment>> =>
+    (await apiClient.get(`/admin/users/${id}/payments`, { params })).data,
+
+  // Admins & roles (super admin only)
+  listAdmins: async (params: ListParams = {}): Promise<Paginated<AdminAccount>> =>
+    (await apiClient.get('/admin/admins', { params })).data,
+  createAdmin: async (data: {
+    email: string
+    password: string
+    name?: string
+    role: ManagedRole
+  }): Promise<AdminAccount> => (await apiClient.post('/admin/admins', data)).data,
+  setAdminRole: async (id: string, role: ManagedRole): Promise<AdminAccount> =>
+    (await apiClient.put(`/admin/admins/${id}/role`, { role })).data,
+  removeAdminRole: async (id: string): Promise<{ removed: boolean; email: string }> =>
+    (await apiClient.delete(`/admin/admins/${id}/role`)).data,
+  listAuditLogs: async (params: ListParams = {}): Promise<Paginated<AdminAuditLog>> =>
+    (await apiClient.get('/admin/audit-logs', { params })).data,
 
   // Orders
   listOrders: async (params: ListParams = {}): Promise<Paginated<Order>> =>

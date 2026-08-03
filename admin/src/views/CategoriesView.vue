@@ -113,8 +113,8 @@ onMounted(() => void load())
   <div class="mx-auto max-w-4xl space-y-5">
     <div class="flex flex-wrap items-center justify-between gap-4">
       <div>
-        <h1 class="font-display text-2xl font-bold text-white">Categories</h1>
-        <p class="mt-1 text-sm text-white/50">Group services by platform.</p>
+        <h1 class="font-display text-2xl font-bold text-(--a-text)">Categories</h1>
+        <p class="mt-1 text-sm text-(--a-muted)">Group services by platform.</p>
       </div>
       <BaseButton @click="openCreate"><Plus class="h-4 w-4" /> Add category</BaseButton>
     </div>
@@ -128,7 +128,7 @@ onMounted(() => void load())
     <div v-else class="glass overflow-hidden rounded-2xl shadow-card">
       <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">
-          <thead class="border-b border-white/10 text-xs uppercase tracking-wider text-white/40">
+          <thead class="border-b border-(--a-border) text-xs uppercase tracking-wider text-(--a-muted-2)">
             <tr>
               <th class="px-5 py-3 font-medium">Category</th>
               <th class="px-5 py-3 font-medium">Platform</th>
@@ -136,22 +136,22 @@ onMounted(() => void load())
               <th class="px-5 py-3 text-right font-medium">Actions</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-white/[0.06]">
-            <tr v-for="category in items" :key="category._id" class="transition-colors hover:bg-white/[0.03]">
+          <tbody class="divide-y divide-(--a-border)">
+            <tr v-for="category in items" :key="category._id" class="transition-colors hover:bg-(--a-hover)">
               <td class="px-5 py-3.5">
-                <p class="flex items-center gap-2 font-medium text-white">
+                <p class="flex items-center gap-2 font-medium text-(--a-text)">
                   <FolderTree class="h-4 w-4 text-brand-300" /> {{ category.name }}
                   <span v-if="!category.isActive" class="text-xs text-rose-300">· inactive</span>
                 </p>
               </td>
-              <td class="px-5 py-3.5 capitalize text-white/60">{{ category.platform }}</td>
-              <td class="px-5 py-3.5 text-white/40">{{ category.slug }}</td>
+              <td class="px-5 py-3.5 capitalize text-(--a-muted)">{{ category.platform }}</td>
+              <td class="px-5 py-3.5 text-(--a-muted-2)">{{ category.slug }}</td>
               <td class="px-5 py-3.5">
                 <div class="flex justify-end gap-2">
-                  <button class="flex h-8 w-8 items-center justify-center rounded-lg text-white/50 hover:bg-white/10 hover:text-white" aria-label="Edit" @click="openEdit(category)">
+                  <button class="flex h-8 w-8 items-center justify-center rounded-lg text-(--a-muted) hover:bg-(--a-hover) hover:text-(--a-text)" aria-label="Edit" @click="openEdit(category)">
                     <Pencil class="h-4 w-4" />
                   </button>
-                  <button class="flex h-8 w-8 items-center justify-center rounded-lg text-white/50 hover:bg-rose-500/20 hover:text-rose-300" aria-label="Delete" @click="remove(category)">
+                  <button class="flex h-8 w-8 items-center justify-center rounded-lg text-(--a-muted) hover:bg-rose-500/20 hover:text-rose-300" aria-label="Delete" @click="remove(category)">
                     <Trash2 class="h-4 w-4" />
                   </button>
                 </div>

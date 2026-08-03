@@ -14,6 +14,7 @@ export const catalogController = {
         category: typeof q.category === 'string' ? q.category : undefined,
         search: typeof q.search === 'string' ? q.search : undefined,
         featured: q.featured === 'true' ? true : undefined,
+        sort: (q.sort as 'price_asc' | 'price_desc' | 'name_asc' | 'newest' | undefined),
       })
       res.json(result)
     }),

@@ -10,7 +10,6 @@
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
-    "@clerk/vue": "^2.4.22",
     "@vueuse/core": "^14.4.0",
     "@vueuse/motion": "^3.0.3",
     "axios": "^1.19.0",

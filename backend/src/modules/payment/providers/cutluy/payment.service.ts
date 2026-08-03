@@ -77,6 +77,14 @@ export class CutLuyPaymentProvider implements PaymentProvider {
   ): ProviderWebhookEvent {
     const header = firstHeader(headers['x-cutluy-signature'])
     const { webhookSecret } = getCutLuyConfig()
+    if (!webhookSecret) {
+      // Fail closed — never accept unverifiable webhooks.
+      throw new CutLuyError(
+        'invalid_request',
+        'CUTLUY_WEBHOOK_SECRET is not configured — cannot verify webhooks',
+        503,
+      )
+    }
     const { valid, reason } = verifyWebhookSignature(rawBody, header, webhookSecret)
     if (!valid) {
       throw new CutLuyError('invalid_request', `Invalid webhook signature: ${reason ?? 'unknown'}`, 400)

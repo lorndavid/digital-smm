@@ -15,6 +15,6 @@
   },
   // Compile all of src (tests included) so the Express global augmentation
   // from src/types/express.d.ts applies when tsc follows imports from tests.
-  "include": ["src/**/*.ts", "vitest.config.ts"],
+  "include": ["src/**/*.ts", "scripts/**/*.ts", "vitest.config.ts"],
   "exclude": ["node_modules", "dist"]
 }

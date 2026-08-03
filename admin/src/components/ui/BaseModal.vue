@@ -33,13 +33,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         >
           <div
             v-if="title || $slots.header"
-            class="sticky top-0 z-10 flex items-center justify-between border-b border-white/10 bg-night-soft/80 px-6 py-4 backdrop-blur-xl"
+            class="sticky top-0 z-10 flex items-center justify-between border-b border-(--a-border) bg-(--a-sidebar) px-6 py-4 backdrop-blur-xl"
           >
             <slot name="header">
-              <h3 class="font-display text-lg font-semibold text-white">{{ title }}</h3>
+              <h3 class="font-display text-lg font-semibold text-(--a-text)">{{ title }}</h3>
             </slot>
             <button
-              class="flex h-8 w-8 items-center justify-center rounded-lg text-white/50 transition-colors hover:bg-white/10 hover:text-white"
+              class="flex h-8 w-8 items-center justify-center rounded-lg text-(--a-muted) transition-colors hover:bg-(--a-hover) hover:text-(--a-text)"
               aria-label="Close"
               @click="emit('close')"
             >

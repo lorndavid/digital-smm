@@ -70,24 +70,24 @@ onMounted(() => void load())
 <template>
   <div class="mx-auto max-w-6xl space-y-5">
     <div>
-      <h1 class="font-display text-2xl font-bold text-white">Orders</h1>
-      <p class="mt-1 text-sm text-white/50">Monitor and update order statuses. ({{ total }} orders)</p>
+      <h1 class="font-display text-2xl font-bold text-(--a-text)">Orders</h1>
+      <p class="mt-1 text-sm text-(--a-muted)">Monitor and update order statuses. ({{ total }} orders)</p>
     </div>
 
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div class="relative max-w-xs flex-1">
-        <Search class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
+        <Search class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-(--a-muted-3)" />
         <input
           v-model="search"
           type="search"
           placeholder="Search order number…"
-          class="h-11 w-full rounded-xl border border-white/10 bg-white/5 pl-10 pr-4 text-sm text-white placeholder:text-white/30 focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
+          class="h-11 w-full rounded-xl border border-(--a-border) bg-(--a-soft) pl-10 pr-4 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
           @keyup.enter="page = 1; void load()"
         />
       </div>
       <select
         v-model="status"
-        class="h-11 rounded-xl border border-white/10 bg-white/5 px-4 text-sm text-white focus:border-brand-400/60 focus:outline-none [&>option]:bg-night"
+        class="h-11 rounded-xl border border-(--a-border) bg-(--a-soft) px-4 text-sm text-(--a-text) focus:border-brand-400/60 focus:outline-none [&>option]:bg-(--a-option-bg)"
         @change="page = 1; void load()"
       >
         <option value="">All statuses</option>
@@ -104,7 +104,7 @@ onMounted(() => void load())
     <div v-else class="glass overflow-hidden rounded-2xl shadow-card">
       <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">
-          <thead class="border-b border-white/10 text-xs uppercase tracking-wider text-white/40">
+          <thead class="border-b border-(--a-border) text-xs uppercase tracking-wider text-(--a-muted-2)">
             <tr>
               <th class="px-5 py-3 font-medium">Order</th>
               <th class="px-5 py-3 font-medium">Customer</th>
@@ -115,23 +115,23 @@ onMounted(() => void load())
               <th class="px-5 py-3 font-medium">Created</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-white/[0.06]">
-            <tr v-for="order in items" :key="order._id" class="transition-colors hover:bg-white/[0.03]">
-              <td class="px-5 py-3.5 font-medium text-white">#{{ order.orderNumber }}</td>
-              <td class="px-5 py-3.5 text-white/60">{{ userName(order) }}</td>
+          <tbody class="divide-y divide-(--a-border)">
+            <tr v-for="order in items" :key="order._id" class="transition-colors hover:bg-(--a-hover)">
+              <td class="px-5 py-3.5 font-medium text-(--a-text)">#{{ order.orderNumber }}</td>
+              <td class="px-5 py-3.5 text-(--a-muted)">{{ userName(order) }}</td>
               <td class="max-w-[220px] px-5 py-3.5">
-                <p class="truncate text-white/60">{{ serviceName(order) }}</p>
-                <p v-if="order.link" class="truncate text-xs text-white/30">{{ order.link }}</p>
+                <p class="truncate text-(--a-muted)">{{ serviceName(order) }}</p>
+                <p v-if="order.link" class="truncate text-xs text-(--a-muted-3)">{{ order.link }}</p>
               </td>
-              <td class="px-5 py-3.5 text-white/60">{{ formatNumber(order.quantity) }}</td>
-              <td class="px-5 py-3.5 font-semibold text-white">{{ formatMoney(order.totalPrice) }}</td>
+              <td class="px-5 py-3.5 text-(--a-muted)">{{ formatNumber(order.quantity) }}</td>
+              <td class="px-5 py-3.5 font-semibold text-(--a-text)">{{ formatMoney(order.totalPrice) }}</td>
               <td class="px-5 py-3.5">
                 <div class="flex items-center gap-2">
                   <BaseBadge :tone="STATUS_TONE[order.status] ?? 'neutral'" dot>
                     {{ STATUS_LABEL[order.status] ?? order.status }}
                   </BaseBadge>
                   <select
-                    class="h-8 rounded-lg border border-white/10 bg-white/5 px-2 text-xs text-white/80 focus:border-brand-400/60 focus:outline-none [&>option]:bg-night"
+                    class="h-8 rounded-lg border border-(--a-border) bg-(--a-soft) px-2 text-xs text-(--a-text-soft) focus:border-brand-400/60 focus:outline-none [&>option]:bg-(--a-option-bg)"
                     :disabled="updatingId === order._id"
                     :value="order.status"
                     @change="updateStatus(order, $event)"
@@ -142,7 +142,7 @@ onMounted(() => void load())
                   </select>
                 </div>
               </td>
-              <td class="px-5 py-3.5 text-white/40">{{ formatDate(order.createdAt) }}</td>
+              <td class="px-5 py-3.5 text-(--a-muted-2)">{{ formatDate(order.createdAt) }}</td>
             </tr>
           </tbody>
         </table>
@@ -150,9 +150,9 @@ onMounted(() => void load())
     </div>
 
     <div v-if="Math.ceil(total / pageSize) > 1" class="flex items-center justify-center gap-3 pt-2">
-      <button class="rounded-xl border border-white/10 px-4 py-2 text-sm text-white/70 hover:border-brand-400/50 disabled:opacity-30" :disabled="page <= 1" @click="page--; void load()">Prev</button>
-      <span class="text-sm text-white/50">Page {{ page }} / {{ Math.ceil(total / pageSize) }}</span>
-      <button class="rounded-xl border border-white/10 px-4 py-2 text-sm text-white/70 hover:border-brand-400/50 disabled:opacity-30" :disabled="page >= Math.ceil(total / pageSize)" @click="page++; void load()">Next</button>
+      <button class="rounded-xl border border-(--a-border) px-4 py-2 text-sm text-(--a-text-soft) hover:border-brand-400/50 disabled:opacity-30" :disabled="page <= 1" @click="page--; void load()">Prev</button>
+      <span class="text-sm text-(--a-muted)">Page {{ page }} / {{ Math.ceil(total / pageSize) }}</span>
+      <button class="rounded-xl border border-(--a-border) px-4 py-2 text-sm text-(--a-text-soft) hover:border-brand-400/50 disabled:opacity-30" :disabled="page >= Math.ceil(total / pageSize)" @click="page++; void load()">Next</button>
     </div>
   </div>
 </template>

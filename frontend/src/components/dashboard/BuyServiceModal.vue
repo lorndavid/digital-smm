@@ -225,6 +225,13 @@ async function continueToPayment(): Promise<void> {
   if (!props.service) return
   submitting.value = true
   error.value = ''
+  // KHQR providers charge a $0.01 minimum — real per-unit rates are tiny,
+  // so small quantities can fall below it. Fail fast with a clear message.
+  if (totalPrice.value < 0.01) {
+    error.value = 'Order total is below the $0.01 USD minimum — increase the quantity'
+    submitting.value = false
+    return
+  }
   try {
     const { payment } = await paymentApi.create({
       purpose: 'order',

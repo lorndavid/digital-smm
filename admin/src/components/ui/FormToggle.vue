@@ -5,13 +5,13 @@ defineEmits<{ 'update:modelValue': [boolean] }>()
 
 <template>
   <div class="flex items-center justify-between gap-4">
-    <span class="text-sm text-white/80">{{ label }}</span>
+    <span class="text-sm text-(--a-text-soft)">{{ label }}</span>
     <button
       type="button"
       role="switch"
       :aria-checked="Boolean(modelValue)"
       class="relative h-6 w-11 shrink-0 rounded-full transition-colors"
-      :class="modelValue ? 'bg-gradient-to-r from-brand-500 to-secondary-500' : 'bg-white/10'"
+      :class="modelValue ? 'bg-gradient-to-r from-brand-500 to-secondary-500' : 'bg-(--a-hover)'"
       @click="$emit('update:modelValue', !modelValue)"
     >
       <span

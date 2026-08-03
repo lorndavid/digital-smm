@@ -64,7 +64,7 @@ async function continueWithGoogle(): Promise<void> {
 
         <h1 class="font-display mt-8 text-2xl font-bold text-white lg:mt-0">Welcome back</h1>
         <p class="mt-2 text-center text-sm text-white/50">
-          Sign in to access your dashboard, orders and wallet.
+          Sign in with Google to access your dashboard, orders and wallet.
         </p>
 
         <div v-if="!publishableKey" class="mt-8 w-full rounded-2xl border border-amber-400/30 bg-amber-400/10 p-5 text-center">

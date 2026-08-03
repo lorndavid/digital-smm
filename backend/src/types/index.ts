@@ -62,7 +62,7 @@ export type WalletTransactionType = (typeof WALLET_TRANSACTION_TYPES)[number]
 export const ANNOUNCEMENT_TYPES = ['info', 'success', 'warning', 'critical'] as const
 export type AnnouncementType = (typeof ANNOUNCEMENT_TYPES)[number]
 
-export const USER_ROLES = ['customer', 'admin'] as const
+export const USER_ROLES = ['customer', 'admin', 'super_admin'] as const
 export type UserRole = (typeof USER_ROLES)[number]
 
 export const PLATFORMS = ['tiktok', 'facebook', 'instagram', 'youtube', 'telegram', 'other'] as const

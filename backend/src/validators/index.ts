@@ -18,6 +18,7 @@ export const listServicesQuerySchema = paginationQuerySchema.extend({
   category: z.string().optional(),
   search: z.string().optional(),
   featured: z.enum(['true', 'false']).optional(),
+  sort: z.enum(['price_asc', 'price_desc', 'name_asc', 'newest']).optional(),
 })
 
 // ---------------------------------------------------------------------------
@@ -135,8 +136,34 @@ export const announcementBodySchema = z.object({
 // ---------------------------------------------------------------------------
 
 export const userUpdateBodySchema = z.object({
-  role: z.enum(['customer', 'admin']).optional(),
+  // Role changes are intentionally NOT allowed here — they must go through
+  // the super-admin-only /admin/admins endpoints so the Clerk metadata (the
+  // real access gate) stays in sync with the local mirror.
   isActive: z.boolean().optional(),
+})
+
+// ---------------------------------------------------------------------------
+// Admin: auth (email + password)
+// ---------------------------------------------------------------------------
+
+export const adminLoginBodySchema = z.object({
+  email: z.string().email('A valid email is required'),
+  password: z.string().min(1, 'Password is required'),
+})
+
+// ---------------------------------------------------------------------------
+// Admin: admins & roles (super admin only)
+// ---------------------------------------------------------------------------
+
+export const createAdminBodySchema = z.object({
+  email: z.string().email('A valid email is required'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  name: z.string().trim().max(120).optional(),
+  role: z.enum(['admin', 'super_admin']).default('admin'),
+})
+
+export const updateAdminRoleBodySchema = z.object({
+  role: z.enum(['admin', 'super_admin']),
 })
 
 export const settingBodySchema = z.object({

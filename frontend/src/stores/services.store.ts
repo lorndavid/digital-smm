@@ -30,6 +30,7 @@ export const useServicesStore = defineStore('services', () => {
     page?: number
     limit?: number
     featured?: boolean
+    sort?: 'price_asc' | 'price_desc' | 'name_asc' | 'newest'
   } = {}): Promise<void> {
     loading.value = true
     error.value = null

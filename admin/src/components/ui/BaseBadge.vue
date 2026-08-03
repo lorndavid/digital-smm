@@ -9,7 +9,7 @@ const tones: Record<Tone, string> = {
   warning: 'bg-amber-400/10 text-amber-300 ring-amber-400/30',
   danger: 'bg-rose-400/10 text-rose-300 ring-rose-400/30',
   info: 'bg-sky-400/10 text-sky-300 ring-sky-400/30',
-  neutral: 'bg-white/5 text-white/70 ring-white/15',
+  neutral: 'bg-(--a-soft) text-(--a-text-soft) ring-(--a-border)',
 }
 
 const dotColors: Record<Tone, string> = {
@@ -18,7 +18,7 @@ const dotColors: Record<Tone, string> = {
   warning: 'bg-amber-400',
   danger: 'bg-rose-400',
   info: 'bg-sky-400',
-  neutral: 'bg-white/40',
+  neutral: 'bg-(--a-muted-3)',
 }
 </script>
 

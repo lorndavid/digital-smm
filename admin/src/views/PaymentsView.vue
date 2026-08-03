@@ -37,7 +37,7 @@ const statCards = computed(() => [
   { label: "Today's revenue", value: formatMoney(stats.value?.todayRevenue ?? 0), accent: 'text-emerald-300' },
   { label: 'Successful payments', value: String(stats.value?.counts.paid ?? 0), accent: 'text-emerald-300' },
   { label: 'Pending', value: String((stats.value?.counts.pending ?? 0) + (stats.value?.counts.scanned ?? 0)), accent: 'text-amber-300' },
-  { label: 'Expired', value: String(stats.value?.counts.expired ?? 0), accent: 'text-white/60' },
+  { label: 'Expired', value: String(stats.value?.counts.expired ?? 0), accent: 'text-(--a-muted)' },
   { label: 'Failed', value: String(stats.value?.counts.failed ?? 0), accent: 'text-rose-300' },
 ])
 
@@ -115,8 +115,8 @@ onMounted(() => {
   <div class="mx-auto max-w-6xl space-y-5">
     <div class="flex flex-wrap items-center justify-between gap-4">
       <div>
-        <h1 class="font-display text-2xl font-bold text-white">Payments</h1>
-        <p class="mt-1 text-sm text-white/50">Every KHQR transaction. ({{ total }} payments)</p>
+        <h1 class="font-display text-2xl font-bold text-(--a-text)">Payments</h1>
+        <p class="mt-1 text-sm text-(--a-muted)">Every KHQR transaction. ({{ total }} payments)</p>
       </div>
       <BaseButton variant="outline" :loading="exporting" @click="exportCsv">
         <Download class="h-4 w-4" /> Export CSV
@@ -126,7 +126,7 @@ onMounted(() => {
     <!-- Stats -->
     <div v-if="stats" class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
       <div v-for="card in statCards" :key="card.label" class="glass rounded-2xl p-4 shadow-card">
-        <p class="text-xs text-white/45">{{ card.label }}</p>
+        <p class="text-xs text-(--a-muted-2)">{{ card.label }}</p>
         <p class="font-display mt-1 text-xl font-bold" :class="card.accent">{{ card.value }}</p>
       </div>
     </div>
@@ -134,18 +134,18 @@ onMounted(() => {
     <!-- Filters -->
     <div class="flex flex-wrap items-center gap-3">
       <div class="relative min-w-[220px] flex-1 sm:max-w-xs">
-        <Search class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
+        <Search class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-(--a-muted-3)" />
         <input
           v-model="search"
           type="text"
           placeholder="Search reference…"
-          class="h-11 w-full rounded-xl border border-white/10 bg-white/5 pl-10 pr-4 text-sm text-white placeholder:text-white/30 focus:border-brand-400/60 focus:outline-none"
+          class="h-11 w-full rounded-xl border border-(--a-border) bg-(--a-soft) pl-10 pr-4 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none"
           @keyup.enter="applySearch"
         />
       </div>
       <select
         v-model="status"
-        class="h-11 rounded-xl border border-white/10 bg-white/5 px-4 text-sm text-white focus:border-brand-400/60 focus:outline-none [&>option]:bg-night"
+        class="h-11 rounded-xl border border-(--a-border) bg-(--a-soft) px-4 text-sm text-(--a-text) focus:border-brand-400/60 focus:outline-none [&>option]:bg-(--a-option-bg)"
         @change="page = 1; void load()"
       >
         <option v-for="opt in filterOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
@@ -162,7 +162,7 @@ onMounted(() => {
     <div v-else class="glass overflow-hidden rounded-2xl shadow-card">
       <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">
-          <thead class="border-b border-white/10 text-xs uppercase tracking-wider text-white/40">
+          <thead class="border-b border-(--a-border) text-xs uppercase tracking-wider text-(--a-muted-2)">
             <tr>
               <th class="px-5 py-3 font-medium">Reference</th>
               <th class="px-5 py-3 font-medium">Customer</th>
@@ -173,17 +173,17 @@ onMounted(() => {
               <th class="px-5 py-3 font-medium">Date</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-white/[0.06]">
-            <tr v-for="payment in items" :key="payment._id" class="transition-colors hover:bg-white/[0.03]">
-              <td class="px-5 py-3.5 font-mono text-xs font-medium text-white">{{ payment.referenceId }}</td>
-              <td class="px-5 py-3.5 text-white/60">{{ userName(payment) }}</td>
-              <td class="px-5 py-3.5 text-white/60">{{ orderInfo(payment) }}</td>
-              <td class="px-5 py-3.5 font-semibold text-white">{{ formatMoney(payment.amount) }}</td>
-              <td class="px-5 py-3.5 text-white/60">{{ payment.provider }} · {{ payment.method }}</td>
+          <tbody class="divide-y divide-(--a-border)">
+            <tr v-for="payment in items" :key="payment._id" class="transition-colors hover:bg-(--a-hover)">
+              <td class="px-5 py-3.5 font-mono text-xs font-medium text-(--a-text)">{{ payment.referenceId }}</td>
+              <td class="px-5 py-3.5 text-(--a-muted)">{{ userName(payment) }}</td>
+              <td class="px-5 py-3.5 text-(--a-muted)">{{ orderInfo(payment) }}</td>
+              <td class="px-5 py-3.5 font-semibold text-(--a-text)">{{ formatMoney(payment.amount) }}</td>
+              <td class="px-5 py-3.5 text-(--a-muted)">{{ payment.provider }} · {{ payment.method }}</td>
               <td class="px-5 py-3.5">
                 <BaseBadge :tone="PAYMENT_TONE[payment.status] ?? 'neutral'" dot>{{ payment.status }}</BaseBadge>
               </td>
-              <td class="px-5 py-3.5 text-white/40">{{ formatDate(payment.approvedAt ?? payment.createdAt) }}</td>
+              <td class="px-5 py-3.5 text-(--a-muted-2)">{{ formatDate(payment.approvedAt ?? payment.createdAt) }}</td>
             </tr>
           </tbody>
         </table>
@@ -191,9 +191,9 @@ onMounted(() => {
     </div>
 
     <div v-if="Math.ceil(total / pageSize) > 1" class="flex items-center justify-center gap-3 pt-2">
-      <button class="rounded-xl border border-white/10 px-4 py-2 text-sm text-white/70 hover:border-brand-400/50 disabled:opacity-30" :disabled="page <= 1" @click="page--; void load()">Prev</button>
-      <span class="text-sm text-white/50">Page {{ page }} / {{ Math.ceil(total / pageSize) }}</span>
-      <button class="rounded-xl border border-white/10 px-4 py-2 text-sm text-white/70 hover:border-brand-400/50 disabled:opacity-30" :disabled="page >= Math.ceil(total / pageSize)" @click="page++; void load()">Next</button>
+      <button class="rounded-xl border border-(--a-border) px-4 py-2 text-sm text-(--a-text-soft) hover:border-brand-400/50 disabled:opacity-30" :disabled="page <= 1" @click="page--; void load()">Prev</button>
+      <span class="text-sm text-(--a-muted)">Page {{ page }} / {{ Math.ceil(total / pageSize) }}</span>
+      <button class="rounded-xl border border-(--a-border) px-4 py-2 text-sm text-(--a-text-soft) hover:border-brand-400/50 disabled:opacity-30" :disabled="page >= Math.ceil(total / pageSize)" @click="page++; void load()">Next</button>
     </div>
   </div>
 </template>

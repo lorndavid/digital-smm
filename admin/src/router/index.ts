@@ -12,6 +12,13 @@ const routes: RouteRecordRaw[] = [
       { path: 'services', name: 'admin-services', component: () => import('@/views/ServicesView.vue') },
       { path: 'categories', name: 'admin-categories', component: () => import('@/views/CategoriesView.vue') },
       { path: 'users', name: 'admin-users', component: () => import('@/views/UsersView.vue') },
+      { path: 'users/:id', name: 'admin-user-detail', component: () => import('@/views/UserDetailView.vue') },
+      {
+        path: 'admins',
+        name: 'admin-admins',
+        component: () => import('@/views/AdminsView.vue'),
+        meta: { requiresSuperAdmin: true },
+      },
       { path: 'orders', name: 'admin-orders', component: () => import('@/views/OrdersView.vue') },
       { path: 'payments', name: 'admin-payments', component: () => import('@/views/PaymentsView.vue') },
       { path: 'announcements', name: 'admin-announcements', component: () => import('@/views/AnnouncementsView.vue') },
@@ -50,6 +57,9 @@ router.beforeEach(async (to) => {
     return { name: 'admin-login', query: { redirect: to.fullPath } }
   }
   if (to.meta.requiresAdmin && !authStore.isAdmin) {
+    return { name: 'admin-denied' }
+  }
+  if (to.meta.requiresSuperAdmin && !authStore.isSuperAdmin) {
     return { name: 'admin-denied' }
   }
   if (to.meta.guestOnly && authStore.isSignedIn) {

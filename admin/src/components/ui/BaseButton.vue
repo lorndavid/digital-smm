@@ -21,8 +21,8 @@ const emit = defineEmits<{ click: [event: MouseEvent] }>()
 const variantClasses: Record<Variant, string> = {
   primary: 'bg-gradient-to-r from-brand-500 to-brand-600 text-white hover:from-brand-400 hover:to-brand-500 shadow-glow',
   secondary: 'bg-gradient-to-r from-secondary-400 to-secondary-500 text-night font-semibold hover:from-secondary-300 hover:to-secondary-400',
-  outline: 'border border-white/15 text-white hover:border-brand-400/60 hover:bg-brand-500/10',
-  ghost: 'text-white/70 hover:text-white hover:bg-white/5',
+  outline: 'border border-(--a-border) text-(--a-text) hover:border-brand-400/60 hover:bg-brand-500/10',
+  ghost: 'text-(--a-muted) hover:text-(--a-text) hover:bg-(--a-hover)',
   danger: 'bg-rose-500/90 text-white hover:bg-rose-500',
 }
 

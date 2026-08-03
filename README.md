@@ -51,12 +51,22 @@ PORT=4000
 # MongoDB Atlas (required)
 MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/vidsmm
 
-# Clerk JWT verification (required)
+# Optional: explicit DNS servers (comma-separated). Fixes `querySrv ECONNREFUSED`
+# on Windows/ISP networks where Node's resolver (c-ares) fails SRV lookups even
+# though nslookup works. Leave empty to use the system resolver.
+DNS_SERVERS=1.1.1.1,8.8.8.8
+
+# Clerk JWT verification (customer login — Google OAuth)
 # Clerk Dashboard → API Keys → "Frontend API URL", e.g.
 #   https://clerk-vivid-snake-12.clerk.accounts.dev
 CLERK_JWKS_URL=https://<your-clerk-domain>/.well-known/jwks.json
 CLERK_ISSUER=https://<your-clerk-domain>
-CLERK_ADMIN_ROLE=admin
+
+# Admin auth (email + password, stored in MongoDB — no Clerk needed)
+ADMIN_JWT_SECRET=change-me-to-a-random-32-byte-secret
+ADMIN_JWT_EXPIRES_IN=12h
+SUPER_ADMIN_EMAIL=
+SUPER_ADMIN_PASSWORD=
 
 CORS_ORIGINS=http://localhost:5173,http://localhost:5174
 
@@ -104,22 +114,56 @@ npm run dev        # backend (4000) + frontend (5173) + admin (5174)
 
 ## Clerk setup
 
-1. Create a Clerk application (Google OAuth is all you need).
+1. Create a Clerk application (Google OAuth + **Email, Phone, Username** — enable both so
+   every user can sign in).
 2. Copy the **Publishable Key** into `frontend/.env` and `admin/.env`.
 3. Copy the **Frontend API URL** into `backend/.env` as `CLERK_JWKS_URL` (+ optional issuer).
 
-### Admin role
+### Why other Gmails can't sign in (Google "Testing" mode)
 
-The admin panel requires a custom session token claim. In Clerk:
+Clerk's guided Google connection creates the OAuth app in **Testing** mode, which only
+allows the developer's own email. To let **every** Gmail sign in, publish the app:
 
-1. **Sessions → Customize session token**, add:
-   ```json
-   { "role": "{{user.public_metadata.role}}" }
-   ```
-2. Set your account's `public_metadata.role` to `"admin"` (Dashboard → Users → your user
-   → Metadata).
+1. Clerk Dashboard → **User & Authentication → Social Connections → Google** → open the
+   linked **Google Cloud Console** OAuth consent screen.
+2. Set publishing status to **In production** (or add each email as a **Test user** for
+   quick testing), then save.
 
-The backend checks `CLERK_ADMIN_ROLE` (default `admin`) against the `role` claim.
+Until then, the **Email & password** tab on the sign-in pages works for any email — no
+Google restriction.
+
+### Admin roles (email + password, stored in MongoDB)
+
+The admin panel has its **own authentication** — completely independent of Clerk.
+Admins sign in with **email + password** (stored in MongoDB, scrypt-hashed), and
+sessions are issued as HS256 JWTs signed with `ADMIN_JWT_SECRET`. There are two roles:
+
+- `admin` — full panel access (orders, users, payments, settings)
+- `super_admin` — everything + **Admins & Roles** (create admins, assign roles)
+
+### Super admin bootstrap
+
+Create your first super admin account (email + password stored in MongoDB):
+
+```bash
+cd backend
+SUPER_ADMIN_PASSWORD='YOUR_STRONG_PASSWORD' npm run create:super-admin -- --email your@email.com
+```
+
+Prefer the `SUPER_ADMIN_PASSWORD` env var so the password never appears in shell
+history (`--password` is accepted as a fallback). It is scrypt-hashed and **never
+stored in plaintext**. Alternatively, set `SUPER_ADMIN_EMAIL` + `SUPER_ADMIN_PASSWORD`
+in `backend/.env` and the first super admin is seeded automatically on boot.
+
+### Admins & Roles page (super admin only)
+
+The sidebar shows **Admins & Roles** (super admin only): list admins, create new admins
+(email + password + role) — stored directly in MongoDB — change roles, or remove admin
+access. New admins can then sign in at :5174 immediately with their email + password;
+**no Clerk dashboard step is needed**. A super admin cannot demote or remove themselves
+(no lockout). Every sensitive action is written to an **audit log** (`audit_logs`)
+shown on the Admins page, so a compromised super admin cannot silently hand out
+`super_admin` access.
 
 ---
 
@@ -220,11 +264,18 @@ ACLEDA, Wing) is a new folder + one factory branch — business logic never chan
 | GET | `/api/admin/payments/stats` | ✅ admin | Payment KPIs (today's revenue, counts) |
 | GET | `/api/admin/payments/export` | ✅ admin | Payments CSV export |
 | GET / PATCH | `/api/profile` | ✅ | Profile + wallet |
+| POST | `/api/admin/auth/login` | — | Admin sign-in (email + password) |
+| GET | `/api/admin/auth/me` | ✅ admin | Current admin profile |
 | GET | `/api/admin/stats` | ✅ admin | Dashboard stats |
 | POST | `/api/admin/services/sync` | ✅ admin | Sync provider catalogue |
 | CRUD | `/api/admin/services`, `/api/admin/categories`, `/api/admin/announcements` | ✅ admin | Catalogue management |
 | GET/PUT | `/api/admin/users` | ✅ admin | Users & roles |
 | GET/PUT | `/api/admin/orders` | ✅ admin | Orders & status |
+| GET | `/api/admin/admins` | ✅ super admin | List admin accounts (MongoDB) |
+| POST | `/api/admin/admins` | ✅ super admin | Create admin (email + password + role) |
+| PUT | `/api/admin/admins/:id/role` | ✅ super admin | Set role (admin / super_admin) |
+| DELETE | `/api/admin/admins/:id/role` | ✅ super admin | Remove admin access |
+| GET | `/api/admin/audit-logs` | ✅ super admin | Audit trail of admin role changes |
 | GET | `/api/admin/payments` | ✅ admin | Payments |
 | GET/PUT | `/api/admin/settings` | ✅ admin | Platform settings |
 

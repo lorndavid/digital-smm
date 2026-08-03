@@ -1,7 +1,11 @@
 import axios, { AxiosError } from 'axios'
-import { getAuthToken } from './clerkToken'
 
+const TOKEN_KEY = 'vidsmm_admin_token'
 const baseURL = import.meta.env.VITE_API_BASE_URL || '/api'
+
+export function getAdminToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY)
+}
 
 export const apiClient = axios.create({
   baseURL,
@@ -9,8 +13,8 @@ export const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-apiClient.interceptors.request.use(async (config) => {
-  const token = await getAuthToken()
+apiClient.interceptors.request.use((config) => {
+  const token = getAdminToken()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }

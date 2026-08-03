@@ -19,6 +19,9 @@ export function getCutLuyConfig(): CutLuyConfig {
 }
 
 export function isCutLuyConfigured(): boolean {
-  const { apiKey, webhookSecret } = getCutLuyConfig()
-  return Boolean(apiKey && webhookSecret)
+  const { apiKey } = getCutLuyConfig()
+  // The API key alone is enough to create KHQR payments and poll their
+  // status. CUTLUY_WEBHOOK_SECRET is only required for webhook verification,
+  // and verifyWebhook() fails closed when it is missing.
+  return Boolean(apiKey)
 }

@@ -51,8 +51,16 @@ export class UserRepository extends BaseRepository<User> {
     ])
   }
 
-  setRole(userId: string, role: 'customer' | 'admin'): Promise<UserDoc | null> {
+  setRole(userId: string, role: 'customer' | 'admin' | 'super_admin'): Promise<UserDoc | null> {
     return this.update(userId, { role })
+  }
+
+  /** Bulk-update all local users matching a Clerk id (role sync). */
+  async updateManyByClerkId(
+    clerkId: string,
+    data: { role: 'customer' | 'admin' | 'super_admin' },
+  ): Promise<void> {
+    await UserModel.updateMany({ clerkId }, { $set: data }).exec()
   }
 
   setActive(userId: string, isActive: boolean): Promise<UserDoc | null> {
