@@ -43,8 +43,17 @@ const asList = (v: unknown): string[] | undefined => {
  * Maps a validated draft onto the provider payload for the service type,
  * enforcing the type-specific required fields from the provider guide.
  */
+/**
+ * True when the service is fulfilled manually by the shop owner instead of
+ * being sent to the SMM provider. Manual services have no providerServiceId;
+ * the order is created locally and marked Processing for the admin to fulfill.
+ */
+function isManualService(service: ServiceDoc): boolean {
+  return service.provider === 'manual' || service.providerServiceId == null
+}
+
 function buildProviderInput(service: ServiceDoc, draft: OrderDraft): CreateOrderInput {
-  const base: CreateOrderInput = { service: service.providerServiceId as number }
+  const base: CreateOrderInput = { service: service.providerServiceId ?? 0 }
   const p = draft.params ?? {}
   const link = asString(draft.link)
   const quantity = asNumber(draft.quantity)
@@ -241,7 +250,9 @@ export class OrderService {
 
     const service = await serviceRepository.findById(order.service.toString())
     if (!service || !service.isActive) throw new ApiError(400, 'Service is not available right now')
-    if (!service.providerServiceId) throw new ApiError(400, 'Service cannot be ordered online')
+    if (!service.providerServiceId && !isManualService(service)) {
+      throw new ApiError(400, 'Service cannot be ordered online')
+    }
 
     const draft: OrderDraft = {
       serviceId: order.service.toString(),
@@ -268,6 +279,15 @@ export class OrderService {
     }
 
     try {
+      // Manual services are fulfilled by the shop owner — mark Processing so
+      // the admin sees it in the queue; no provider order id to track.
+      if (isManualService(service)) {
+        order.providerOrderId = null
+        order.status = 'Processing'
+        order.error = ''
+        await order.save()
+        return order
+      }
       const result = await this.provider.createOrder(providerInput)
       order.providerOrderId = result.order
       order.status = 'Processing'
@@ -289,7 +309,9 @@ export class OrderService {
     const service = await serviceRepository.findById(draft.serviceId)
     if (!service) throw new ApiError(404, 'Service not found')
     if (!service.isActive) throw new ApiError(400, 'Service is not available right now')
-    if (!service.providerServiceId) throw new ApiError(400, 'Service cannot be ordered online')
+    if (!service.providerServiceId && !isManualService(service)) {
+      throw new ApiError(400, 'Service cannot be ordered online')
+    }
 
     const providerInput = buildProviderInput(service, draft)
     const quantity = asNumber(draft.quantity) ?? 0
@@ -317,6 +339,25 @@ export class OrderService {
     link: string | undefined,
     paymentId: Types.ObjectId | null,
   ) {
+    // Manual services are fulfilled by the shop owner — no provider call.
+    if (isManualService(service)) {
+      return orderRepository.create({
+        orderNumber: await orderRepository.nextOrderNumber(),
+        providerOrderId: null,
+        user: userId as unknown as Types.ObjectId,
+        service: service._id,
+        type: service.type,
+        link: link ?? '',
+        quantity,
+        pricePerUnit: service.pricePerUnit,
+        totalPrice,
+        currency: 'USD',
+        params: draft.params ?? {},
+        status: 'Processing',
+        payment: paymentId,
+      })
+    }
+
     const result = await this.provider.createOrder(providerInput)
     const order = await orderRepository.create({
       orderNumber: await orderRepository.nextOrderNumber(),
@@ -348,14 +389,21 @@ export class OrderService {
 
   async cancelOrder(userId: string, id: string) {
     const order = await this.getOrderForUser(userId, id)
-    if (!order.providerOrderId) throw new ApiError(400, 'This order cannot be cancelled')
     const service = await serviceRepository.findById(order.service.toString())
     if (!service?.cancel) throw new ApiError(400, 'This service does not support cancellation')
 
-    const results = await this.provider.cancelOrders([order.providerOrderId])
-    const result = results[0]
-    if (result && typeof result.cancel === 'object' && 'error' in result.cancel) {
-      throw new ApiError(400, (result.cancel as { error: string }).error)
+    if (order.providerOrderId) {
+      const results = await this.provider.cancelOrders([order.providerOrderId])
+      const result = results[0]
+      if (result && typeof result.cancel === 'object' && 'error' in result.cancel) {
+        throw new ApiError(400, (result.cancel as { error: string }).error)
+      }
+    } else {
+      // Manual order (no provider to cancel) — cancel locally. Only allowed
+      // while it is still in the admin fulfilment queue.
+      if (!['Processing', 'Paid', 'Pending Payment'].includes(order.status)) {
+        throw new ApiError(400, 'This order can no longer be cancelled')
+      }
     }
 
     order.status = 'Cancelled'
