@@ -10,11 +10,10 @@
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
-    "@clerk/vue": "^2.4.22",
+    "@lucide/vue": "^1.28.0",
     "@vueuse/core": "^14.4.0",
     "@vueuse/motion": "^3.0.3",
     "axios": "^1.19.0",
-    "@lucide/vue": "^1.28.0",
     "canvas-confetti": "^1.9.3",
     "pinia": "^3.0.4",
     "vue": "^3.5.40",

@@ -23,7 +23,7 @@ const { apiError } = vi.hoisted(() => {
 })
 
 // The whole app imports the env module at load time; stub it so the tests
-// never hit .env validation or real Clerk/Mongo connection strings.
+// never hit .env validation or real Google/Mongo connection strings.
 // Keep this stub in sync if env.ts gains new fields.
 vi.mock('./config/env.js', () => ({
   env: {
@@ -31,8 +31,15 @@ vi.mock('./config/env.js', () => ({
     PORT: 4000,
     MONGODB_URI: 'mongodb://localhost:27017/vidsmm_test',
     DNS_SERVERS: [],
-    CLERK_JWKS_URL: 'https://example.clerk.accounts.dev/.well-known/jwks.json',
-    CLERK_ISSUER: undefined,
+    GOOGLE_CLIENT_ID: '',
+    GOOGLE_CLIENT_SECRET: '',
+    GOOGLE_OAUTH_URL: 'https://accounts.google.com/o/oauth2/v2/auth',
+    GOOGLE_TOKEN_URL: 'https://oauth2.googleapis.com/token',
+    GOOGLE_CERTS_URL: 'https://www.googleapis.com/oauth2/v3/certs',
+    FRONTEND_URL: 'http://localhost:5173',
+    CUSTOMER_JWT_SECRET: 'test-customer-jwt-secret-0123456789',
+    CUSTOMER_JWT_EXPIRES_IN: '7d',
+    OAUTH_STATE_TTL_SECONDS: 600,
     ADMIN_JWT_SECRET: 'test-admin-jwt-secret-0123456789',
     ADMIN_JWT_EXPIRES_IN: '1h',
     SUPER_ADMIN_EMAIL: undefined,
@@ -57,9 +64,10 @@ vi.mock('./config/env.js', () => ({
   corsOrigins: ['http://localhost:5173'],
 }))
 
-// Mock Clerk verification so auth tests are hermetic — no real JWKS fetch.
-vi.mock('./config/clerk.js', () => ({
-  verifyClerkToken: vi.fn(async () => {
+// Mock customer session verification so auth tests are hermetic — no real
+// token signing/verification round-trips against CUSTOMER_JWT_SECRET.
+vi.mock('./modules/auth/session.js', () => ({
+  verifyCustomerToken: vi.fn(async () => {
     throw new apiError.ApiError(401, 'Invalid or expired session token')
   }),
 }))

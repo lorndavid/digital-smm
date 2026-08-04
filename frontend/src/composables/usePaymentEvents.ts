@@ -1,5 +1,5 @@
 import { onUnmounted, ref } from 'vue'
-import { getAuthToken } from '@/api/clerkToken'
+import { getAuthToken } from '@/api/session'
 import type { PaymentStatusResponse } from '@/api/payment.api'
 
 export interface PaymentLiveEvent {
@@ -16,7 +16,7 @@ const TERMINAL = ['paid', 'expired', 'failed', 'refunded']
 
 /**
  * Streams payment status updates over Server-Sent Events using fetch()
- * (so the Clerk Authorization header is attached), falling back to 5s
+ * (so the Authorization header is attached), falling back to 5s
  * polling when the stream cannot be established.
  *
  * `start()` is idempotent — safe to call again after a reference change.
@@ -40,7 +40,7 @@ export function usePaymentEvents(
     if (!ref) return
     try {
       const res = await fetch(`${API_BASE}/payment/status?reference=${encodeURIComponent(ref)}`, {
-        headers: { Authorization: `Bearer ${await getAuthToken()}` },
+        headers: { Authorization: `Bearer ${getAuthToken() ?? ''}` },
       })
       if (res.ok) {
         onSnapshot((await res.json()) as PaymentStatusResponse)
@@ -58,7 +58,7 @@ export function usePaymentEvents(
     controller = myController
     try {
       const res = await fetch(`${API_BASE}/payment/events?reference=${encodeURIComponent(ref)}`, {
-        headers: { Authorization: `Bearer ${await getAuthToken()}` },
+        headers: { Authorization: `Bearer ${getAuthToken() ?? ''}` },
         signal: myController.signal,
       })
 

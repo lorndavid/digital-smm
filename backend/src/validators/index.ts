@@ -22,6 +22,25 @@ export const listServicesQuerySchema = paginationQuerySchema.extend({
 })
 
 // ---------------------------------------------------------------------------
+// Customer auth — Google OAuth 2.0
+// ---------------------------------------------------------------------------
+
+export const googleUrlBodySchema = z.object({
+  redirect: z.string().optional(),
+  // S256 PKCE challenge (base64url, 43 chars) derived from the SPA verifier.
+  codeChallenge: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{43}$/, 'codeChallenge must be a valid S256 PKCE challenge'),
+})
+
+export const googleExchangeBodySchema = z.object({
+  code: z.string().min(1, 'Authorization code is required'),
+  state: z.string().min(1, 'State is required'),
+  // PKCE code_verifier held by the browser that started the flow.
+  codeVerifier: z.string().min(43).max(128, 'Invalid code verifier'),
+})
+
+// ---------------------------------------------------------------------------
 // Orders
 // ---------------------------------------------------------------------------
 
@@ -137,8 +156,8 @@ export const announcementBodySchema = z.object({
 
 export const userUpdateBodySchema = z.object({
   // Role changes are intentionally NOT allowed here — they must go through
-  // the super-admin-only /admin/admins endpoints so the Clerk metadata (the
-  // real access gate) stays in sync with the local mirror.
+  // the super-admin-only /admin/admins endpoints so the access gate (the
+  // admin's role in MongoDB) stays authoritative.
   isActive: z.boolean().optional(),
 })
 

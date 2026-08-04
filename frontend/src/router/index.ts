@@ -15,6 +15,13 @@ const routes: RouteRecordRaw[] = [
     meta: { guestOnly: true },
   },
   {
+    // Google redirects here after consent (?code=…&state=…). The view
+    // exchanges the code, stores the session and continues to the dashboard.
+    path: '/auth/callback',
+    name: 'auth-callback',
+    component: () => import('@/views/AuthCallbackView.vue'),
+  },
+  {
     path: '/pay/:reference',
     name: 'payment',
     component: () => import('@/views/PaymentView.vue'),
@@ -96,7 +103,8 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const authStore = useAuthStore()
 
-  // Wait for the Clerk session sync (App.vue) before deciding anything.
+  // Wait for the session rehydration (App.vue → authStore.init) before
+  // deciding anything.
   await until(() => authStore.isLoaded).toBe(true)
 
   if (to.meta.requiresAuth && !authStore.isSignedIn) {

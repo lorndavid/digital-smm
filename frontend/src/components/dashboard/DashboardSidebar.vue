@@ -11,7 +11,6 @@ import {
   User,
   Wallet,
 } from '@lucide/vue'
-import { useClerk, useUser } from '@clerk/vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useWalletStore } from '@/stores/wallet.store'
 import BrandLogo from '@/components/layout/BrandLogo.vue'
@@ -21,8 +20,6 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const walletStore = useWalletStore()
-const clerk = useClerk()
-const { user } = useUser()
 
 onMounted(() => {
   void walletStore.fetchWallet().catch(() => undefined)
@@ -43,7 +40,7 @@ function isActive(item: { to: string; exact: boolean }): boolean {
 }
 
 async function signOut(): Promise<void> {
-  await clerk.value?.signOut()
+  await authStore.signOut()
   router.push('/')
 }
 </script>
@@ -91,14 +88,14 @@ async function signOut(): Promise<void> {
         <div
           class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-secondary-500 text-xs font-bold text-white"
         >
-          {{ (user?.fullName ?? user?.firstName ?? authStore.userId ?? '?').slice(0, 2).toUpperCase() }}
+          {{ (authStore.user?.name || authStore.user?.email || '?').slice(0, 2).toUpperCase() }}
         </div>
         <div class="min-w-0 flex-1">
           <p class="truncate text-sm font-semibold text-white">
-            {{ user?.fullName ?? 'VidSMM User' }}
+            {{ authStore.user?.name || 'VidSMM User' }}
           </p>
           <p class="truncate text-xs text-white/40">
-            {{ user?.primaryEmailAddress?.emailAddress ?? '' }}
+            {{ authStore.user?.email ?? '' }}
           </p>
         </div>
         <button

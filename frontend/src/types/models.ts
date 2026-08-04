@@ -169,7 +169,10 @@ export interface Wallet {
 
 export interface UserProfile {
   _id: string
-  clerkId: string
+  /** External provider account id (Google `sub`). */
+  providerId: string
+  /** Identity provider ('google' | legacy 'clerk'). */
+  provider?: string
   email: string
   name: string
   avatarUrl: string

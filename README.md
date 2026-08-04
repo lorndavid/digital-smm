@@ -12,7 +12,7 @@ the MVP) and real-time order tracking via the [smmwiz.com](https://smmwiz.com) A
 
 ```
 root/
-├── frontend/   Vue 3 + TypeScript + Vite + TailwindCSS v4 + Pinia + Clerk   (port 5173)
+├── frontend/   Vue 3 + TypeScript + Vite + TailwindCSS v4 + Pinia + Google OAuth (port 5173)
 ├── backend/    Node.js + Express 5 + TypeScript + MongoDB Atlas + Mongoose   (port 4000)
 └── admin/      Separate Vue 3 admin panel (same stack)                       (port 5174)
 ```
@@ -22,8 +22,8 @@ root/
 | Layer     | Tools |
 |-----------|-------|
 | Frontend  | Vue 3.5, Vite 8, TypeScript 5.9, TailwindCSS 4, Pinia 3, Vue Router 4, VueUse, Vue Motion (`@vueuse/motion`), Axios, lucide icons |
-| Auth      | Clerk (`@clerk/vue`) — Google sign-in, `UserButton`, protected routes, custom session token for the admin role |
-| Backend   | Express 5, Mongoose 8, jose (Clerk JWT verification via remote JWKS), Zod validation, Helmet, CORS, rate limiting |
+| Auth      | Google OAuth 2.0 (Authorization Code + PKCE) — customer Google sign-in; custom HS256 session JWTs; separate MongoDB email + password auth for admins |
+| Backend   | Express 5, Mongoose 8, jose (Google id_token verification via public JWKS + local HS256 session tokens), Zod validation, Helmet, CORS, rate limiting |
 | Database  | MongoDB Atlas |
 | Payments  | `PaymentProvider` interface — **mock KHQR provider** now; swap in Bakong / ABA / ACLEDA / Wing later |
 | SMM       | `SmmProvider` interface — real smmwiz.com API v2 client + in-memory mock for local dev |
@@ -56,13 +56,16 @@ MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/vidsmm
 # though nslookup works. Leave empty to use the system resolver.
 DNS_SERVERS=1.1.1.1,8.8.8.8
 
-# Clerk JWT verification (customer login — Google OAuth)
-# Clerk Dashboard → API Keys → "Frontend API URL", e.g.
-#   https://clerk-vivid-snake-12.clerk.accounts.dev
-CLERK_JWKS_URL=https://<your-clerk-domain>/.well-known/jwks.json
-CLERK_ISSUER=https://<your-clerk-domain>
+# Customer auth — Google OAuth 2.0 (Google sign-in)
+# Google Cloud Console → APIs & Services → Credentials → OAuth client ID
+# (Web application). Authorized redirect URI: http://localhost:5173/auth/callback
+GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-xxxxx
+FRONTEND_URL=http://localhost:5173
+CUSTOMER_JWT_SECRET=change-me-to-a-random-32-byte-secret
+CUSTOMER_JWT_EXPIRES_IN=7d
 
-# Admin auth (email + password, stored in MongoDB — no Clerk needed)
+# Admin auth (email + password, stored in MongoDB)
 ADMIN_JWT_SECRET=change-me-to-a-random-32-byte-secret
 ADMIN_JWT_EXPIRES_IN=12h
 SUPER_ADMIN_EMAIL=
@@ -96,7 +99,6 @@ ORDER_SYNC_INTERVAL_MS=60000
 **`frontend/.env`** and **`admin/.env`**
 
 ```dotenv
-VITE_CLERK_PUBLISHABLE_KEY=pk_test_xxxxxxxxxxxxxxxx
 VITE_API_BASE_URL=/api
 ```
 
@@ -112,31 +114,42 @@ npm run dev        # backend (4000) + frontend (5173) + admin (5174)
 
 ---
 
-## Clerk setup
+## Google OAuth setup (customer login)
 
-1. Create a Clerk application (Google OAuth + **Email, Phone, Username** — enable both so
-   every user can sign in).
-2. Copy the **Publishable Key** into `frontend/.env` and `admin/.env`.
-3. Copy the **Frontend API URL** into `backend/.env` as `CLERK_JWKS_URL` (+ optional issuer).
+1. Open the **Google Cloud Console** → **APIs & Services → OAuth consent screen** and
+   configure the app (External, add your email as a test user while in Testing mode).
+2. **APIs & Services → Credentials → Create credentials → OAuth client ID → Web
+   application**.
+3. Add the **Authorized redirect URI**: `http://localhost:5173/auth/callback`
+   (in production: `https://<your-domain>/auth/callback`).
+4. Copy the **Client ID** and **Client Secret** into `backend/.env` as
+   `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` and restart the backend.
 
 ### Why other Gmails can't sign in (Google "Testing" mode)
 
-Clerk's guided Google connection creates the OAuth app in **Testing** mode, which only
-allows the developer's own email. To let **every** Gmail sign in, publish the app:
+While the OAuth consent screen is in **Testing** mode, Google only allows accounts you
+listed as **Test users**. To let **every** Gmail sign in, publish the app:
 
-1. Clerk Dashboard → **User & Authentication → Social Connections → Google** → open the
-   linked **Google Cloud Console** OAuth consent screen.
-2. Set publishing status to **In production** (or add each email as a **Test user** for
-   quick testing), then save.
+1. Google Cloud Console → **OAuth consent screen** → **Publish app** → **Confirm**.
+2. Until then, add each test Gmail under **Test users** (or use the **email + password**
+   admin panel at :5174, which has no Google restriction).
 
-Until then, the **Email & password** tab on the sign-in pages works for any email — no
-Google restriction.
+### How it works
+
+- The sign-in page calls `GET /api/auth/google/url`, which returns the Google consent
+  URL with a signed `state` token (CSRF protection) and a PKCE verifier.
+- Google redirects back to `/auth/callback?code=…&state=…`; the SPA exchanges the code
+  at `POST /api/auth/google/exchange`. The backend verifies the Google `id_token`
+  (signature + issuer + audience) and issues a short-lived HS256 session JWT.
+- The session JWT is stored client-side and sent as `Authorization: Bearer …` on every
+  API call (same pattern as the admin panel).
 
 ### Admin roles (email + password, stored in MongoDB)
 
-The admin panel has its **own authentication** — completely independent of Clerk.
-Admins sign in with **email + password** (stored in MongoDB, scrypt-hashed), and
-sessions are issued as HS256 JWTs signed with `ADMIN_JWT_SECRET`. There are two roles:
+The admin panel has its **own authentication**, completely separate from the customer
+Google sign-in. Admins sign in with **email + password** (stored in MongoDB,
+scrypt-hashed), and sessions are issued as HS256 JWTs signed with
+`ADMIN_JWT_SECRET`. There are two roles:
 
 - `admin` — full panel access (orders, users, payments, settings)
 - `super_admin` — everything + **Admins & Roles** (create admins, assign roles)
@@ -160,8 +173,8 @@ in `backend/.env` and the first super admin is seeded automatically on boot.
 The sidebar shows **Admins & Roles** (super admin only): list admins, create new admins
 (email + password + role) — stored directly in MongoDB — change roles, or remove admin
 access. New admins can then sign in at :5174 immediately with their email + password;
-**no Clerk dashboard step is needed**. A super admin cannot demote or remove themselves
-(no lockout). Every sensitive action is written to an **audit log** (`audit_logs`)
+**no external dashboard step is needed**. A super admin cannot demote or remove
+themselves (no lockout). Every sensitive action is written to an **audit log** (`audit_logs`)
 shown on the Admins page, so a compromised super admin cannot silently hand out
 `super_admin` access.
 
@@ -227,8 +240,8 @@ ACLEDA, Wing) is a new folder + one factory branch — business logic never chan
   `payment.completed` → payment `paid` → order placed at the SMM provider. Idempotent,
   so CutLuy's up-to-8 retries are safe.
 - **Live status** — the checkout page streams `Server-Sent Events` from
-  `GET /api/payment/events?reference=…` (fetch-based, so the Clerk token is attached) and
-  falls back to 5s polling automatically.
+  `GET /api/payment/events?reference=…` (fetch-based, so the session token is attached)
+  and falls back to 5s polling automatically.
 - **Status ladder** — `pending → scanned → paid → processing → completed` (plus
   `expired` / `failed` with a “Generate new QR” retry that reuses the same order).
 
@@ -245,6 +258,10 @@ ACLEDA, Wing) is a new folder + one factory branch — business logic never chan
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | GET | `/api/health` | — | Health check |
+| GET | `/api/auth/google/url` | — | Start Google sign-in (returns the consent URL) |
+| POST | `/api/auth/google/exchange` | — | Exchange the Google code for a session JWT |
+| GET | `/api/auth/me` | ✅ | Current session user (rehydration) |
+| POST | `/api/auth/logout` | ✅ | End the session |
 | GET | `/api/services` | — | Public service list (category/search/featured/pagination) |
 | GET | `/api/categories` | — | Public categories |
 | GET | `/api/announcements` | — | Active announcements |

@@ -1,10 +1,10 @@
 import { AuditLogModel } from '../models/audit-log.model.js'
 
 export interface AuditEntry {
-  actorClerkId: string
+  actorId: string
   actorEmail?: string
   action: 'admin.create' | 'admin.set_role' | 'admin.remove_role'
-  targetClerkId?: string | null
+  targetId?: string | null
   targetEmail?: string
   details?: Record<string, unknown>
 }
@@ -13,10 +13,10 @@ export interface AuditEntry {
 export async function logAdminAction(entry: AuditEntry): Promise<void> {
   try {
     await AuditLogModel.create({
-      actorClerkId: entry.actorClerkId,
+      actorId: entry.actorId,
       actorEmail: entry.actorEmail ?? '',
       action: entry.action,
-      targetClerkId: entry.targetClerkId ?? null,
+      targetId: entry.targetId ?? null,
       targetEmail: entry.targetEmail ?? '',
       details: entry.details ?? {},
     })

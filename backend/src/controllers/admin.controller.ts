@@ -213,7 +213,8 @@ export const adminController = {
     res.json({
       user: {
         _id: doc._id.toString(),
-        clerkId: doc.clerkId ?? '',
+        providerId: doc.providerId ?? '',
+        provider: doc.provider ?? 'google',
         email: doc.email,
         name: doc.name ?? '',
         avatarUrl: doc.avatarUrl ?? '',
@@ -300,10 +301,10 @@ export const adminController = {
         isActive: true,
       })
       await logAdminAction({
-        actorClerkId: req.admin?.sub ?? '',
+        actorId: req.admin?.sub ?? '',
         actorEmail: req.admin?.email,
         action: 'admin.create',
-        targetClerkId: admin._id.toString(),
+        targetId: admin._id.toString(),
         targetEmail: email,
         details: { role, name: name ?? '' },
       })
@@ -331,10 +332,10 @@ export const adminController = {
       const admin = await adminRepository.setRole(adminId, role)
       if (!admin) throw new ApiError(404, 'Admin not found')
       await logAdminAction({
-        actorClerkId: req.admin?.sub ?? '',
+        actorId: req.admin?.sub ?? '',
         actorEmail: req.admin?.email,
         action: 'admin.set_role',
-        targetClerkId: adminId,
+        targetId: adminId,
         targetEmail: admin.email,
         details: { role },
       })
@@ -371,10 +372,10 @@ export const adminController = {
     if (!admin) throw new ApiError(404, 'Admin not found')
     await adminRepository.setActive(adminId, false)
     await logAdminAction({
-      actorClerkId: req.admin?.sub ?? '',
+      actorId: req.admin?.sub ?? '',
       actorEmail: req.admin?.email,
       action: 'admin.remove_role',
-      targetClerkId: adminId,
+      targetId: adminId,
       targetEmail: admin.email,
       details: {},
     })

@@ -5,15 +5,15 @@ import morgan from 'morgan'
 import { corsOrigins, env } from './config/env.js'
 import { apiRoutes } from './routes/index.js'
 import { webhookRoutes } from './routes/webhook.routes.js'
-import { apiLimiter } from './middleware/rate-limit.middleware.js'
 import { errorHandler, notFoundHandler } from './middleware/error.middleware.js'
 
 /**
  * Builds the Express application. Security posture: Helmet headers,
- * strict CORS, JSON body limits, rate limiting and a centralized error
- * handler. All API routes live under /api; provider webhooks live under
- * /webhooks and are mounted BEFORE express.json so signature verification
- * can read the raw request body.
+ * strict CORS, JSON body limits and a centralized error handler. Auth
+ * routes bypass the rate limiter (see routes/index.ts); all other /api
+ * routes are rate-limited there. Provider webhooks live under /webhooks
+ * and are mounted BEFORE express.json so signature verification can read
+ * the raw request body.
  */
 export function createApp() {
   const app = express()
@@ -36,7 +36,6 @@ export function createApp() {
 
   app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'))
 
-  app.use('/api', apiLimiter)
   app.use('/api', apiRoutes)
 
   app.use(notFoundHandler)

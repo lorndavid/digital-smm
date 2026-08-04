@@ -7,11 +7,6 @@ import { z } from 'zod'
  * with a readable message instead of cryptic runtime errors.
  */
 
-const optionalUrl = z.preprocess(
-  (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
-  z.url().optional(),
-)
-
 /** Treat an empty string as an unset optional value. */
 const optionalString = <T extends z.ZodTypeAny>(schema: T): z.ZodOptional<T> =>
   z.preprocess(
@@ -42,13 +37,30 @@ const envSchema = z.object({
       },
     ),
 
-  // Clerk JWT verification (customer auth only)
-  CLERK_JWKS_URL: z.url('CLERK_JWKS_URL must be a valid URL, e.g. https://<domain>/.well-known/jwks.json'),
-  CLERK_ISSUER: optionalUrl,
+  // Customer auth — Google OAuth 2.0 (Authorization Code + PKCE)
+  // Create credentials at https://console.cloud.google.com/apis/credentials
+  // (OAuth client ID → Web application). Add `${FRONTEND_URL}/auth/callback`
+  // as an Authorized redirect URI and enable the Google+ / People API scopes
+  // openid, email, profile.
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  // Public Google endpoints (defaults are fine for production).
+  GOOGLE_OAUTH_URL: z.url().default('https://accounts.google.com/o/oauth2/v2/auth'),
+  GOOGLE_TOKEN_URL: z.url().default('https://oauth2.googleapis.com/token'),
+  GOOGLE_CERTS_URL: z.url().default('https://www.googleapis.com/oauth2/v3/certs'),
+  // Frontend origin — Google redirects the customer back to
+  // `${FRONTEND_URL}/auth/callback` after consent.
+  FRONTEND_URL: z.url().default('http://localhost:5173'),
+  // Customer session JWT (HS256, signed with this secret).
+  CUSTOMER_JWT_SECRET: z.string().min(16, 'CUSTOMER_JWT_SECRET must be at least 16 characters'),
+  CUSTOMER_JWT_EXPIRES_IN: z.string().default('7d'),
+  // OAuth `state` tokens expire after 10 minutes.
+  OAUTH_STATE_TTL_SECONDS: z.coerce.number().int().positive().default(600),
 
   // Admin auth (email + password, stored in MongoDB)
   // Secret used to sign/verify admin session JWTs (HS256).
   ADMIN_JWT_SECRET: z.string().min(16, 'ADMIN_JWT_SECRET must be at least 16 characters'),
+
   ADMIN_JWT_EXPIRES_IN: z.string().default('12h'),
   // Optional: auto-create the first super admin on boot when no admin exists.
   SUPER_ADMIN_EMAIL: optionalString(z.string().email('SUPER_ADMIN_EMAIL must be a valid email')),
@@ -78,7 +90,7 @@ const envSchema = z.object({
 
   // Rate limiting
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(15 * 60 * 1000),
-  RATE_LIMIT_MAX: z.coerce.number().default(300),
+  RATE_LIMIT_MAX: z.coerce.number().default(3000),
 
   // Background jobs
   ENABLE_ORDER_SYNC_JOB: z

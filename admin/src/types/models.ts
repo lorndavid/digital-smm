@@ -58,7 +58,10 @@ export interface Service {
 
 export interface AdminUser {
   _id: string
-  clerkId: string
+  /** External provider account id (Google `sub`). */
+  providerId: string
+  /** Identity provider ('google' | legacy 'clerk'). */
+  provider?: string
   email: string
   name: string
   avatarUrl: string
@@ -88,7 +91,7 @@ export interface AdminIdentity {
   role: ManagedRole
 }
 
-/** A user managed via the Clerk Backend API (Admins & Roles page). */
+/** An admin managed via MongoDB (Admins & Roles page). */
 export interface AdminAccount {
   id: string
   email: string
@@ -99,10 +102,10 @@ export interface AdminAccount {
 
 export interface AdminAuditLog {
   _id: string
-  actorClerkId: string
+  actorId: string
   actorEmail: string
   action: 'admin.create' | 'admin.set_role' | 'admin.remove_role'
-  targetClerkId: string | null
+  targetId: string | null
   targetEmail: string
   details: { role?: string; name?: string }
   createdAt: string

@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowRight, Package, Sparkles, TrendingUp, Wallet } from '@lucide/vue'
-import { useUser } from '@clerk/vue'
+import { useAuthStore } from '@/stores/auth.store'
 import { useServicesStore } from '@/stores/services.store'
 import { useOrdersStore } from '@/stores/orders.store'
 import { useWalletStore } from '@/stores/wallet.store'
@@ -24,13 +24,13 @@ const servicesStore = useServicesStore()
 const ordersStore = useOrdersStore()
 const walletStore = useWalletStore()
 const announcements = useAnnouncementsStore()
-const { user } = useUser()
+const authStore = useAuthStore()
 
 const buyingService = ref<Service | null>(null)
 const buyOpen = ref(false)
 
 const firstName = computed(() => {
-  const full = user?.value?.fullName ?? ''
+  const full = authStore.user?.name ?? ''
   return full.split(' ')[0] || 'there'
 })
 
