@@ -5,8 +5,19 @@ export type ServiceSort = 'price_asc' | 'price_desc' | 'name_asc' | 'newest'
 
 export interface ListServicesParams {
   category?: string
+  /** Platform keyword ('facebook', 'tiktok', …). Matches every category whose
+   *  name contains the keyword — one chip shows the whole platform. */
+  platform?: string
   search?: string
   featured?: boolean
+  /** Min price per unit (inclusive). */
+  minPrice?: number
+  /** Max price per unit (inclusive). */
+  maxPrice?: number
+  /** Exact service type filter. */
+  type?: string
+  refill?: boolean
+  cancel?: boolean
   page?: number
   limit?: number
   sort?: ServiceSort

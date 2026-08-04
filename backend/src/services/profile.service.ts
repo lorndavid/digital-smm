@@ -1,22 +1,12 @@
-import type { ClerkAuth } from '../config/clerk.js'
 import { userRepository } from '../repositories/user.repository.js'
 import { ApiError } from '../utils/api-error.js'
 import { walletService } from './wallet.service.js'
 
-/** Profile + wallet management, backed by verified Clerk sessions. */
+/**
+ * Profile + wallet management for signed-in customers.
+ * (User creation happens in modules/auth/auth.service on Google sign-in.)
+ */
 export class ProfileService {
-  /** Ensures a local user exists for a verified Clerk identity. */
-  ensureUser(auth: ClerkAuth) {
-    const claims = auth.claims as Record<string, unknown>
-    const email = typeof claims.email === 'string' && claims.email ? claims.email : auth.userId
-    return userRepository.upsertFromClerk({
-      clerkId: auth.userId,
-      email,
-      name: typeof claims.name === 'string' ? claims.name : undefined,
-      avatarUrl: typeof claims.picture === 'string' ? claims.picture : undefined,
-    })
-  }
-
   async getProfile(userId: string) {
     const user = await userRepository.findById(userId)
     if (!user) throw new ApiError(404, 'User not found')

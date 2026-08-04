@@ -1,13 +1,32 @@
 <script setup lang="ts">
-import { Clock, Music2, RefreshCcw } from '@lucide/vue'
+import { computed } from 'vue'
+import {
+  Camera,
+  Clock,
+  Music2,
+  Play,
+  RefreshCcw,
+  Send,
+  Sparkles,
+  ThumbsUp,
+} from '@lucide/vue'
 import type { Service } from '@/types/models'
 import { formatMoney } from '@/utils/format'
 import { PLATFORM_META, SERVICE_TYPE_LABEL } from '@/utils/constants'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseBadge from '@/components/ui/BaseBadge.vue'
 
-defineProps<{ service: Service }>()
+const props = defineProps<{ service: Service }>()
 const emit = defineEmits<{ buy: [service: Service] }>()
+
+const PLATFORM_ICONS = {
+  facebook: ThumbsUp,
+  tiktok: Music2,
+  telegram: Send,
+  youtube: Play,
+  instagram: Camera,
+  other: Sparkles,
+} as const
 
 function platformOf(service: Service) {
   const category = service.category
@@ -16,6 +35,16 @@ function platformOf(service: Service) {
   }
   return PLATFORM_META.other
 }
+
+const platformKey = computed(() => {
+  const category = props.service.category
+  if (category && typeof category === 'object' && 'platform' in category) {
+    return (category.platform as keyof typeof PLATFORM_ICONS) in PLATFORM_ICONS
+      ? (category.platform as keyof typeof PLATFORM_ICONS)
+      : 'other'
+  }
+  return 'other'
+})
 </script>
 
 <template>
@@ -32,9 +61,14 @@ function platformOf(service: Service) {
         class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-lg transition-transform duration-300 group-hover:scale-110"
         :class="platformOf(service).color"
       >
-        <Music2 class="h-6 w-6" />
+        <component :is="PLATFORM_ICONS[platformKey]" class="h-6 w-6" />
       </div>
-      <BaseBadge tone="brand">{{ SERVICE_TYPE_LABEL[service.type] ?? service.type }}</BaseBadge>
+      <div class="flex flex-col items-end gap-1.5">
+        <BaseBadge v-if="service.isFeatured" tone="warning">
+          <Sparkles class="mr-1 h-3 w-3" /> Trending
+        </BaseBadge>
+        <BaseBadge tone="brand">{{ SERVICE_TYPE_LABEL[service.type] ?? service.type }}</BaseBadge>
+      </div>
     </div>
 
     <h3 class="font-display mt-4 text-base font-semibold text-white">{{ service.name }}</h3>

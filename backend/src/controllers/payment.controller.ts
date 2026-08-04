@@ -73,7 +73,7 @@ export const paymentController = {
 
   /**
    * Server-Sent Events stream for a payment reference. The client connects
-   * with a fetch() so the Clerk Authorization header is sent; falls back to
+   * with a fetch() so the Authorization header is sent; falls back to
    * 5s polling automatically on the client if this stream fails.
    */
   events: [

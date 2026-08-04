@@ -16,9 +16,34 @@ export const paginationQuerySchema = z.object({
 
 export const listServicesQuerySchema = paginationQuerySchema.extend({
   category: z.string().optional(),
+  platform: z.string().max(40).optional(),
   search: z.string().optional(),
   featured: z.enum(['true', 'false']).optional(),
   sort: z.enum(['price_asc', 'price_desc', 'name_asc', 'newest']).optional(),
+  minPrice: z.coerce.number().min(0).optional(),
+  maxPrice: z.coerce.number().min(0).optional(),
+  type: z.string().optional(),
+  refill: z.enum(['true', 'false']).optional(),
+  cancel: z.enum(['true', 'false']).optional(),
+})
+
+// ---------------------------------------------------------------------------
+// Customer auth — Google OAuth 2.0
+// ---------------------------------------------------------------------------
+
+export const googleUrlBodySchema = z.object({
+  redirect: z.string().optional(),
+  // S256 PKCE challenge (base64url, 43 chars) derived from the SPA verifier.
+  codeChallenge: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{43}$/, 'codeChallenge must be a valid S256 PKCE challenge'),
+})
+
+export const googleExchangeBodySchema = z.object({
+  code: z.string().min(1, 'Authorization code is required'),
+  state: z.string().min(1, 'State is required'),
+  // PKCE code_verifier held by the browser that started the flow.
+  codeVerifier: z.string().min(43).max(128, 'Invalid code verifier'),
 })
 
 /** curated=true → only categories that still have at least one active service. */
@@ -154,8 +179,8 @@ export const announcementBodySchema = z.object({
 
 export const userUpdateBodySchema = z.object({
   // Role changes are intentionally NOT allowed here — they must go through
-  // the super-admin-only /admin/admins endpoints so the Clerk metadata (the
-  // real access gate) stays in sync with the local mirror.
+  // the super-admin-only /admin/admins endpoints so the access gate (the
+  // admin's role in MongoDB) stays authoritative.
   isActive: z.boolean().optional(),
 })
 
@@ -189,8 +214,20 @@ export const settingBodySchema = z.object({
   description: z.string().optional(),
 })
 
-export const adminListQuerySchema = paginationQuerySchema.extend({
-  search: z.string().optional(),
-  status: z.string().optional(),
-  category: z.string().optional(),
+export const adminListQuerySchema = paginationQuerySchema
+  .extend({
+    search: z.string().optional(),
+    status: z.string().optional(),
+    category: z.string().optional(),
+    // Admin lists (especially the 700+ category catalog) need bigger pages
+    // than the public API's 100-row cap.
+    limit: z.coerce.number().int().min(1).max(1000).default(20),
+  })
+
+export const serviceBulkBodySchema = z.object({
+  ids: z.array(z.string().min(1)).min(1).max(500),
+  data: z.object({
+    isActive: z.boolean().optional(),
+    isFeatured: z.boolean().optional(),
+  }),
 })

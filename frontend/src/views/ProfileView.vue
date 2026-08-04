@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { useUser } from '@clerk/vue'
 import { Camera, Save } from '@lucide/vue'
 import { profileApi } from '@/api/profile.api'
 import { useToast } from '@/composables/useToast'
@@ -8,7 +7,6 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseSkeleton from '@/components/ui/BaseSkeleton.vue'
 
-const { user } = useUser()
 const toast = useToast()
 
 const loading = ref(true)
@@ -20,12 +18,14 @@ const email = ref('')
 onMounted(async () => {
   try {
     const profile = await profileApi.get()
-    name.value = profile.user.name || (user?.value?.fullName ?? '')
-    avatarUrl.value = profile.user.avatarUrl || (user?.value?.imageUrl ?? '')
+    name.value = profile.user.name
+    avatarUrl.value = profile.user.avatarUrl
     email.value = profile.user.email
   } catch {
-    email.value = user?.value?.primaryEmailAddress?.emailAddress ?? ''
-    name.value = user?.value?.fullName ?? ''
+    // Profile API is protected — an error here means session trouble;
+    // the auth interceptor will bounce the user to sign-in.
+    loading.value = false
+    return
   } finally {
     loading.value = false
   }

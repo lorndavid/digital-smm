@@ -11,7 +11,10 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "create:super-admin": "tsx scripts/create-super-admin.ts"
+    "create:super-admin": "tsx scripts/create-super-admin.ts",
+    "migrate:drop-clerk-index": "tsx scripts/migrate-drop-clerk-index.ts",
+    "seed:telegram": "tsx scripts/seed-telegram.ts",
+    "curate:featured": "tsx scripts/curate-featured.ts"
   },
   "dependencies": {
     "cors": "^2.8.6",

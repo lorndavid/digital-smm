@@ -142,7 +142,7 @@ onMounted(() => {
             </p>
             <div class="mt-3 flex flex-wrap gap-4 text-xs text-(--a-muted-2)">
               <span class="flex items-center gap-1.5">
-                <User class="h-3.5 w-3.5" /> Clerk ID: <code class="rounded bg-(--a-soft) px-1.5 py-0.5">{{ user.clerkId }}</code>
+                <User class="h-3.5 w-3.5" /> Google ID: <code class="rounded bg-(--a-soft) px-1.5 py-0.5">{{ user.providerId }}</code>
               </span>
               <span class="flex items-center gap-1.5"><CalendarClock class="h-3.5 w-3.5" /> Joined {{ formatDate(user.createdAt) }}</span>
               <span class="flex items-center gap-1.5"><CalendarClock class="h-3.5 w-3.5" /> Last login {{ formatRelative(user.lastLoginAt) }}</span>

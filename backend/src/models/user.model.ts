@@ -3,7 +3,13 @@ import { USER_ROLES } from '../types/index.js'
 
 const userSchema = new Schema(
   {
-    clerkId: { type: String, required: true, unique: true, index: true },
+    /**
+     * External provider account id. Currently the Google `sub`; legacy rows
+     * created under Clerk keep their old Clerk user id (provider: 'clerk').
+     */
+    providerId: { type: String, required: true, unique: true, index: true },
+    /** Identity provider that created this account. */
+    provider: { type: String, enum: ['google', 'clerk'], default: 'google' },
     email: { type: String, required: true, trim: true, lowercase: true },
     name: { type: String, default: '' },
     avatarUrl: { type: String, default: '' },

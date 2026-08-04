@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { useClerk } from '@clerk/vue'
 import { useLocalStorage } from '@vueuse/core'
 import { LogOut } from '@lucide/vue'
+import { useAuthStore } from '@/stores/auth.store'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
 
 const router = useRouter()
-const clerk = useClerk()
+const authStore = useAuthStore()
 
 // Preferences persisted locally (these are client-side preferences).
 const emailNotifications = useLocalStorage('vidsmm:email-notifications', true)
@@ -40,7 +40,7 @@ const toggles: ToggleRow[] = [
 ]
 
 async function signOut(): Promise<void> {
-  await clerk.value?.signOut()
+  await authStore.signOut()
   router.push('/')
 }
 </script>

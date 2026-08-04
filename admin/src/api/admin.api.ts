@@ -25,6 +25,7 @@ interface ListParams {
   search?: string
   status?: string
   category?: string
+  sort?: string
 }
 
 /** Typed access to the admin API. */
@@ -46,17 +47,25 @@ export const adminApi = {
   updateService: async (id: string, data: Partial<Service>): Promise<Service> =>
     (await apiClient.put(`/admin/services/${id}`, data)).data,
   deleteService: async (id: string): Promise<void> => (await apiClient.delete(`/admin/services/${id}`)).data,
+  /** Bulk hide/show/feature services by ids (curation toolbar). */
+  bulkUpdateServices: async (
+    ids: string[],
+    data: { isActive?: boolean; isFeatured?: boolean },
+  ): Promise<{ updated: number }> =>
+    (await apiClient.post('/admin/services/bulk', { ids, data })).data,
+
   /** Bulk enable/disable services by ids and/or category (catalog curation). */
-  bulkUpdateServices: async (data: {
+  bulkSetServiceStatus: async (data: {
     ids?: string[]
     categoryId?: string
     isActive: boolean
   }): Promise<{ updated: number; isActive: boolean }> =>
     (await apiClient.post('/admin/services/bulk-status', data)).data,
 
-  // Categories (the backend wraps the list in { items } — unwrap it)
-  listCategories: async (): Promise<Category[]> =>
-    (await apiClient.get<{ items: Category[] }>('/admin/categories')).data.items,
+  // Categories (paginated with search/sort/showEmpty + per-category counts)
+  listCategories: async (params: ListParams = {}): Promise<
+    Paginated<Category & { serviceCount: number; activeServiceCount?: number }>
+  > => (await apiClient.get('/admin/categories', { params })).data,
   createCategory: async (data: Partial<Category>): Promise<Category> =>
     (await apiClient.post('/admin/categories', data)).data,
   updateCategory: async (id: string, data: Partial<Category>): Promise<Category> =>

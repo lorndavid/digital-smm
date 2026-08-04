@@ -25,6 +25,7 @@ import {
   orderStatusBodySchema,
   paginationQuerySchema,
   serviceBodySchema,
+  serviceBulkBodySchema,
   settingBodySchema,
   updateAdminRoleBodySchema,
   userUpdateBodySchema,
@@ -78,10 +79,26 @@ export const adminController = {
       const [items, total] = await serviceRepository.listAdmin({
         search: asString(q.search),
         category: asString(q.category),
+        status: asString(q.status) as 'active' | 'inactive' | 'featured' | undefined,
         page: asNumber(q.page, 1),
         limit: asNumber(q.limit, 20),
       })
       res.json({ items, total })
+    }),
+  ],
+
+  bulkUpdateServices: [
+    validate(serviceBulkBodySchema),
+    asyncHandler(async (req, res) => {
+      const { ids, data } = req.body
+      const count = await serviceRepository.bulkUpdate(ids, data)
+      await logAdminAction({
+        actorId: req.admin?.sub ?? '',
+        actorEmail: req.admin?.email,
+        action: 'admin.bulk_services',
+        details: { ids, data },
+      })
+      res.json({ updated: count })
     }),
   ],
 
@@ -168,10 +185,21 @@ export const adminController = {
   // Categories
   // ------------------------------------------------------------------
 
-  listCategories: asyncHandler(async (_req, res) => {
-    const items = await categoryRepository.listWithCounts()
-    res.json({ items })
-  }),
+  listCategories: [
+    validateQuery(adminListQuerySchema),
+    asyncHandler(async (req, res) => {
+      const q = req.validatedQuery ?? {}
+      res.json(
+        await categoryRepository.listAdmin({
+          search: asString(q.search),
+          showEmpty: q.status === 'nonempty' ? false : undefined,
+          sort: asString(q.sort) as 'name' | 'sortOrder' | 'count' | undefined,
+          page: asNumber(q.page, 1),
+          limit: asNumber(q.limit, 20),
+        }),
+      )
+    }),
+  ],
 
   createCategory: [
     validate(categoryBodySchema),
@@ -243,7 +271,8 @@ export const adminController = {
     res.json({
       user: {
         _id: doc._id.toString(),
-        clerkId: doc.clerkId ?? '',
+        providerId: doc.providerId ?? '',
+        provider: doc.provider ?? 'google',
         email: doc.email,
         name: doc.name ?? '',
         avatarUrl: doc.avatarUrl ?? '',
@@ -330,10 +359,10 @@ export const adminController = {
         isActive: true,
       })
       await logAdminAction({
-        actorClerkId: req.admin?.sub ?? '',
+        actorId: req.admin?.sub ?? '',
         actorEmail: req.admin?.email,
         action: 'admin.create',
-        targetClerkId: admin._id.toString(),
+        targetId: admin._id.toString(),
         targetEmail: email,
         details: { role, name: name ?? '' },
       })
@@ -361,10 +390,10 @@ export const adminController = {
       const admin = await adminRepository.setRole(adminId, role)
       if (!admin) throw new ApiError(404, 'Admin not found')
       await logAdminAction({
-        actorClerkId: req.admin?.sub ?? '',
+        actorId: req.admin?.sub ?? '',
         actorEmail: req.admin?.email,
         action: 'admin.set_role',
-        targetClerkId: adminId,
+        targetId: adminId,
         targetEmail: admin.email,
         details: { role },
       })
@@ -401,10 +430,10 @@ export const adminController = {
     if (!admin) throw new ApiError(404, 'Admin not found')
     await adminRepository.setActive(adminId, false)
     await logAdminAction({
-      actorClerkId: req.admin?.sub ?? '',
+      actorId: req.admin?.sub ?? '',
       actorEmail: req.admin?.email,
       action: 'admin.remove_role',
-      targetClerkId: adminId,
+      targetId: adminId,
       targetEmail: admin.email,
       details: {},
     })

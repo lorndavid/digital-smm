@@ -1,25 +1,35 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useSignIn } from '@clerk/vue'
+import { useRoute } from 'vue-router'
 import { Globe, ShieldCheck, Sparkles, Zap } from '@lucide/vue'
+import { authApi } from '@/api/auth.api'
+import { createPkcePair } from '@/utils/pkce'
 import BrandLogo from '@/components/layout/BrandLogo.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 
-const { isLoaded, signIn } = useSignIn()
+const route = useRoute()
+const starting = ref(false)
 const error = ref('')
-const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
 async function continueWithGoogle(): Promise<void> {
-  if (!signIn.value) return
+  if (starting.value) return
+  starting.value = true
   error.value = ''
   try {
-    await signIn.value.authenticateWithRedirect({
-      strategy: 'oauth_google',
-      redirectUrl: '/sign-in',
-      redirectUrlComplete: '/dashboard',
-    })
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : undefined
+    // PKCE: the verifier is kept in sessionStorage (never in a URL); the
+    // backend signs a `state` token, so the whole round-trip is protected
+    // against both login CSRF and authorization-code interception.
+    const { challenge } = await createPkcePair()
+    const { url } = await authApi.getGoogleAuthUrl(redirect, challenge)
+    // Full-page navigation to Google.
+    window.location.href = url
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Unable to start Google sign-in'
+    starting.value = false
+    const message = err instanceof Error ? err.message : 'Unable to start Google sign-in'
+    error.value = message.includes('not configured')
+      ? 'Google sign-in is not configured yet. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to backend/.env and restart the backend.'
+      : message
   }
 }
 </script>
@@ -67,23 +77,8 @@ async function continueWithGoogle(): Promise<void> {
           Sign in with Google to access your dashboard, orders and wallet.
         </p>
 
-        <div v-if="!publishableKey" class="mt-8 w-full rounded-2xl border border-amber-400/30 bg-amber-400/10 p-5 text-center">
-          <p class="text-sm font-medium text-amber-200">Clerk is not configured</p>
-          <p class="mt-1 text-xs leading-relaxed text-amber-200/70">
-            Add <code class="rounded bg-white/10 px-1.5 py-0.5">VITE_CLERK_PUBLISHABLE_KEY</code>
-            to <code class="rounded bg-white/10 px-1.5 py-0.5">frontend/.env</code> to enable
-            Google sign-in.
-          </p>
-        </div>
-
-        <div v-else class="mt-8 w-full space-y-4">
-          <BaseButton
-            size="lg"
-            block
-            variant="outline"
-            :loading="isLoaded === false"
-            @click="continueWithGoogle"
-          >
+        <div class="mt-8 w-full space-y-4">
+          <BaseButton size="lg" block variant="outline" :loading="starting" @click="continueWithGoogle">
             <Globe class="h-5 w-5 text-secondary-400" />
             Continue with Google
           </BaseButton>
@@ -92,7 +87,9 @@ async function continueWithGoogle(): Promise<void> {
           </p>
         </div>
 
-        <p v-if="error" class="mt-4 text-sm text-rose-300">{{ error }}</p>
+        <p v-if="error" class="mt-4 w-full rounded-2xl border border-rose-400/30 bg-rose-500/10 p-4 text-center text-sm text-rose-300">
+          {{ error }}
+        </p>
       </div>
     </div>
   </div>

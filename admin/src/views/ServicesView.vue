@@ -1,7 +1,17 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { CheckSquare, Layers, Pencil, Plus, Power, Search, Square, Trash2 } from '@lucide/vue'
+import {
+  CheckSquare,
+  Eye,
+  EyeOff,
+  Layers,
+  Pencil,
+  Plus,
+  Search,
+  Sparkles,
+  Trash2,
+} from '@lucide/vue'
 import { adminApi } from '@/api/admin.api'
 import { useToast } from '@/composables/useToast'
 import { errorMessage, formatMoney, formatNumber } from '@/utils/format'
@@ -27,22 +37,23 @@ const total = ref(0)
 const loading = ref(true)
 const saving = ref(false)
 const search = ref('')
-const categoryFilter = ref('all')
+const categoryFilter = ref('')
+const statusFilter = ref('')
 const page = ref(1)
 const pageSize = 10
 
-// ---------------------------------------------------------------------------
-// Bulk curation state
-// ---------------------------------------------------------------------------
-const selectedIds = ref<Set<string>>(new Set())
-const bulkActing = ref(false)
+// Bulk selection (ids toolbar) -------------------------------------------------
+const selected = ref<Set<string>>(new Set())
+const bulkBusy = ref(false)
+
+// Category curation (enable/disable every service in the filtered category) ----
 const confirmOpen = ref(false)
 const pendingAction = ref<{
   label: string
   detail: string
   isActive: boolean
-  scope: 'ids' | 'category'
 } | null>(null)
+const categoryActing = ref(false)
 
 const modalOpen = ref(false)
 const editingId = ref<string | null>(null)
@@ -64,17 +75,33 @@ const form = reactive({
 })
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
-
+const selectedCount = computed(() => selected.value.size)
+const allChecked = computed(
+  () => items.value.length > 0 && items.value.every((s) => selected.value.has(s._id)),
+)
 const selectedCategory = computed<Category | null>(
   () => categories.value.find((c) => c._id === categoryFilter.value) ?? null,
 )
-
-const allOnPageSelected = computed(
-  () => items.value.length > 0 && items.value.every((s) => selectedIds.value.has(s._id)),
-)
-
+/** True when a category filter is active (enables the category-curation bar).
+ *  Uses the filter value rather than the loaded category object so deep links
+ *  (/services?category=<id>) also surface the curation actions. */
+const isCategoryFiltered = computed(() => categoryFilter.value !== '')
 const pageInactiveCount = computed(() => items.value.filter((s) => !s.isActive).length)
 
+function toggleAll(): void {
+  if (allChecked.value) {
+    selected.value = new Set()
+  } else {
+    selected.value = new Set(items.value.map((s) => s._id))
+  }
+}
+
+function toggleOne(id: string): void {
+  const next = new Set(selected.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  selected.value = next
+}
 
 function openCreate(): void {
   editingId.value = null
@@ -125,13 +152,14 @@ async function load(): Promise<void> {
       page: page.value,
       limit: pageSize,
       search: search.value || undefined,
-      category: categoryFilter.value === 'all' ? undefined : categoryFilter.value,
+      category: categoryFilter.value || undefined,
+      status: statusFilter.value || undefined,
     })
     items.value = result.items
     total.value = result.total
-    // Drop selections that are no longer on the page.
-    const valid = new Set(items.value.map((s) => s._id))
-    selectedIds.value = new Set([...selectedIds.value].filter((id) => valid.has(id)))
+    // Drop selections that are no longer on this page.
+    const ids = new Set(result.items.map((s) => s._id))
+    selected.value = new Set([...selected.value].filter((id) => ids.has(id)))
   } catch (err) {
     toast.error(errorMessage(err, 'Failed to load services'))
   } finally {
@@ -189,38 +217,49 @@ async function remove(service: Service): Promise<void> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Bulk curation
-// ---------------------------------------------------------------------------
+// Per-row toggles ---------------------------------------------------------------
 
-function toggleRow(id: string): void {
-  const next = new Set(selectedIds.value)
-  if (next.has(id)) next.delete(id)
-  else next.add(id)
-  selectedIds.value = next
-}
-
-function toggleAllOnPage(): void {
-  if (allOnPageSelected.value) {
-    const next = new Set(selectedIds.value)
-    for (const s of items.value) next.delete(s._id)
-    selectedIds.value = next
-  } else {
-    const next = new Set(selectedIds.value)
-    for (const s of items.value) next.add(s._id)
-    selectedIds.value = next
+async function toggleActive(service: Service): Promise<void> {
+  try {
+    await adminApi.updateService(service._id, { isActive: !service.isActive })
+    toast.success(service.isActive ? 'Hidden from storefront' : 'Service is now visible')
+    await load()
+  } catch (err) {
+    toast.error(errorMessage(err, 'Failed to update service'))
   }
 }
 
-function requestBulk(ids: string[], isActive: boolean): void {
-  pendingAction.value = {
-    label: isActive ? 'Enable' : 'Disable',
-    detail: `${ids.length} selected service${ids.length === 1 ? '' : 's'}`,
-    isActive,
-    scope: 'ids',
+async function toggleFeatured(service: Service): Promise<void> {
+  try {
+    await adminApi.updateService(service._id, { isFeatured: !service.isFeatured })
+    toast.success(service.isFeatured ? 'Removed from featured' : 'Marked as featured')
+    await load()
+  } catch (err) {
+    toast.error(errorMessage(err, 'Failed to update service'))
   }
-  confirmOpen.value = true
 }
+
+// Bulk curation (by ids — toolbar) ---------------------------------------------
+
+async function bulkUpdate(data: { isActive?: boolean; isFeatured?: boolean }, verb: string): Promise<void> {
+  if (selectedCount.value === 0) {
+    toast.warning('Select at least one service first')
+    return
+  }
+  bulkBusy.value = true
+  try {
+    const res = await adminApi.bulkUpdateServices([...selected.value], data)
+    toast.success(`${verb}: ${res.updated} service${res.updated === 1 ? '' : 's'} updated`)
+    selected.value = new Set()
+    await load()
+  } catch (err) {
+    toast.error(errorMessage(err, 'Bulk update failed'))
+  } finally {
+    bulkBusy.value = false
+  }
+}
+
+// Category curation (enable/disable every service in the filtered category) -----
 
 function requestBulkByCategory(isActive: boolean): void {
   if (!selectedCategory.value) return
@@ -229,63 +268,54 @@ function requestBulkByCategory(isActive: boolean): void {
     label: isActive ? 'Enable all' : 'Disable all',
     detail: `Every service in “${name}”${isActive ? '' : ' — currently active ones only'}`,
     isActive,
-    scope: 'category',
   }
   confirmOpen.value = true
 }
 
-async function runBulk(): Promise<void> {
+async function runCategoryBulk(): Promise<void> {
   const action = pendingAction.value
-  if (!action) return
-  bulkActing.value = true
+  if (!action || !selectedCategory.value) return
+  categoryActing.value = true
   try {
-    const payload: { ids?: string[]; categoryId?: string; isActive: boolean } = {
+    const result = await adminApi.bulkSetServiceStatus({
+      categoryId: selectedCategory.value._id,
       isActive: action.isActive,
-    }
-    if (action.scope === 'category') {
-      payload.categoryId = selectedCategory.value?._id
-    } else {
-      payload.ids = [...selectedIds.value]
-    }
-    const result = await adminApi.bulkUpdateServices(payload)
+    })
     toast.success(
       `${action.label}ed ${result.updated} service${result.updated === 1 ? '' : 's'}`,
     )
-    selectedIds.value = new Set()
     confirmOpen.value = false
     pendingAction.value = null
     await load()
   } catch (err) {
-    toast.error(errorMessage(err, 'Bulk update failed'))
+    toast.error(errorMessage(err, 'Category update failed'))
   } finally {
-    bulkActing.value = false
+    categoryActing.value = false
   }
 }
-
-// Reload whenever the category filter changes (watcher is more robust than
-// relying on the select's event bubbling through the component boundary).
-watch(categoryFilter, () => {
-  page.value = 1
-  selectedIds.value = new Set()
-  void load()
-})
 
 function goToPage(p: number): void {
   page.value = p
   void load()
 }
 
+function resetFilters(): void {
+  search.value = ''
+  categoryFilter.value = ''
+  statusFilter.value = ''
+  page.value = 1
+  void load()
+}
+
 onMounted(async () => {
   try {
-    categories.value = await adminApi.listCategories()
+    categories.value = await adminApi.listCategories({ limit: 500 }).then((r) => r.items)
   } catch {
     categories.value = []
   }
   // Support deep links from the Categories page: /services?category=<id>
   const fromQuery = typeof route.query.category === 'string' ? route.query.category : ''
-  if (fromQuery && categories.value.some((c) => c._id === fromQuery)) {
-    categoryFilter.value = fromQuery
-  } else if (fromQuery) {
+  if (fromQuery) {
     categoryFilter.value = fromQuery // still pass through; backend will filter
   }
   await load()
@@ -298,7 +328,7 @@ onMounted(async () => {
       <div>
         <h1 class="font-display text-2xl font-bold text-(--a-text)">Services</h1>
         <p class="mt-1 text-sm text-(--a-muted)">
-          Manage the catalog — bulk enable/disable by category to curate what customers see. ({{ total }} services)
+          Manage the catalog — edit product text, mark featured and curate what customers see. ({{ total }} services)
         </p>
       </div>
       <div class="flex gap-2">
@@ -310,8 +340,8 @@ onMounted(async () => {
     </div>
 
     <!-- Filters -->
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-      <div class="relative flex-1">
+    <div class="glass grid gap-3 rounded-2xl p-4 shadow-card sm:grid-cols-2 lg:grid-cols-4">
+      <div class="relative">
         <Search class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-(--a-muted-3)" />
         <input
           v-model="search"
@@ -321,127 +351,176 @@ onMounted(async () => {
           @keyup.enter="page = 1; void load()"
         />
       </div>
-      <div class="sm:w-72">
-        <BaseSelect
-          v-model="categoryFilter"
-          :options="[{ value: 'all', label: 'All categories' }, ...categories.map((c) => ({ value: c._id, label: c.name }))]"
-        />
+
+      <BaseSelect
+        v-model="categoryFilter"
+        label="Category"
+        :options="[{ value: '', label: 'All categories' }, ...categories.map((c) => ({ value: c._id, label: c.name }))]"
+        @update:model-value="page = 1; void load()"
+      />
+
+      <BaseSelect
+        v-model="statusFilter"
+        label="Status"
+        :options="[
+          { value: '', label: 'All statuses' },
+          { value: 'active', label: 'Visible' },
+          { value: 'inactive', label: 'Hidden' },
+          { value: 'featured', label: 'Featured' },
+        ]"
+        @update:model-value="page = 1; void load()"
+      />
+
+      <div class="flex items-end">
+        <BaseButton variant="ghost" class="w-full" @click="resetFilters">
+          <Layers class="h-4 w-4" /> Reset
+        </BaseButton>
       </div>
     </div>
 
-    <!-- Bulk action bar -->
+    <!-- Bulk curation toolbar (selected ids: show/hide/feature) -->
     <div
-      v-if="selectedIds.size > 0 || (selectedCategory && categoryFilter !== 'all')"
+      v-if="selectedCount > 0"
+      class="flex flex-wrap items-center gap-3 rounded-2xl border border-brand-400/40 bg-brand-500/10 px-4 py-3 shadow-glow"
+    >
+      <span class="flex items-center gap-2 text-sm font-semibold text-(--a-text)">
+        <CheckSquare class="h-4 w-4 text-brand-300" /> {{ selectedCount }} selected
+      </span>
+      <div class="ml-auto flex flex-wrap gap-2">
+        <BaseButton size="sm" variant="ghost" :loading="bulkBusy" @click="bulkUpdate({ isActive: true }, 'Shown')">
+          <Eye class="h-4 w-4" /> Show
+        </BaseButton>
+        <BaseButton size="sm" variant="ghost" :loading="bulkBusy" @click="bulkUpdate({ isActive: false }, 'Hidden')">
+          <EyeOff class="h-4 w-4" /> Hide
+        </BaseButton>
+        <BaseButton size="sm" variant="ghost" :loading="bulkBusy" @click="bulkUpdate({ isFeatured: true }, 'Featured')">
+          <Sparkles class="h-4 w-4" /> Feature
+        </BaseButton>
+        <BaseButton size="sm" variant="ghost" :loading="bulkBusy" @click="bulkUpdate({ isFeatured: false }, 'Unfeatured')">
+          Unfeature
+        </BaseButton>
+        <button
+          class="ml-1 text-xs font-medium text-(--a-muted) transition-colors hover:text-(--a-text)"
+          @click="selected = new Set()"
+        >
+          Clear
+        </button>
+      </div>
+    </div>
+
+    <!-- Category curation bar (enable/disable every service in the filtered category) -->
+    <div
+      v-if="isCategoryFiltered"
       class="glass-strong flex flex-wrap items-center gap-3 rounded-2xl border-brand-400/30 p-3 shadow-card"
     >
-      <CheckSquare class="h-4 w-4 text-brand-300" />
+      <Layers class="h-4 w-4 text-brand-300" />
       <span class="text-sm font-semibold text-(--a-text)">
-        {{ selectedIds.size > 0 ? `${selectedIds.size} selected` : `Filtered: ${selectedCategory?.name}` }}
+        Filtered: {{ selectedCategory?.name ?? 'this category' }}
       </span>
       <span class="mx-1 hidden h-5 w-px bg-(--a-border) sm:block" />
-      <template v-if="selectedIds.size > 0">
-        <BaseButton size="sm" variant="outline" :disabled="bulkActing" @click="requestBulk([...selectedIds], true)">
-          Enable selected
-        </BaseButton>
-        <BaseButton size="sm" variant="danger" :disabled="bulkActing" @click="requestBulk([...selectedIds], false)">
-          Disable selected
-        </BaseButton>
-      </template>
-      <template v-if="selectedCategory && categoryFilter !== 'all'">
-        <span class="mx-1 hidden h-5 w-px bg-(--a-border) sm:block" />
-        <BaseButton size="sm" variant="outline" :disabled="bulkActing" @click="requestBulkByCategory(true)">
-          Enable all in category
-        </BaseButton>
-        <BaseButton size="sm" variant="danger" :disabled="bulkActing" @click="requestBulkByCategory(false)">
-          Disable all in category
-        </BaseButton>
-        <span class="text-xs text-(--a-muted-2)">
-          ~{{ total }} services · {{ pageInactiveCount }} inactive on this page
-        </span>
-      </template>
-      <button
-        v-if="selectedIds.size > 0"
-        class="ml-auto text-xs font-medium text-(--a-muted) transition-colors hover:text-(--a-text)"
-        @click="selectedIds = new Set()"
-      >
-        Clear selection
-      </button>
+      <BaseButton size="sm" variant="outline" :disabled="categoryActing" @click="requestBulkByCategory(true)">
+        Enable all in category
+      </BaseButton>
+      <BaseButton size="sm" variant="danger" :disabled="categoryActing" @click="requestBulkByCategory(false)">
+        Disable all in category
+      </BaseButton>
+      <span class="text-xs text-(--a-muted-2)">
+        ~{{ total }} services · {{ pageInactiveCount }} inactive on this page
+      </span>
     </div>
 
     <div v-if="loading" class="space-y-3">
       <BaseSkeleton v-for="n in 6" :key="n" class="h-16 w-full" />
     </div>
 
-    <BaseEmptyState v-else-if="items.length === 0" title="No services" message="Add a service, sync the provider catalogue, or pick a different category filter." />
+    <BaseEmptyState
+      v-else-if="items.length === 0"
+      title="No services"
+      message="Try adjusting the filters or sync the provider catalogue from the dashboard."
+    />
 
     <div v-else class="glass overflow-hidden rounded-2xl shadow-card">
       <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">
           <thead class="border-b border-(--a-border) text-xs uppercase tracking-wider text-(--a-muted-2)">
             <tr>
-              <th class="w-12 px-4 py-3">
-                <button
-                  class="flex h-6 w-6 items-center justify-center rounded-md transition-colors hover:bg-(--a-hover)"
-                  :aria-label="allOnPageSelected ? 'Deselect all on page' : 'Select all on page'"
-                  @click="toggleAllOnPage"
-                >
-                  <Square v-if="!allOnPageSelected" class="h-4 w-4" />
-                  <CheckSquare v-else class="h-4 w-4 text-brand-300" />
-                </button>
+              <th class="w-10 px-4 py-3">
+                <input
+                  type="checkbox"
+                  class="h-4 w-4 accent-brand-500"
+                  :checked="allChecked"
+                  @change="toggleAll"
+                />
               </th>
-              <th class="px-5 py-3 font-medium">Service</th>
-              <th class="px-5 py-3 font-medium">Type</th>
-              <th class="px-5 py-3 font-medium">Price / 1k</th>
-              <th class="px-5 py-3 font-medium">Range</th>
-              <th class="px-5 py-3 font-medium">Status</th>
-              <th class="px-5 py-3 text-right font-medium">Actions</th>
+              <th class="px-4 py-3 font-medium">Service</th>
+              <th class="px-4 py-3 font-medium">Type</th>
+              <th class="px-4 py-3 font-medium">Price / 1k</th>
+              <th class="px-4 py-3 font-medium">Range</th>
+              <th class="px-4 py-3 font-medium">Flags</th>
+              <th class="px-4 py-3 text-right font-medium">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-(--a-border)">
             <tr
               v-for="service in items"
               :key="service._id"
-              class="transition-colors"
-              :class="selectedIds.has(service._id) ? 'bg-brand-500/[0.07]' : 'hover:bg-(--a-hover)'"
+              class="transition-colors hover:bg-(--a-hover)"
+              :class="!service.isActive ? 'opacity-60' : ''"
             >
               <td class="px-4 py-3.5">
-                <button
-                  class="flex h-6 w-6 items-center justify-center rounded-md transition-colors hover:bg-(--a-hover)"
-                  :aria-label="selectedIds.has(service._id) ? 'Deselect' : 'Select'"
-                  @click="toggleRow(service._id)"
-                >
-                  <Square v-if="!selectedIds.has(service._id)" class="h-4 w-4 text-(--a-muted-3)" />
-                  <CheckSquare v-else class="h-4 w-4 text-brand-300" />
-                </button>
+                <input
+                  type="checkbox"
+                  class="h-4 w-4 accent-brand-500"
+                  :checked="selected.has(service._id)"
+                  @change="toggleOne(service._id)"
+                />
               </td>
-              <td class="px-5 py-3.5">
+              <td class="px-4 py-3.5">
                 <p class="font-medium text-(--a-text)">{{ service.name }}</p>
                 <p class="text-xs text-(--a-muted-2)">
                   {{ service.category && typeof service.category === 'object' ? service.category.name : '—' }}
+                  <span v-if="service.description" class="ml-1">· {{ service.description }}</span>
                 </p>
               </td>
-              <td class="px-5 py-3.5 text-(--a-muted)">{{ service.type }}</td>
-              <td class="px-5 py-3.5 font-semibold text-(--a-text)">{{ formatMoney(service.pricePerUnit * 1000) }}</td>
-              <td class="px-5 py-3.5 text-(--a-muted)">{{ formatNumber(service.min) }}–{{ formatNumber(service.max) }}</td>
-              <td class="px-5 py-3.5">
-                <BaseBadge :tone="service.isActive ? 'success' : 'neutral'" dot>
-                  {{ service.isActive ? 'Active' : 'Inactive' }}
-                </BaseBadge>
+              <td class="px-4 py-3.5 text-(--a-muted)">{{ service.type }}</td>
+              <td class="px-4 py-3.5 font-semibold text-(--a-text)">{{ formatMoney(service.pricePerUnit * 1000) }}</td>
+              <td class="px-4 py-3.5 text-(--a-muted)">{{ formatNumber(service.min) }}–{{ formatNumber(service.max) }}</td>
+              <td class="px-4 py-3.5">
+                <div class="flex flex-wrap gap-1.5">
+                  <BaseBadge v-if="!service.isActive" tone="danger" dot>Hidden</BaseBadge>
+                  <BaseBadge v-if="service.refill" tone="success" dot>Refill</BaseBadge>
+                  <BaseBadge v-if="service.cancel" tone="info" dot>Cancel</BaseBadge>
+                  <BaseBadge v-if="service.isFeatured" tone="brand">Featured</BaseBadge>
+                </div>
               </td>
-              <td class="px-5 py-3.5">
-                <div class="flex justify-end gap-2">
+              <td class="px-4 py-3.5">
+                <div class="flex justify-end gap-1">
                   <button
                     class="flex h-8 w-8 items-center justify-center rounded-lg text-(--a-muted) transition-colors hover:bg-(--a-hover) hover:text-(--a-text)"
-                    aria-label="Toggle active"
-                    :title="service.isActive ? 'Disable' : 'Enable'"
-                    @click="requestBulk([service._id], !service.isActive)"
+                    :title="service.isActive ? 'Hide from storefront' : 'Show in storefront'"
+                    :aria-label="service.isActive ? 'Hide service' : 'Show service'"
+                    @click="toggleActive(service)"
                   >
-                    <Power class="h-4 w-4" />
+                    <EyeOff v-if="service.isActive" class="h-4 w-4" />
+                    <Eye v-else class="h-4 w-4 text-emerald-300" />
+                  </button>
+                  <button
+                    class="flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-(--a-hover)"
+                    :class="service.isFeatured ? 'text-amber-300' : 'text-(--a-muted)'"
+                    :title="service.isFeatured ? 'Remove from featured' : 'Mark as featured'"
+                    :aria-label="service.isFeatured ? 'Unfeature service' : 'Feature service'"
+                    @click="toggleFeatured(service)"
+                  >
+                    <Sparkles class="h-4 w-4" />
                   </button>
                   <button class="flex h-8 w-8 items-center justify-center rounded-lg text-(--a-muted) transition-colors hover:bg-(--a-hover) hover:text-(--a-text)" aria-label="Edit" @click="openEdit(service)">
                     <Pencil class="h-4 w-4" />
                   </button>
-                  <button class="flex h-8 w-8 items-center justify-center rounded-lg text-(--a-muted) transition-colors hover:bg-rose-500/20 hover:text-rose-300" aria-label="Delete" @click="remove(service)">
+                  <button
+                    class="flex h-8 w-8 items-center justify-center rounded-lg text-(--a-muted) transition-colors hover:bg-rose-500/20 hover:text-rose-300"
+                    aria-label="Delete"
+                    @click="remove(service)"
+                  >
                     <Trash2 class="h-4 w-4" />
                   </button>
                 </div>
@@ -453,12 +532,24 @@ onMounted(async () => {
     </div>
 
     <div v-if="totalPages > 1" class="flex items-center justify-center gap-3 pt-2">
-      <button class="rounded-xl border border-(--a-border) px-4 py-2 text-sm text-(--a-text-soft) hover:border-brand-400/50 disabled:opacity-30" :disabled="page <= 1" @click="goToPage(page - 1)">Prev</button>
+      <button
+        class="rounded-xl border border-(--a-border) px-4 py-2 text-sm text-(--a-text-soft) hover:border-brand-400/50 disabled:opacity-30"
+        :disabled="page <= 1"
+        @click="goToPage(page - 1)"
+      >
+        Prev
+      </button>
       <span class="text-sm text-(--a-muted)">Page {{ page }} / {{ totalPages }}</span>
-      <button class="rounded-xl border border-(--a-border) px-4 py-2 text-sm text-(--a-text-soft) hover:border-brand-400/50 disabled:opacity-30" :disabled="page >= totalPages" @click="goToPage(page + 1)">Next</button>
+      <button
+        class="rounded-xl border border-(--a-border) px-4 py-2 text-sm text-(--a-text-soft) hover:border-brand-400/50 disabled:opacity-30"
+        :disabled="page >= totalPages"
+        @click="goToPage(page + 1)"
+      >
+        Next
+      </button>
     </div>
 
-    <!-- Bulk confirm modal -->
+    <!-- Category bulk confirm modal -->
     <BaseModal :open="confirmOpen" :title="`${pendingAction?.label ?? ''} services?`" @close="confirmOpen = false">
       <div class="space-y-4">
         <p class="text-sm text-(--a-muted)">
@@ -469,8 +560,8 @@ onMounted(async () => {
           </span>
         </p>
         <div class="flex justify-end gap-3 pt-2">
-          <BaseButton variant="ghost" :disabled="bulkActing" @click="confirmOpen = false">Cancel</BaseButton>
-          <BaseButton :variant="pendingAction?.isActive ? 'primary' : 'danger'" :loading="bulkActing" @click="runBulk">
+          <BaseButton variant="ghost" :disabled="categoryActing" @click="confirmOpen = false">Cancel</BaseButton>
+          <BaseButton :variant="pendingAction?.isActive ? 'primary' : 'danger'" :loading="categoryActing" @click="runCategoryBulk">
             {{ pendingAction?.label }} now
           </BaseButton>
         </div>
@@ -509,7 +600,7 @@ onMounted(async () => {
         <div class="grid gap-3 sm:grid-cols-2">
           <FormToggle v-model="form.refill" label="Refillable" />
           <FormToggle v-model="form.cancel" label="Cancellable" />
-          <FormToggle v-model="form.isActive" label="Active" />
+          <FormToggle v-model="form.isActive" label="Visible on storefront" />
           <FormToggle v-model="form.isFeatured" label="Featured" />
         </div>
         <div class="flex justify-end gap-3 pt-2">

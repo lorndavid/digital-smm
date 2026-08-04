@@ -1,18 +1,11 @@
 <script setup lang="ts">
-import { useClerkSession } from '@/composables/useClerkSession'
 import { useAuthStore } from '@/stores/auth.store'
 import ToastHost from '@/components/ui/ToastHost.vue'
 
-const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 const authStore = useAuthStore()
 
-if (publishableKey) {
-  // Sync Clerk session state into the Pinia auth store.
-  useClerkSession()
-} else {
-  // Clerk is not configured: treat the app as loaded and signed out.
-  authStore.setLoaded(true, false)
-}
+// Rehydrate the session from the stored token (validated against /api/auth/me).
+void authStore.init()
 </script>
 
 <template>

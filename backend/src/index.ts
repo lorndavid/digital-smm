@@ -9,6 +9,15 @@ async function bootstrap(): Promise<void> {
   await connectDatabase()
   await seedSuperAdmin()
 
+  // Confirm Google OAuth or warn.
+  if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
+    logger.info(
+      `[auth] Google OAuth configured — client ID: ${env.GOOGLE_CLIENT_ID.slice(0, 16)}… | redirect URI: ${env.FRONTEND_URL.replace(/\/$/, '')}/auth/callback`,
+    )
+  } else {
+    logger.warn('[auth] Google OAuth not configured — customer sign-in will show "not configured" message')
+  }
+
   const app = createApp()
   const server = app.listen(env.PORT, () => {
     logger.info(`[server] VidSMM backend listening on http://localhost:${env.PORT}`)

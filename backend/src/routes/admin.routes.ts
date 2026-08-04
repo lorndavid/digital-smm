@@ -22,12 +22,15 @@ adminRoutes.post('/admin/services/sync', adminController.syncServices)
 // Services
 adminRoutes.get('/admin/services', ...adminController.listServices)
 adminRoutes.post('/admin/services', ...adminController.createService)
+// Bulk updates — by ids (toolbar: hide/show/feature) and by filter (category
+// curation: enable/disable every service in a category).
+adminRoutes.post('/admin/services/bulk', ...adminController.bulkUpdateServices)
 adminRoutes.post('/admin/services/bulk-status', ...adminController.bulkSetServiceStatus)
 adminRoutes.put('/admin/services/:id', ...adminController.updateService)
 adminRoutes.delete('/admin/services/:id', adminController.deleteService)
 
 // Categories
-adminRoutes.get('/admin/categories', adminController.listCategories)
+adminRoutes.get('/admin/categories', ...adminController.listCategories)
 adminRoutes.post('/admin/categories', ...adminController.createCategory)
 adminRoutes.put('/admin/categories/:id', ...adminController.updateCategory)
 adminRoutes.delete('/admin/categories/:id', adminController.deleteCategory)
