@@ -23,6 +23,24 @@ const WEBHOOK_STATUS_MAP: Record<string, ProviderWebhookEvent['status']> = {
 }
 
 /**
+ * Normalises a raw CutLuy webhook body into the provider-agnostic
+ * `ProviderWebhookEvent` the core payment service consumes. Pure and
+ * signature-independent so the webhook route (which verifies the HMAC
+ * itself and logs rejections) can reuse it.
+ */
+export function normalizeCutLuyEvent(rawBody: Buffer): ProviderWebhookEvent {
+  const parsed = JSON.parse(rawBody.toString('utf8')) as CutLuyWebhookEvent
+  const status = WEBHOOK_STATUS_MAP[parsed.type] ?? 'pending'
+  return {
+    type: parsed.type,
+    eventId: parsed.id,
+    providerPaymentId: parsed.data?.payment?.id ?? '',
+    status,
+    raw: parsed as unknown as Record<string, unknown>,
+  }
+}
+
+/**
  * Real CutLuy (Bakong KHQR) provider.
  *
  * - createPayment  → POST /v1/payments, returns raw qr_string + checkout_url
@@ -90,19 +108,11 @@ export class CutLuyPaymentProvider implements PaymentProvider {
       throw new CutLuyError('invalid_request', `Invalid webhook signature: ${reason ?? 'unknown'}`, 400)
     }
 
-    const parsed = JSON.parse(rawBody.toString('utf8')) as CutLuyWebhookEvent
-    const status = WEBHOOK_STATUS_MAP[parsed.type] ?? 'pending'
-    return {
-      type: parsed.type,
-      eventId: parsed.id,
-      providerPaymentId: parsed.data?.payment?.id ?? '',
-      status,
-      raw: parsed as unknown as Record<string, unknown>,
-    }
+    return normalizeCutLuyEvent(rawBody)
   }
 }
 
-function mapCutLuyPayment(payment: CutLuyPayment): ProviderPaymentStatus {
+export function mapCutLuyPayment(payment: CutLuyPayment): ProviderPaymentStatus {
   const status = VALID_STATUSES.has(payment.status)
     ? (payment.status as ProviderPaymentStatus['status'])
     : 'pending'
@@ -117,5 +127,3 @@ function firstHeader(value: string | string[] | undefined): string | undefined {
   if (Array.isArray(value)) return value[0]
   return value
 }
-
-export { mapCutLuyPayment }

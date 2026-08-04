@@ -1,9 +1,10 @@
 import { getCutLuyConfig } from './config.js'
 import { verifyWebhookSignature } from './signature.js'
+import { normalizeCutLuyEvent } from './payment.service.js'
+import type { CutLuyWebhookEvent } from './types.js'
 import { WebhookLogModel } from '../../../../models/webhook-log.model.js'
 import { paymentService } from '../../../../services/payment.service.js'
 import { logger } from '../../../../utils/logger.js'
-import { CutLuyError } from './errors.js'
 
 export interface WebhookHandleResult {
   valid: boolean
@@ -47,14 +48,13 @@ export async function handleCutLuyWebhook(
     return { valid: false, outcome: 'invalid', reason: verification.reason }
   }
 
-  const event = JSON.parse(rawBody.toString('utf8')) as {
-    id?: string
-    type?: string
-    data?: { payment?: { id?: string; reference_id?: string | null } }
-  }
-  const eventId = event.id ?? ''
-  const paymentId = event.data?.payment?.id ?? ''
-  const referenceId = event.data?.payment?.reference_id ?? ''
+  // Normalise the raw CutLuy payload into the provider-agnostic event the
+  // core payment service expects (providerPaymentId + status at top level).
+  const event = normalizeCutLuyEvent(rawBody)
+  const eventId = event.eventId ?? ''
+  // The reference_id is nested under data.payment in the raw payload.
+  const referenceId =
+    (event.raw as unknown as CutLuyWebhookEvent).data?.payment?.reference_id ?? ''
 
   // Dedupe: ignore already-processed events (webhooks retry up to 8 times).
   if (eventId) {
@@ -67,7 +67,7 @@ export async function handleCutLuyWebhook(
   try {
     const result = await paymentService.handleProviderWebhook({
       provider: 'cutluy',
-      providerPaymentId: paymentId,
+      providerPaymentId: event.providerPaymentId,
       referenceId: referenceId || undefined,
       event,
     })
@@ -79,7 +79,7 @@ export async function handleCutLuyWebhook(
       eventId,
       type: event.type ?? 'unknown',
       signatureValid: true,
-      payload: event,
+      payload: event.raw,
       outcome,
       processedAt: new Date(),
     })
@@ -95,7 +95,7 @@ export async function handleCutLuyWebhook(
       eventId,
       type: event.type ?? 'unknown',
       signatureValid: true,
-      payload: event,
+      payload: event.raw,
       outcome: 'error',
       error: message,
       processedAt: new Date(),
@@ -108,5 +108,3 @@ export async function handleCutLuyWebhook(
 export function webhookHttpStatus(result: WebhookHandleResult): number {
   return result.valid ? 200 : 400
 }
-
-export { CutLuyError }
