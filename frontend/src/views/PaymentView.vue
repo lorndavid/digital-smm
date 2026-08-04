@@ -13,6 +13,7 @@ import {
   QrCode,
   RefreshCcw,
   ShieldCheck,
+  Smartphone,
   Sparkles,
   Wallet,
   X,
@@ -221,6 +222,19 @@ async function retryPayment(): Promise<void> {
 function openHostedCheckout(): void {
   if (payment.value?.checkoutUrl) window.open(payment.value.checkoutUrl, '_blank', 'noopener')
 }
+
+/**
+ * Cambodian banking apps. Each chip opens the branded CutLuy hosted checkout,
+ * which on mobile deep-links into the chosen banking app with the KHQR amount
+ * already embedded (the EMV payload carries the amount, so any bank app
+ * scanner auto-fills it). Colors match each bank's brand.
+ */
+const banks = [
+  { id: 'aba', short: 'ABA', name: 'ABA Bank', color: '#E4002B' },
+  { id: 'bakong', short: 'B', name: 'Bakong', color: '#0E7C7B' },
+  { id: 'acleda', short: 'A', name: 'ACLEDA', color: '#1B3F8F' },
+  { id: 'wing', short: 'W', name: 'Wing', color: '#E30613' },
+]
 
 function serviceName(): string {
   if (!order.value) return ''
@@ -533,6 +547,32 @@ const countdownDanger = computed(() => countdown.value.total > 0 && countdown.va
                 {{ formatMoney(payment?.amount ?? 0) }}
               </p>
               <p class="mt-1 text-xs text-white/40">Bakong · ABA · ACLEDA · Wing</p>
+
+              <!-- Banking app quick actions (mobile friendly — each opens the
+                   branded CutLuy checkout which deep-links into the bank app) -->
+              <div class="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <button
+                  v-for="bank in banks"
+                  :key="bank.id"
+                  class="group flex flex-col items-center gap-1 rounded-xl border border-white/10 bg-white/5 py-2.5 transition-all hover:border-brand-400/50 hover:bg-white/10 active:scale-[0.97]"
+                  :disabled="!payment?.checkoutUrl"
+                  @click="openHostedCheckout"
+                >
+                  <span
+                    class="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-black text-white shadow-inner"
+                    :style="{ backgroundColor: bank.color }"
+                  >
+                    {{ bank.short }}
+                  </span>
+                  <span class="text-[10px] font-semibold text-white/70 group-hover:text-white">
+                    {{ bank.name }}
+                  </span>
+                </button>
+              </div>
+              <p class="mt-2 flex items-center justify-center gap-1 text-[10px] text-white/35">
+                <Smartphone class="h-3 w-3" />
+                On your phone, tapping a bank opens its app — {{ formatMoney(payment?.amount ?? 0) }} is already in the QR
+              </p>
 
               <!-- Copy buttons -->
               <div class="mt-5 grid grid-cols-2 gap-2">

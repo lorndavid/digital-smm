@@ -128,6 +128,8 @@ export class PaymentService {
       method: this.provider.name === 'abapayway' ? 'ABA' : 'KHQR',
       purpose: options.purpose,
       status: 'pending',
+      // The provider amount (already rounded) — required by the Payment model.
+      amount,
       referenceId,
       idempotencyKey: referenceId,
       providerPaymentId: result.providerPaymentId,
