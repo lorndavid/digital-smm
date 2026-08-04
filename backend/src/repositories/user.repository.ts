@@ -13,6 +13,38 @@ export class UserRepository extends BaseRepository<User> {
   }
 
   /**
+   * Re-keys an existing local account (e.g. a legacy Clerk-era row) to a
+   * Google identity and refreshes its profile. Used by both the legacy
+   * adoption path and the create-catch fallback so the logic lives in one
+   * place. If another request claims `providerId` mid-save (duplicate key),
+   * we re-fetch the winner and update that document instead.
+   */
+  private async adoptExisting(doc: UserDoc, info: GoogleUserInfo, now: Date): Promise<UserDoc> {
+    const setProfile = (target: UserDoc) => {
+      target.set({
+        providerId: info.sub,
+        provider: 'google',
+        email: info.email,
+        name: info.name ?? '',
+        avatarUrl: info.picture ?? '',
+        lastLoginAt: now,
+        isActive: true,
+      })
+      return target
+    }
+    try {
+      return await setProfile(doc).save()
+    } catch (err) {
+      // A concurrent request inserted the same providerId — adopt the winner.
+      if (err instanceof Error && 'code' in err && (err as { code?: number }).code === 11000) {
+        const winner = await this.findByProviderId(info.sub)
+        if (winner) return setProfile(winner).save()
+      }
+      throw err
+    }
+  }
+
+  /**
    * Upserts a user from a verified Google profile.
    *
    * Atomic via `findOneAndUpdate` (upsert) so concurrent sign-ins for the
@@ -55,37 +87,7 @@ export class UserRepository extends BaseRepository<User> {
 
     // 2. Legacy adoption: same email, different providerId.
     const byEmail = await this.findOne({ email: info.email })
-    if (byEmail) {
-      byEmail.set({
-        providerId: info.sub,
-        provider: 'google',
-        email: info.email,
-        name: info.name ?? '',
-        avatarUrl: info.picture ?? '',
-        lastLoginAt: now,
-        isActive: true,
-      })
-      try {
-        return await byEmail.save()
-      } catch (err) {
-        // If the providerId was taken by a concurrent request, fetch the
-        // winner and update that doc instead.
-        if (err instanceof Error && 'code' in err && (err as { code?: number }).code === 11000) {
-          const winner = await this.findByProviderId(info.sub)
-          if (winner) {
-            winner.set({
-              email: info.email,
-              name: info.name ?? '',
-              avatarUrl: info.picture ?? '',
-              lastLoginAt: now,
-              isActive: true,
-            })
-            return winner.save()
-          }
-        }
-        throw err
-      }
-    }
+    if (byEmail) return this.adoptExisting(byEmail, info, now)
 
     // 3. Brand-new account. The $setOnInsert above ensures insert-only
     // fields are never overwritten on retry.
@@ -101,18 +103,14 @@ export class UserRepository extends BaseRepository<User> {
         lastLoginAt: now,
       })
     } catch (err) {
+      // A concurrent request won the insert (or a stale legacy unique index
+      // rejected the row) — recover by adopting the existing account instead
+      // of surfacing a duplicate-key 409 to the customer.
       if (err instanceof Error && 'code' in err && (err as { code?: number }).code === 11000) {
         const winner = await this.findByProviderId(info.sub)
-        if (winner) {
-          winner.set({
-            email: info.email,
-            name: info.name ?? '',
-            avatarUrl: info.picture ?? '',
-            lastLoginAt: now,
-            isActive: true,
-          })
-          return winner.save()
-        }
+        if (winner) return this.adoptExisting(winner, info, now)
+        const adopted = await this.findOne({ email: info.email })
+        if (adopted) return this.adoptExisting(adopted, info, now)
       }
       throw err
     }
