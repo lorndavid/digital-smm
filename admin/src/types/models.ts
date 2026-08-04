@@ -104,7 +104,7 @@ export interface AdminAuditLog {
   _id: string
   actorId: string
   actorEmail: string
-  action: 'admin.create' | 'admin.set_role' | 'admin.remove_role'
+  action: 'admin.create' | 'admin.set_role' | 'admin.remove_role' | 'admin.bulk_services'
   targetId: string | null
   targetEmail: string
   details: { role?: string; name?: string }

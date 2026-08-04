@@ -1,6 +1,15 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { Plus, Pencil, Search, Trash2 } from '@lucide/vue'
+import {
+  Eye,
+  EyeOff,
+  Layers,
+  Pencil,
+  Plus,
+  Search,
+  Sparkles,
+  Trash2,
+} from '@lucide/vue'
 import { adminApi } from '@/api/admin.api'
 import { useToast } from '@/composables/useToast'
 import { errorMessage, formatMoney, formatNumber } from '@/utils/format'
@@ -24,8 +33,14 @@ const total = ref(0)
 const loading = ref(true)
 const saving = ref(false)
 const search = ref('')
+const categoryFilter = ref('')
+const statusFilter = ref('')
 const page = ref(1)
 const pageSize = 10
+
+// Bulk selection
+const selected = ref<Set<string>>(new Set())
+const bulkBusy = ref(false)
 
 const modalOpen = ref(false)
 const editingId = ref<string | null>(null)
@@ -47,6 +62,26 @@ const form = reactive({
 })
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
+
+const selectedCount = computed(() => selected.value.size)
+const allChecked = computed(
+  () => items.value.length > 0 && items.value.every((s) => selected.value.has(s._id)),
+)
+
+function toggleAll(): void {
+  if (allChecked.value) {
+    selected.value = new Set()
+  } else {
+    selected.value = new Set(items.value.map((s) => s._id))
+  }
+}
+
+function toggleOne(id: string): void {
+  const next = new Set(selected.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  selected.value = next
+}
 
 function openCreate(): void {
   editingId.value = null
@@ -97,9 +132,14 @@ async function load(): Promise<void> {
       page: page.value,
       limit: pageSize,
       search: search.value || undefined,
+      category: categoryFilter.value || undefined,
+      status: statusFilter.value || undefined,
     })
     items.value = result.items
     total.value = result.total
+    // Drop selections that are no longer on this page.
+    const ids = new Set(result.items.map((s) => s._id))
+    selected.value = new Set([...selected.value].filter((id) => ids.has(id)))
   } catch (err) {
     toast.error(errorMessage(err, 'Failed to load services'))
   } finally {
@@ -157,14 +197,64 @@ async function remove(service: Service): Promise<void> {
   }
 }
 
+// Quick per-row toggles ------------------------------------------------------
+
+async function toggleActive(service: Service): Promise<void> {
+  try {
+    await adminApi.updateService(service._id, { isActive: !service.isActive })
+    toast.success(service.isActive ? 'Hidden from storefront' : 'Service is now visible')
+    await load()
+  } catch (err) {
+    toast.error(errorMessage(err, 'Failed to update service'))
+  }
+}
+
+async function toggleFeatured(service: Service): Promise<void> {
+  try {
+    await adminApi.updateService(service._id, { isFeatured: !service.isFeatured })
+    toast.success(service.isFeatured ? 'Removed from featured' : 'Marked as featured')
+    await load()
+  } catch (err) {
+    toast.error(errorMessage(err, 'Failed to update service'))
+  }
+}
+
+// Bulk curation --------------------------------------------------------------
+
+async function bulkUpdate(data: { isActive?: boolean; isFeatured?: boolean }, verb: string): Promise<void> {
+  if (selectedCount.value === 0) {
+    toast.warning('Select at least one service first')
+    return
+  }
+  bulkBusy.value = true
+  try {
+    const res = await adminApi.bulkUpdateServices([...selected.value], data)
+    toast.success(`${verb}: ${res.updated} service${res.updated === 1 ? '' : 's'} updated`)
+    selected.value = new Set()
+    await load()
+  } catch (err) {
+    toast.error(errorMessage(err, 'Bulk update failed'))
+  } finally {
+    bulkBusy.value = false
+  }
+}
+
 function goToPage(p: number): void {
   page.value = p
   void load()
 }
 
+function resetFilters(): void {
+  search.value = ''
+  categoryFilter.value = ''
+  statusFilter.value = ''
+  page.value = 1
+  void load()
+}
+
 onMounted(async () => {
   try {
-    categories.value = await adminApi.listCategories()
+    categories.value = await adminApi.listCategories({ limit: 500 }).then((r) => r.items)
   } catch {
     categories.value = []
   }
@@ -177,66 +267,170 @@ onMounted(async () => {
     <div class="flex flex-wrap items-center justify-between gap-4">
       <div>
         <h1 class="font-display text-2xl font-bold text-(--a-text)">Services</h1>
-        <p class="mt-1 text-sm text-(--a-muted)">Manage the service catalog and pricing.</p>
+        <p class="mt-1 text-sm text-(--a-muted)">Manage the catalog, edit product text and curate what customers see.</p>
       </div>
       <BaseButton @click="openCreate"><Plus class="h-4 w-4" /> Add service</BaseButton>
     </div>
 
-    <div class="relative max-w-xs">
-      <Search class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-(--a-muted-3)" />
-      <input
-        v-model="search"
-        type="search"
-        placeholder="Search services…"
-        class="h-11 w-full rounded-xl border border-(--a-border) bg-(--a-soft) pl-10 pr-4 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
-        @keyup.enter="page = 1; void load()"
+    <!-- Filters -->
+    <div class="glass grid gap-3 rounded-2xl p-4 shadow-card sm:grid-cols-2 lg:grid-cols-4">
+      <div class="relative">
+        <Search class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-(--a-muted-3)" />
+        <input
+          v-model="search"
+          type="search"
+          placeholder="Search services…"
+          class="h-11 w-full rounded-xl border border-(--a-border) bg-(--a-soft) pl-10 pr-4 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
+          @keyup.enter="page = 1; void load()"
+        />
+      </div>
+
+      <BaseSelect
+        v-model="categoryFilter"
+        label="Category"
+        :options="[{ value: '', label: 'All categories' }, ...categories.map((c) => ({ value: c._id, label: c.name }))]"
+        @update:model-value="page = 1; void load()"
       />
+
+      <BaseSelect
+        v-model="statusFilter"
+        label="Status"
+        :options="[
+          { value: '', label: 'All statuses' },
+          { value: 'active', label: 'Visible' },
+          { value: 'inactive', label: 'Hidden' },
+          { value: 'featured', label: 'Featured' },
+        ]"
+        @update:model-value="page = 1; void load()"
+      />
+
+      <div class="flex items-end">
+        <BaseButton variant="ghost" class="w-full" @click="resetFilters">
+          <Layers class="h-4 w-4" /> Reset
+        </BaseButton>
+      </div>
+    </div>
+
+    <!-- Bulk curation toolbar -->
+    <div
+      v-if="selectedCount > 0"
+      class="flex flex-wrap items-center gap-3 rounded-2xl border border-brand-400/40 bg-brand-500/10 px-4 py-3 shadow-glow"
+    >
+      <span class="text-sm font-semibold text-(--a-text)">
+        {{ selectedCount }} selected
+      </span>
+      <div class="ml-auto flex flex-wrap gap-2">
+        <BaseButton size="sm" variant="ghost" :loading="bulkBusy" @click="bulkUpdate({ isActive: true }, 'Shown')">
+          <Eye class="h-4 w-4" /> Show
+        </BaseButton>
+        <BaseButton size="sm" variant="ghost" :loading="bulkBusy" @click="bulkUpdate({ isActive: false }, 'Hidden')">
+          <EyeOff class="h-4 w-4" /> Hide
+        </BaseButton>
+        <BaseButton size="sm" variant="ghost" :loading="bulkBusy" @click="bulkUpdate({ isFeatured: true }, 'Featured')">
+          <Sparkles class="h-4 w-4" /> Feature
+        </BaseButton>
+        <BaseButton size="sm" variant="ghost" :loading="bulkBusy" @click="bulkUpdate({ isFeatured: false }, 'Unfeatured')">
+          Unfeature
+        </BaseButton>
+      </div>
     </div>
 
     <div v-if="loading" class="space-y-3">
       <BaseSkeleton v-for="n in 6" :key="n" class="h-16 w-full" />
     </div>
 
-    <BaseEmptyState v-else-if="items.length === 0" title="No services" message="Add a service or sync the provider catalogue from the dashboard." />
+    <BaseEmptyState
+      v-else-if="items.length === 0"
+      title="No services"
+      message="Try adjusting the filters or sync the provider catalogue from the dashboard."
+    />
 
     <div v-else class="glass overflow-hidden rounded-2xl shadow-card">
       <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">
           <thead class="border-b border-(--a-border) text-xs uppercase tracking-wider text-(--a-muted-2)">
             <tr>
-              <th class="px-5 py-3 font-medium">Service</th>
-              <th class="px-5 py-3 font-medium">Type</th>
-              <th class="px-5 py-3 font-medium">Price / 1k</th>
-              <th class="px-5 py-3 font-medium">Range</th>
-              <th class="px-5 py-3 font-medium">Flags</th>
-              <th class="px-5 py-3 text-right font-medium">Actions</th>
+              <th class="w-10 px-4 py-3">
+                <input
+                  type="checkbox"
+                  class="h-4 w-4 accent-brand-500"
+                  :checked="allChecked"
+                  @change="toggleAll"
+                />
+              </th>
+              <th class="px-4 py-3 font-medium">Service</th>
+              <th class="px-4 py-3 font-medium">Type</th>
+              <th class="px-4 py-3 font-medium">Price / 1k</th>
+              <th class="px-4 py-3 font-medium">Range</th>
+              <th class="px-4 py-3 font-medium">Flags</th>
+              <th class="px-4 py-3 text-right font-medium">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-(--a-border)">
-            <tr v-for="service in items" :key="service._id" class="transition-colors hover:bg-(--a-hover)">
-              <td class="px-5 py-3.5">
+            <tr
+              v-for="service in items"
+              :key="service._id"
+              class="transition-colors hover:bg-(--a-hover)"
+              :class="!service.isActive ? 'opacity-60' : ''"
+            >
+              <td class="px-4 py-3.5">
+                <input
+                  type="checkbox"
+                  class="h-4 w-4 accent-brand-500"
+                  :checked="selected.has(service._id)"
+                  @change="toggleOne(service._id)"
+                />
+              </td>
+              <td class="px-4 py-3.5">
                 <p class="font-medium text-(--a-text)">{{ service.name }}</p>
                 <p class="text-xs text-(--a-muted-2)">
                   {{ service.category && typeof service.category === 'object' ? service.category.name : '—' }}
-                  <span v-if="!service.isActive" class="ml-1 text-rose-300">· inactive</span>
+                  <span v-if="service.description" class="ml-1">· {{ service.description }}</span>
                 </p>
               </td>
-              <td class="px-5 py-3.5 text-(--a-muted)">{{ service.type }}</td>
-              <td class="px-5 py-3.5 font-semibold text-(--a-text)">{{ formatMoney(service.pricePerUnit * 1000) }}</td>
-              <td class="px-5 py-3.5 text-(--a-muted)">{{ formatNumber(service.min) }}–{{ formatNumber(service.max) }}</td>
-              <td class="px-5 py-3.5">
+              <td class="px-4 py-3.5 text-(--a-muted)">{{ service.type }}</td>
+              <td class="px-4 py-3.5 font-semibold text-(--a-text)">{{ formatMoney(service.pricePerUnit * 1000) }}</td>
+              <td class="px-4 py-3.5 text-(--a-muted)">{{ formatNumber(service.min) }}–{{ formatNumber(service.max) }}</td>
+              <td class="px-4 py-3.5">
                 <div class="flex flex-wrap gap-1.5">
+                  <BaseBadge v-if="!service.isActive" tone="danger" dot>Hidden</BaseBadge>
                   <BaseBadge v-if="service.refill" tone="success" dot>Refill</BaseBadge>
                   <BaseBadge v-if="service.cancel" tone="info" dot>Cancel</BaseBadge>
                   <BaseBadge v-if="service.isFeatured" tone="brand">Featured</BaseBadge>
                 </div>
               </td>
-              <td class="px-5 py-3.5">
-                <div class="flex justify-end gap-2">
-                  <button class="flex h-8 w-8 items-center justify-center rounded-lg text-(--a-muted) transition-colors hover:bg-(--a-hover) hover:text-(--a-text)" aria-label="Edit" @click="openEdit(service)">
+              <td class="px-4 py-3.5">
+                <div class="flex justify-end gap-1">
+                  <button
+                    class="flex h-8 w-8 items-center justify-center rounded-lg text-(--a-muted) transition-colors hover:bg-(--a-hover) hover:text-(--a-text)"
+                    :title="service.isActive ? 'Hide from storefront' : 'Show in storefront'"
+                    :aria-label="service.isActive ? 'Hide service' : 'Show service'"
+                    @click="toggleActive(service)"
+                  >
+                    <EyeOff v-if="service.isActive" class="h-4 w-4" />
+                    <Eye v-else class="h-4 w-4 text-emerald-300" />
+                  </button>
+                  <button
+                    class="flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-(--a-hover)"
+                    :class="service.isFeatured ? 'text-amber-300' : 'text-(--a-muted)'"
+                    :title="service.isFeatured ? 'Remove from featured' : 'Mark as featured'"
+                    :aria-label="service.isFeatured ? 'Unfeature service' : 'Feature service'"
+                    @click="toggleFeatured(service)"
+                  >
+                    <Sparkles class="h-4 w-4" />
+                  </button>
+                  <button
+                    class="flex h-8 w-8 items-center justify-center rounded-lg text-(--a-muted) transition-colors hover:bg-(--a-hover) hover:text-(--a-text)"
+                    aria-label="Edit"
+                    @click="openEdit(service)"
+                  >
                     <Pencil class="h-4 w-4" />
                   </button>
-                  <button class="flex h-8 w-8 items-center justify-center rounded-lg text-(--a-muted) transition-colors hover:bg-rose-500/20 hover:text-rose-300" aria-label="Delete" @click="remove(service)">
+                  <button
+                    class="flex h-8 w-8 items-center justify-center rounded-lg text-(--a-muted) transition-colors hover:bg-rose-500/20 hover:text-rose-300"
+                    aria-label="Delete"
+                    @click="remove(service)"
+                  >
                     <Trash2 class="h-4 w-4" />
                   </button>
                 </div>
@@ -248,9 +442,21 @@ onMounted(async () => {
     </div>
 
     <div v-if="totalPages > 1" class="flex items-center justify-center gap-3 pt-2">
-      <button class="rounded-xl border border-(--a-border) px-4 py-2 text-sm text-(--a-text-soft) hover:border-brand-400/50 disabled:opacity-30" :disabled="page <= 1" @click="goToPage(page - 1)">Prev</button>
+      <button
+        class="rounded-xl border border-(--a-border) px-4 py-2 text-sm text-(--a-text-soft) hover:border-brand-400/50 disabled:opacity-30"
+        :disabled="page <= 1"
+        @click="goToPage(page - 1)"
+      >
+        Prev
+      </button>
       <span class="text-sm text-(--a-muted)">Page {{ page }} / {{ totalPages }}</span>
-      <button class="rounded-xl border border-(--a-border) px-4 py-2 text-sm text-(--a-text-soft) hover:border-brand-400/50 disabled:opacity-30" :disabled="page >= totalPages" @click="goToPage(page + 1)">Next</button>
+      <button
+        class="rounded-xl border border-(--a-border) px-4 py-2 text-sm text-(--a-text-soft) hover:border-brand-400/50 disabled:opacity-30"
+        :disabled="page >= totalPages"
+        @click="goToPage(page + 1)"
+      >
+        Next
+      </button>
     </div>
 
     <!-- Create / edit modal -->
@@ -285,7 +491,7 @@ onMounted(async () => {
         <div class="grid gap-3 sm:grid-cols-2">
           <FormToggle v-model="form.refill" label="Refillable" />
           <FormToggle v-model="form.cancel" label="Cancellable" />
-          <FormToggle v-model="form.isActive" label="Active" />
+          <FormToggle v-model="form.isActive" label="Visible on storefront" />
           <FormToggle v-model="form.isFeatured" label="Featured" />
         </div>
         <div class="flex justify-end gap-3 pt-2">

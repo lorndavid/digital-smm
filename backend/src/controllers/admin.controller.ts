@@ -24,6 +24,7 @@ import {
   orderStatusBodySchema,
   paginationQuerySchema,
   serviceBodySchema,
+  serviceBulkBodySchema,
   settingBodySchema,
   updateAdminRoleBodySchema,
   userUpdateBodySchema,
@@ -77,10 +78,26 @@ export const adminController = {
       const [items, total] = await serviceRepository.listAdmin({
         search: asString(q.search),
         category: asString(q.category),
+        status: asString(q.status) as 'active' | 'inactive' | 'featured' | undefined,
         page: asNumber(q.page, 1),
         limit: asNumber(q.limit, 20),
       })
       res.json({ items, total })
+    }),
+  ],
+
+  bulkUpdateServices: [
+    validate(serviceBulkBodySchema),
+    asyncHandler(async (req, res) => {
+      const { ids, data } = req.body
+      const count = await serviceRepository.bulkUpdate(ids, data)
+      await logAdminAction({
+        actorId: req.admin?.sub ?? '',
+        actorEmail: req.admin?.email,
+        action: 'admin.bulk_services',
+        details: { ids, data },
+      })
+      res.json({ updated: count })
     }),
   ],
 
@@ -138,10 +155,21 @@ export const adminController = {
   // Categories
   // ------------------------------------------------------------------
 
-  listCategories: asyncHandler(async (_req, res) => {
-    const items = await categoryRepository.find({})
-    res.json({ items })
-  }),
+  listCategories: [
+    validateQuery(adminListQuerySchema),
+    asyncHandler(async (req, res) => {
+      const q = req.validatedQuery ?? {}
+      res.json(
+        await categoryRepository.listAdmin({
+          search: asString(q.search),
+          showEmpty: q.status === 'nonempty' ? false : undefined,
+          sort: asString(q.sort) as 'name' | 'sortOrder' | 'count' | undefined,
+          page: asNumber(q.page, 1),
+          limit: asNumber(q.limit, 20),
+        }),
+      )
+    }),
+  ],
 
   createCategory: [
     validate(categoryBodySchema),

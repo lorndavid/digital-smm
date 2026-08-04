@@ -26,10 +26,16 @@ export const useServicesStore = defineStore('services', () => {
 
   async function fetchServices(params: {
     category?: string
+    platform?: string
     search?: string
     page?: number
     limit?: number
     featured?: boolean
+    minPrice?: number
+    maxPrice?: number
+    type?: string
+    refill?: boolean
+    cancel?: boolean
     sort?: 'price_asc' | 'price_desc' | 'name_asc' | 'newest'
   } = {}): Promise<void> {
     loading.value = true

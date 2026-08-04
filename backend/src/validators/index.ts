@@ -16,9 +16,15 @@ export const paginationQuerySchema = z.object({
 
 export const listServicesQuerySchema = paginationQuerySchema.extend({
   category: z.string().optional(),
+  platform: z.string().max(40).optional(),
   search: z.string().optional(),
   featured: z.enum(['true', 'false']).optional(),
   sort: z.enum(['price_asc', 'price_desc', 'name_asc', 'newest']).optional(),
+  minPrice: z.coerce.number().min(0).optional(),
+  maxPrice: z.coerce.number().min(0).optional(),
+  type: z.string().optional(),
+  refill: z.enum(['true', 'false']).optional(),
+  cancel: z.enum(['true', 'false']).optional(),
 })
 
 // ---------------------------------------------------------------------------
@@ -191,8 +197,20 @@ export const settingBodySchema = z.object({
   description: z.string().optional(),
 })
 
-export const adminListQuerySchema = paginationQuerySchema.extend({
-  search: z.string().optional(),
-  status: z.string().optional(),
-  category: z.string().optional(),
+export const adminListQuerySchema = paginationQuerySchema
+  .extend({
+    search: z.string().optional(),
+    status: z.string().optional(),
+    category: z.string().optional(),
+    // Admin lists (especially the 700+ category catalog) need bigger pages
+    // than the public API's 100-row cap.
+    limit: z.coerce.number().int().min(1).max(1000).default(20),
+  })
+
+export const serviceBulkBodySchema = z.object({
+  ids: z.array(z.string().min(1)).min(1).max(500),
+  data: z.object({
+    isActive: z.boolean().optional(),
+    isFeatured: z.boolean().optional(),
+  }),
 })

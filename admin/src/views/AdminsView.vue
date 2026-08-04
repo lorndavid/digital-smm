@@ -41,7 +41,9 @@ const auditActionLabel = (action: string): string =>
     ? 'created admin'
     : action === 'admin.set_role'
       ? 'changed role of'
-      : 'removed admin access from'
+      : action === 'admin.bulk_services'
+        ? 'bulk-updated services for'
+        : 'removed admin access from'
 
 async function load(): Promise<void> {
   loading.value = true
@@ -322,7 +324,12 @@ onMounted(() => {
             <p class="truncate text-(--a-text-soft)">
               <span class="font-medium text-(--a-text)">{{ log.actorEmail || 'Unknown' }}</span>
               {{ auditActionLabel(log.action) }}
-              <span class="font-medium text-(--a-text)">{{ log.targetEmail || 'a user' }}</span>
+              <template v-if="log.targetEmail">
+                <span class="font-medium text-(--a-text)">{{ log.targetEmail }}</span>
+              </template>
+              <template v-else-if="log.action === 'admin.bulk_services'">
+                <span class="text-(--a-muted-3)">(catalog curation)</span>
+              </template>
               <span v-if="log.details?.role" class="text-secondary-300">→ {{ log.details.role }}</span>
             </p>
           </div>

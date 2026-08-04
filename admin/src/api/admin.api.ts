@@ -25,6 +25,7 @@ interface ListParams {
   search?: string
   status?: string
   category?: string
+  sort?: string
 }
 
 /** Typed access to the admin API. */
@@ -46,9 +47,13 @@ export const adminApi = {
   updateService: async (id: string, data: Partial<Service>): Promise<Service> =>
     (await apiClient.put(`/admin/services/${id}`, data)).data,
   deleteService: async (id: string): Promise<void> => (await apiClient.delete(`/admin/services/${id}`)).data,
+  /** Bulk hide/show/feature services (curation toolbar). */
+  bulkUpdateServices: async (ids: string[], data: { isActive?: boolean; isFeatured?: boolean }): Promise<{ updated: number }> =>
+    (await apiClient.post('/admin/services/bulk', { ids, data })).data,
 
   // Categories
-  listCategories: async (): Promise<Category[]> => (await apiClient.get('/admin/categories')).data,
+  listCategories: async (params: ListParams = {}): Promise<Paginated<Category & { serviceCount: number }>> =>
+    (await apiClient.get('/admin/categories', { params })).data,
   createCategory: async (data: Partial<Category>): Promise<Category> =>
     (await apiClient.post('/admin/categories', data)).data,
   updateCategory: async (id: string, data: Partial<Category>): Promise<Category> =>
