@@ -1,0 +1,28 @@
+# ============================================================
+# VidSMM — backend scaling override.
+#
+# Run the whole stack with N load-balanced backend instances:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.scale.yml \
+#     up -d --scale backend=2 --build
+#
+# What this override does:
+#   - Clears the backend's host port mapping with `!reset`. N replicas can't
+#     all publish 4000:4000, so the API is reachable ONLY through the nginx
+#     proxies (:5173 / :5174), which load-balance across every replica.
+#
+# Why it works with N instances — no code changes:
+#   - nginx resolves the `backend` service name at request time via Docker
+#     DNS (docker/nginx.conf upstream `backend_upstream`) and round-robins
+#     requests across all replicas.
+#   - State is shared: every replica uses the same MongoDB (orders, payments,
+#     `webhook_logs` cross-instance dedupe) and the same Redis (cross-instance
+#     SSE relay), so a CutLuy webhook landing on ANY replica instantly updates
+#     every customer's live KHQR status page with exactly-once crediting.
+#
+# Scale up:   --scale backend=3
+# Scale down: --scale backend=1   (or drop this file for the plain stack)
+# ============================================================
+services:
+  backend:
+    ports: !reset []

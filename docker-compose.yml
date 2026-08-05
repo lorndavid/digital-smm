@@ -10,6 +10,17 @@
 # Frontend & admin are production builds served by nginx, which proxies
 # /api and /webhooks to the backend (SSE-safe, no buffering). Copy
 # .env.docker.example to .env to override any default.
+#
+# SCALING: nginx resolves the `backend` service name at request time
+# (docker/nginx.conf upstream `backend_upstream`), so the API is
+# load-balanced across N replicas with zero code changes:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.scale.yml \
+#     up -d --scale backend=2 --build
+#
+# The scale override clears the backend host port (N replicas can't all
+# publish 4000:4000). Replicas share MongoDB + Redis, so webhooks land
+# exactly-once and SSE live status fans out across all instances.
 # ============================================================
 name: vidsmm
 
@@ -77,6 +88,8 @@ services:
       ENABLE_ORDER_SYNC_JOB: ${ENABLE_ORDER_SYNC_JOB:-false}
       ORDER_SYNC_INTERVAL_MS: "60000"
     ports:
+      # Direct API access for local dev. When scaling replicas, use the
+      # docker-compose.scale.yml override (see header) instead.
       - "4000:4000"
     healthcheck:
       test:

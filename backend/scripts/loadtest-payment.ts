@@ -25,6 +25,11 @@ dns.setServers(['1.1.1.1', '8.8.8.8'])
 // Force the mock provider BEFORE any app module is imported (the payment
 // service captures the provider singleton at import time).
 process.env.PAYMENT_PROVIDER = 'mock'
+// Pin the rate-limit quota so the synthetic load is never throttled: the
+// in-process app loads backend/.env (RATE_LIMIT_MAX=300) via dotenv, but
+// dotenv never overrides an already-set env var — this wins on any machine.
+process.env.RATE_LIMIT_MAX = '100000'
+process.env.RATE_LIMIT_WINDOW_MS = '600000'
 
 import { performance } from 'node:perf_hooks'
 import type { AddressInfo } from 'node:net'

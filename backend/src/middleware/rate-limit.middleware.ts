@@ -1,5 +1,6 @@
 import rateLimit from 'express-rate-limit'
 import { env } from '../config/env.js'
+import { createDistributedStore } from './rate-limit.store.js'
 
 /**
  * Global API limiter.
@@ -8,6 +9,11 @@ import { env } from '../config/env.js'
  * 3000 requests per 15 min window ≈ 200/hr ≈ 3.3/min per user at
  * peak concurrency. The env variable `RATE_LIMIT_MAX` controls the
  * actual value (default 3000).
+ *
+ * Stores are Redis-backed (`DistributedRateLimitStore`) so the limit is
+ * enforced GLOBALLY across all backend instances sharing a REDIS_URL — a
+ * user split across instances by the load balancer still gets one shared
+ * quota. Without Redis it transparently falls back to per-instance memory.
  *
  * Auth endpoints (/auth/google/url + /auth/google/exchange) are exempt
  * from the global limiter so the OAuth redirect flow never gets
@@ -19,6 +25,7 @@ export const apiLimiter = rateLimit({
   limit: env.RATE_LIMIT_MAX,
   standardHeaders: 'draft-8',
   legacyHeaders: false,
+  store: createDistributedStore('vidsmm:rl:api:'),
 })
 
 /** Stricter limiter for payment and order checkout endpoints. */
@@ -27,6 +34,7 @@ export const checkoutLimiter = rateLimit({
   limit: 120, // 120 creates/verifies per minute = 2/sec — handles burst traffic
   standardHeaders: 'draft-8',
   legacyHeaders: false,
+  store: createDistributedStore('vidsmm:rl:checkout:'),
 })
 
 /**
@@ -38,6 +46,7 @@ export const adminMutationLimiter = rateLimit({
   limit: 60,
   standardHeaders: 'draft-8',
   legacyHeaders: false,
+  store: createDistributedStore('vidsmm:rl:admin-mutation:'),
 })
 
 /** Login limiter — throttles admin password guessing attempts. */
@@ -46,4 +55,5 @@ export const loginLimiter = rateLimit({
   limit: 20,
   standardHeaders: 'draft-8',
   legacyHeaders: false,
+  store: createDistributedStore('vidsmm:rl:login:'),
 })

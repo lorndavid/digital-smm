@@ -5,5 +5,8 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.test.ts'],
     globals: false,
+    // Seed the env vars env.ts requires so tests are hermetic without a
+    // backend/.env (see vitest.setup.ts). Relative to the config's rootDir.
+    setupFiles: ['./vitest.setup.ts'],
   },
 })

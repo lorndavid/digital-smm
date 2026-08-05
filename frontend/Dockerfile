@@ -16,6 +16,8 @@ COPY frontend ./frontend
 RUN npm run build -w frontend
 
 # --- runtime ---
+# NOTE: nginx must be >= 1.27.3 — docker/nginx.conf uses `server … resolve;`
+# (dynamic upstreams) which open-source nginx only supports from 1.27.3.
 FROM nginx:1.27-alpine AS runtime
 COPY --from=build /app/frontend/dist /usr/share/nginx/html
 EXPOSE 80

@@ -14,7 +14,10 @@
     "create:super-admin": "tsx scripts/create-super-admin.ts",
     "migrate:drop-clerk-index": "tsx scripts/migrate-drop-clerk-index.ts",
     "seed:telegram": "tsx scripts/seed-telegram.ts",
-    "curate:featured": "tsx scripts/curate-featured.ts"
+    "curate:featured": "tsx scripts/curate-featured.ts",
+    "loadtest": "tsx scripts/loadtest-payment.ts",
+    "loadtest:multi": "tsx scripts/loadtest-multi-instance.ts",
+    "verify:redis": "tsx scripts/verify-redis-cross-instance.ts"
   },
   "dependencies": {
     "cors": "^2.8.6",

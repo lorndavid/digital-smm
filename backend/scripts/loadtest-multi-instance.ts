@@ -49,10 +49,17 @@ const ADMIN_SECRET = 'loadtest-admin-jwt-secret-0123456789'
 // ---------------------------------------------------------------------------
 // Shared env — children AND the harness must agree on these.
 // ---------------------------------------------------------------------------
+// RATE_LIMIT_* are pinned high so the synthetic load is never throttled by
+// the (now Redis-shared) rate limiter: the harness hammers 100s of requests
+// per second from one IP (127.0.0.1), and the child instances load
+// backend/.env via dotenv — dotenv never overrides an env var that is
+// already set, so setting them here wins on every machine and in CI.
 const sharedEnv: Record<string, string> = {
   NODE_ENV: 'test',
   MONGODB_URI: MONGO_URI,
   REDIS_URL,
+  RATE_LIMIT_MAX: '100000',
+  RATE_LIMIT_WINDOW_MS: '600000',
   CUTLUY_WEBHOOK_SECRET: WEBHOOK_SECRET,
   CUSTOMER_JWT_SECRET: JWT_SECRET,
   ADMIN_JWT_SECRET: ADMIN_SECRET,

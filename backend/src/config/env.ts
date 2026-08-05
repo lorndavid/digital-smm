@@ -92,9 +92,10 @@ const envSchema = z.object({
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(15 * 60 * 1000),
   RATE_LIMIT_MAX: z.coerce.number().default(3000),
 
-  // Optional Redis — enables cross-instance SSE delivery when running
-  // multiple backend instances behind a load balancer. Leave empty for
-  // in-memory-only (single instance / local dev). e.g. redis://localhost:6379
+  // Optional Redis — enables cross-instance SSE delivery AND a distributed
+  // rate limiter (global quotas across all backend instances) when running
+  // multiple instances behind a load balancer. Leave empty for in-memory
+  // only (single instance / local dev). e.g. redis://localhost:6379
   REDIS_URL: optionalString(z.url()),
 
   // Background jobs

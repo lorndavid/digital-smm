@@ -142,6 +142,44 @@ docker compose up --build -d
   `SMMWIZ_API_KEY`, `CUTLUY_API_KEY` / `CUTLUY_WEBHOOK_SECRET`.
 - Stop with `docker compose down` (add `-v` to also delete the Mongo data volume).
 
+### Scale the backend (multi-instance)
+
+The nginx proxy resolves the `backend` service name at **request time** via
+Docker DNS (`docker/nginx.conf` `upstream backend_upstream`), so scaling the
+API from 1 to N instances is a config change — no code, no nginx reload:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.scale.yml \
+  up -d --scale backend=2
+```
+
+(Images are built automatically on first `up`. Scale changes propagate within
+~10s — nginx re-resolves the service name every 10s via Docker DNS.)
+
+- `docker-compose.scale.yml` clears the backend's host port with `!reset`
+  (N replicas can't all publish 4000:4000) — the API is then reachable only
+  through the nginx proxies at :5173 / :5174, and nginx round-robins requests
+  across all replicas. Verify with `docker compose ps` (expect `backend-1`,
+  `backend-2`, …).
+- **State is shared**: every replica uses the same MongoDB (orders, payments,
+  `webhook_logs` cross-instance dedupe) and the same Redis (cross-instance SSE
+  relay + **distributed rate limiter**). A CutLuy webhook landing on *any*
+  replica instantly updates every customer's live KHQR status page on *every*
+  instance, with exactly-once wallet crediting — proven by
+  `backend/scripts/loadtest-multi-instance.ts` (100 concurrent users, two real
+  instances).
+- **Global rate limits**: with `REDIS_URL` set, all four limiters (global API,
+  checkout, admin mutations, login) count against shared Redis keys, so
+  `RATE_LIMIT_MAX` is enforced platform-wide — a user split across replicas by
+  the load balancer still gets one quota. No Redis → transparent per-instance
+  in-memory fallback (local dev behaviour is unchanged).
+- Scale up: `--scale backend=3`. Scale back down: `--scale backend=1` (or drop
+  the override file to return to the plain single-instance stack with direct
+  :4000 access). Scale changes converge within ~10s.
+- **Don't** run `--scale backend=N` against the base compose file alone — the
+  backend still publishes `4000:4000` there, so replica N+1 fails with
+  "port is already allocated". Always include `docker-compose.scale.yml`.
+
 ---
 
 ## Google OAuth setup (customer login)
@@ -336,6 +374,19 @@ npm run build        # type-check + build all three
 npm run typecheck    # vue-tsc / tsc across all workspaces
 npm run test         # backend unit + API smoke tests (vitest + supertest)
 npm run start        # run the built backend (production)
+
+# Load tests (need local MongoDB on :27017 and Redis on :6379, e.g. the
+# docker compose stack or the docker run commands below). CI runs both on
+# every PR via .github/workflows/ci.yml.
+npm run loadtest        # single-instance: 100 concurrent users through the KHQR flow
+npm run loadtest:multi  # multi-instance: 100 users across 2 real backend processes (Redis SSE relay)
+npm run verify:redis    # cross-instance SSE bus relay check (needs REDIS_URL)
+```
+
+```bash
+# throwaway infra for the load tests
+docker run -d --name vidsmm-lt-mongo -p 27017:27017 mongo:7
+docker run -d --name vidsmm-lt-redis -p 6379:6379 redis:7-alpine
 ```
 
 ## Testing

@@ -1,0 +1,115 @@
+# VidSMM CI — every PR must pass typecheck, unit tests, and BOTH load tests.
+#
+#   job `test`        → fast feedback: typecheck + hermetic unit/API tests
+#   job `load-tests`  → distributed correctness: the single-instance payment
+#                       load test (100 users) AND the multi-instance load test
+#                       (100 users, 2 real backend processes, Redis SSE relay),
+#                       plus the Redis-gated integration tests. Real MongoDB
+#                       and Redis are provided as GitHub Actions services.
+#
+# Both load tests exit non-zero on any failed assertion, so a regression in
+# the payment flow, the TTL cache, the SSE bus, the Redis relay, webhook
+# dedupe or wallet exactly-once crediting fails the PR.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Typecheck & unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install workspaces (single lockfile)
+        run: npm ci
+
+      - name: Typecheck (backend + frontend + admin)
+        run: npm run typecheck
+
+      - name: Hermetic unit & API tests
+        run: npm test
+
+  load-tests:
+    name: Load tests (single + multi-instance)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+    env:
+      # loadtest-payment.ts derives a throwaway DB from MONGODB_URI and drops
+      # it afterwards; the multi-instance test hardcodes 127.0.0.1:27017/6379.
+      MONGODB_URI: mongodb://127.0.0.1:27017/vidsmm_ci
+      REDIS_URL: redis://127.0.0.1:6379
+      CUSTOMER_JWT_SECRET: ci-customer-jwt-secret-0123456789
+      ADMIN_JWT_SECRET: ci-admin-jwt-secret-0123456789
+      # Load tests hammer one IP with 100s of requests — the shared Redis
+      # rate limiter must never throttle the synthetic load.
+      RATE_LIMIT_MAX: 100000
+      RATE_LIMIT_WINDOW_MS: 600000
+      DNS_SERVERS: ""
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install workspaces (single lockfile)
+        run: npm ci
+
+      - name: Wait for Mongo & Redis services
+        run: |
+          up=0
+          for i in $(seq 1 30); do
+            if (echo > /dev/tcp/127.0.0.1/27017) 2>/dev/null && \
+               (echo > /dev/tcp/127.0.0.1/6379) 2>/dev/null; then
+              echo "mongo + redis reachable after ${i}x2s"
+              up=1
+              break
+            fi
+            sleep 2
+          done
+          [ "$up" = "1" ] || { echo 'services never became reachable'; exit 1; }
+
+      - name: Single-instance load test (100 concurrent users, KHQR flow)
+        working-directory: backend
+        run: npm run loadtest
+        timeout-minutes: 10
+
+      - name: Multi-instance load test (100 users, 2 instances, Redis relay)
+        working-directory: backend
+        run: npm run loadtest:multi
+        timeout-minutes: 10
+
+      - name: Redis-gated integration tests (rate limiter + SSE bus)
+        working-directory: backend
+        run: |
+          RUN_REDIS_TESTS=1 npx vitest run src/middleware/rate-limit.store.test.ts
+          REDIS_URL=redis://127.0.0.1:6379 npm run verify:redis
+        timeout-minutes: 10
