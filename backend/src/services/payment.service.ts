@@ -9,6 +9,7 @@ import type {
 import { getPaymentProvider } from './payment/payment.factory.js'
 import { renderQrDataUrl } from './payment/qr.util.js'
 import { emitPaymentStatus } from './payment/events.bus.js'
+import { providerSyncCache } from './payment/provider-sync-cache.js'
 import { paymentRepository } from '../repositories/finance.repository.js'
 import { orderRepository } from '../repositories/order.repository.js'
 import { walletService } from './wallet.service.js'
@@ -187,6 +188,10 @@ export class PaymentService {
 
   private async syncProviderStatus(payment: PaymentDoc): Promise<void> {
     if (!payment.providerPaymentId) return
+    // Throttle provider API calls per payment (see provider-sync-cache.ts).
+    // Every payment page polls ~every 3s; 100 users would otherwise hit
+    // CutLuy ~20–33×/s. Instant pushes still arrive via webhook → SSE.
+    if (!providerSyncCache.isDue(payment._id.toString())) return
     let providerStatus: ProviderPaymentStatus
     try {
       providerStatus = await this.provider.getPayment(payment.providerPaymentId)
@@ -194,6 +199,9 @@ export class PaymentService {
       logger.warn(`[payment] provider status check failed for ${payment.referenceId}`, err)
       return
     }
+    // Record only after a SUCCESSFUL call — transient provider errors retry
+    // immediately instead of being throttled for the full TTL.
+    providerSyncCache.markSynced(payment._id.toString())
     await this.applyProviderStatus(payment, providerStatus)
   }
 

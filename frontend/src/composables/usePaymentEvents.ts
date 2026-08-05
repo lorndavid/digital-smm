@@ -14,10 +14,21 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api'
 
 const TERMINAL = ['paid', 'expired', 'failed', 'refunded']
 
+/** Poll cadence. Also the max latency to detect a payment without SSE. */
+const POLL_INTERVAL_MS = 3000
+
 /**
  * Streams payment status updates over Server-Sent Events using fetch()
- * (so the Authorization header is attached), falling back to 5s
- * polling when the stream cannot be established.
+ * (so the Authorization header is attached), with an always-on polling
+ * safety net.
+ *
+ * Why poll even while SSE is connected? A stalled SSE stream (proxy
+ * buffering, silent connection drop) would otherwise leave the page stuck
+ * on "pending" forever — the exact "I had to refresh to see success"
+ * bug. Polling every 3s guarantees the paid state auto-detects within a
+ * few seconds regardless of SSE health (worst case capped by the
+ * backend's ~10s provider-sync TTL). The backend throttles provider
+ * checks per payment, so the extra polls are cheap at 100+ users.
  *
  * `start()` is idempotent — safe to call again after a reference change.
  */
@@ -34,16 +45,32 @@ export function usePaymentEvents(
   let pollTimer: ReturnType<typeof setInterval> | null = null
   let stopped = false
   let session = 0
+  let lastSnapshot: PaymentStatusResponse | null = null
+
+  /** Pushes a snapshot only when it actually changed — no wasted renders. */
+  function applySnapshot(snap: PaymentStatusResponse): void {
+    const prev = lastSnapshot
+    lastSnapshot = snap
+    const changed =
+      !prev ||
+      prev.payment.status !== snap.payment.status ||
+      prev.payment.referenceId !== snap.payment.referenceId ||
+      (prev.payment.approvedAt ?? null) !== (snap.payment.approvedAt ?? null)
+    if (changed) {
+      onSnapshot(snap)
+      if (TERMINAL.includes(snap.payment.status)) stopped = true
+    }
+  }
 
   async function fetchSnapshot(): Promise<void> {
     const ref = reference()
-    if (!ref) return
+    if (!ref || stopped) return
     try {
       const res = await fetch(`${API_BASE}/payment/status?reference=${encodeURIComponent(ref)}`, {
         headers: { Authorization: `Bearer ${getAuthToken() ?? ''}` },
       })
       if (res.ok) {
-        onSnapshot((await res.json()) as PaymentStatusResponse)
+        applySnapshot((await res.json()) as PaymentStatusResponse)
       }
     } catch {
       /* polling continues; transient errors are non-fatal */
@@ -65,9 +92,8 @@ export function usePaymentEvents(
       if (!res.ok || !res.body) throw new Error('SSE unavailable')
 
       connected.value = true
-      polling.value = false
       error.value = ''
-      stopPolling() // SSE is live — no need to poll every 5s as well.
+      // NOTE: polling deliberately keeps running as a safety net.
 
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
@@ -91,7 +117,7 @@ export function usePaymentEvents(
                 stopPolling()
               }
             } else {
-              onSnapshot(payload as PaymentStatusResponse)
+              applySnapshot(payload as PaymentStatusResponse)
             }
           }
           if (!stopped && mySession === session) void read()
@@ -105,13 +131,14 @@ export function usePaymentEvents(
     }
   }
 
+  /** Polling is the always-on safety net — cheap thanks to the backend TTL cache. */
   function startPolling(mySession: number): void {
-    if (pollTimer || stopped || mySession !== session) return
+    if (pollTimer || mySession !== session) return
     polling.value = true
     void fetchSnapshot()
     pollTimer = setInterval(() => {
       if (mySession === session && !stopped) void fetchSnapshot()
-    }, 5000)
+    }, POLL_INTERVAL_MS)
   }
 
   function stopPolling(): void {
@@ -124,7 +151,7 @@ export function usePaymentEvents(
 
   function fallbackToPolling(): void {
     connected.value = false
-    error.value = 'Live updates unavailable — polling instead.'
+    error.value = 'Live updates paused — still checking automatically.'
     startPolling(session)
   }
 
@@ -141,9 +168,9 @@ export function usePaymentEvents(
     if (stopped || session === 0) return
     await openStream(session)
     if (stopped) return
-    // Safety net: poll only while the SSE stream is NOT connected, so the
-    // provider isn't hit twice per interval.
-    if (!connected.value) startPolling(session)
+    // Safety net runs regardless of SSE state — a stalled stream can never
+    // leave the page stuck on "pending".
+    startPolling(session)
   }
 
   function stop(): void {

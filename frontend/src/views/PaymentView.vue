@@ -4,7 +4,6 @@ import { useRoute, useRouter } from 'vue-router'
 import confetti from 'canvas-confetti'
 import {
   ArrowLeft,
-  Check,
   Clock,
   Copy,
   ExternalLink,
@@ -241,25 +240,13 @@ function serviceName(): string {
   return typeof order.value.service === 'object' ? order.value.service.name : 'Service'
 }
 
-// ---------------------------------------------------------------------------
-// Stepper
-// ---------------------------------------------------------------------------
-
-const steps = [
-  { key: 'pending', label: 'Pending', sub: 'Waiting for scan' },
-  { key: 'scanned', label: 'Scanned', sub: 'Confirming in app' },
-  { key: 'paid', label: 'Paid', sub: 'Payment confirmed' },
-]
-function stepState(key: string): 'done' | 'active' | 'todo' {
-  const orderIdx = steps.findIndex((s) => s.key === status.value)
-  const idx = steps.findIndex((s) => s.key === key)
-  if (isPaid.value) return 'done'
-  if (idx < orderIdx) return 'done'
-  if (idx === orderIdx) return 'active'
-  return 'todo'
-}
-
 const countdownDanger = computed(() => countdown.value.total > 0 && countdown.value.total <= 60)
+
+// Waiting hint copy — the page auto-flips to the success screen the moment
+// the bank payment lands (SSE push + 3s polling safety net).
+const waitingCopy = computed(() =>
+  status.value === 'scanned' ? 'Payment detected — confirm it in your banking app' : 'Waiting for payment…',
+)
 </script>
 
 <template>
@@ -395,60 +382,6 @@ const countdownDanger = computed(() => countdown.value.total > 0 && countdown.va
               </div>
             </div>
 
-            <!-- Live status -->
-            <div class="glass rounded-3xl p-6 shadow-card">
-              <div class="flex items-center justify-between">
-                <p class="text-sm font-medium text-white">Payment status</p>
-                <span
-                  class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold"
-                  :class="
-                    status === 'paid'
-                      ? 'bg-emerald-400/10 text-emerald-300'
-                      : status === 'scanned'
-                        ? 'bg-sky-400/10 text-sky-300'
-                        : 'bg-amber-400/10 text-amber-300'
-                  "
-                >
-                  <span
-                    class="h-1.5 w-1.5 animate-pulse rounded-full"
-                    :class="status === 'paid' ? 'bg-emerald-400' : status === 'scanned' ? 'bg-sky-400' : 'bg-amber-400'"
-                  />
-                  {{ status === 'paid' ? 'Paid' : status === 'scanned' ? 'Scanned — confirming' : 'Waiting for payment' }}
-                </span>
-              </div>
-
-              <div class="mt-6 flex items-center">
-                <template v-for="(step, i) in steps" :key="step.key">
-                  <div class="flex flex-col items-center" :class="i < steps.length - 1 ? 'flex-1' : ''">
-                    <div class="flex w-full items-center">
-                      <div
-                        class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-500"
-                        :class="
-                          stepState(step.key) === 'done'
-                            ? 'border-emerald-400 bg-emerald-400/20 text-emerald-300'
-                            : stepState(step.key) === 'active'
-                              ? 'border-brand-400 bg-brand-500/20 text-white shadow-glow'
-                              : 'border-white/15 bg-white/5 text-white/30'
-                        "
-                      >
-                        <Check v-if="stepState(step.key) === 'done'" class="h-4 w-4" />
-                        <Loader2 v-else-if="stepState(step.key) === 'active'" class="h-4 w-4 animate-spin" />
-                        <span v-else class="text-xs font-bold">{{ i + 1 }}</span>
-                      </div>
-                      <div
-                        v-if="i < steps.length - 1"
-                        class="mx-2 h-0.5 flex-1 rounded-full transition-colors duration-500"
-                        :class="stepState(step.key) === 'done' ? 'bg-emerald-400/60' : 'bg-white/10'"
-                      />
-                    </div>
-                    <p class="mt-2 text-xs font-medium" :class="stepState(step.key) === 'todo' ? 'text-white/30' : 'text-white/80'">
-                      {{ step.label }}
-                    </p>
-                  </div>
-                </template>
-              </div>
-            </div>
-
             <!-- Expired / failed -->
             <div
               v-if="status === 'expired' || status === 'failed'"
@@ -532,15 +465,20 @@ const countdownDanger = computed(() => countdown.value.total > 0 && countdown.va
                     <Loader2 class="h-8 w-8 animate-spin text-brand-300" />
                   </div>
                 </div>
-                <div
-                  v-if="status === 'scanned'"
-                  class="absolute inset-0 flex items-center justify-center rounded-3xl bg-night/60 backdrop-blur-[2px]"
-                >
-                  <div class="text-center">
-                    <Loader2 class="mx-auto h-8 w-8 animate-spin text-sky-300" />
-                    <p class="mt-2 text-sm font-medium text-white">Payment scanned — confirm in your banking app</p>
-                  </div>
-                </div>
+              </div>
+
+              <!-- Live waiting hint — the success screen appears automatically
+                   the moment the payment lands (no refresh needed) -->
+              <div
+                class="mt-5 flex items-center justify-center gap-2 text-xs font-medium"
+                :class="status === 'scanned' ? 'text-sky-300' : 'text-white/45'"
+              >
+                <Loader2 v-if="status !== 'scanned'" class="h-3.5 w-3.5 animate-spin" />
+                <span v-else class="relative flex h-2 w-2">
+                  <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400 opacity-75" />
+                  <span class="relative inline-flex h-2 w-2 rounded-full bg-sky-400" />
+                </span>
+                {{ waitingCopy }}
               </div>
 
               <p class="mt-4 font-display text-3xl font-bold text-white">
