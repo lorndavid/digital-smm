@@ -1,0 +1,12 @@
+# Keep the monorepo build context lean — node_modules can be hundreds of MB.
+.git
+.gitignore
+node_modules
+**/node_modules
+**/dist
+**/coverage
+**/*.log
+**/.env
+**/.env.*
+!.env.docker.example
+*.md

@@ -17,9 +17,12 @@ import { buildMockKhqr } from './khqr.util.js'
  */
 const ledger = new Map<string, number>()
 
-/** Demo timings (ms). */
-const SCANNED_AFTER = 3_000
-const PAID_AFTER = 8_000
+/**
+ * Demo timings (ms). Env-overridable so load tests can freeze the mock at
+ * 'pending' (e.g. MOCK_PAYMENT_PAID_MS=999999999) for deterministic phases.
+ */
+const SCANNED_AFTER = Number(process.env.MOCK_PAYMENT_SCANNED_MS ?? 3_000)
+const PAID_AFTER = Number(process.env.MOCK_PAYMENT_PAID_MS ?? 8_000)
 
 /**
  * Mock payment provider for local development. Implements the full

@@ -112,6 +112,36 @@ npm run dev        # backend (4000) + frontend (5173) + admin (5174)
 - Admin panel: **http://localhost:5174**
 - API health: **http://localhost:4000/api/health**
 
+### 4. Run the whole stack with Docker (optional)
+
+A `docker-compose.yml` at the repo root boots **MongoDB + Redis + backend + customer
+frontend + admin panel** with one command. Frontend and admin are production builds
+served by nginx, which proxies `/api` and `/webhooks` to the backend **without SSE
+buffering** (the live KHQR status stream needs it).
+
+```bash
+# (optional) copy the env template and adjust values
+cp .env.docker.example .env
+
+# build + start everything in the background
+docker compose up --build -d
+```
+
+| Service  | URL                     |
+|----------|-------------------------|
+| Customer | http://localhost:5173   |
+| Admin    | http://localhost:5174   |
+| API      | http://localhost:4000   |
+| Mongo    | mongodb://mongo:27017/vidsmm (internal) |
+| Redis    | redis://redis:6379      (internal) |
+
+- **No `.env` needed for defaults** — `SMM_PROVIDER=mock` and
+  `PAYMENT_PROVIDER=mock` give you a fully working local stack out of the box.
+- Set real values in the root `.env` (see `.env.docker.example`): Google OAuth
+  keys, `CUSTOMER_JWT_SECRET` / `ADMIN_JWT_SECRET`, `SUPER_ADMIN_EMAIL` + password,
+  `SMMWIZ_API_KEY`, `CUTLUY_API_KEY` / `CUTLUY_WEBHOOK_SECRET`.
+- Stop with `docker compose down` (add `-v` to also delete the Mongo data volume).
+
 ---
 
 ## Google OAuth setup (customer login)

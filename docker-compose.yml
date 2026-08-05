@@ -1,0 +1,121 @@
+# ============================================================
+# VidSMM — full stack, one command:  docker compose up --build -d
+#
+#   mongo    local MongoDB 7          (internal)
+#   redis    local Redis 7            (internal — cross-instance SSE bus)
+#   backend  API on http://localhost:4000
+#   frontend customer app on http://localhost:5173
+#   admin    admin panel on http://localhost:5174
+#
+# Frontend & admin are production builds served by nginx, which proxies
+# /api and /webhooks to the backend (SSE-safe, no buffering). Copy
+# .env.docker.example to .env to override any default.
+# ============================================================
+name: vidsmm
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+      # In-compose database + Redis by default; override via .env if you
+      # prefer MongoDB Atlas (see .env.docker.example).
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongo:27017/vidsmm}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      # Customer Google OAuth
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      CUSTOMER_JWT_SECRET: ${CUSTOMER_JWT_SECRET:-change-me-customer-jwt-secret-32-char-min}
+      CUSTOMER_JWT_EXPIRES_IN: ${CUSTOMER_JWT_EXPIRES_IN:-7d}
+      # Admin auth + bootstrap
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:-change-me-admin-jwt-secret-32-char-min}
+      ADMIN_JWT_EXPIRES_IN: ${ADMIN_JWT_EXPIRES_IN:-12h}
+      SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:-}
+      SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:5174}
+      # SMM provider
+      SMM_PROVIDER: ${SMM_PROVIDER:-mock}
+      SMMWIZ_API_URL: https://smmwiz.com/api/v2
+      SMMWIZ_API_KEY: ${SMMWIZ_API_KEY:-}
+      # Payment provider
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-mock}
+      CUTLUY_API_URL: https://cutluy.com/v1
+      CUTLUY_API_KEY: ${CUTLUY_API_KEY:-}
+      CUTLUY_WEBHOOK_SECRET: ${CUTLUY_WEBHOOK_SECRET:-}
+      # Background jobs
+      ENABLE_ORDER_SYNC_JOB: ${ENABLE_ORDER_SYNC_JOB:-false}
+      ORDER_SYNC_INTERVAL_MS: "60000"
+    ports:
+      - "4000:4000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "5173:80"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
+  admin:
+    build:
+      context: .
+      dockerfile: admin/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "5174:80"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
+volumes:
+  mongo_data:
