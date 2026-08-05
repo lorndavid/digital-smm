@@ -19,7 +19,8 @@
   "start": "npm run start -w backend",
   "test": "npm run test -w backend",
   "loadtest": "npm run loadtest -w backend",
-  "loadtest:multi": "npm run loadtest:multi -w backend"
+  "loadtest:multi": "npm run loadtest:multi -w backend",
+  "test:e2e": "npm run test:e2e -w frontend"
 },
   "devDependencies": {
     "concurrently": "^9.1.2"

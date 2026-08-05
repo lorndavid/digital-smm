@@ -13,6 +13,7 @@ import {
 } from '@lucide/vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useWalletStore } from '@/stores/wallet.store'
+import AvatarCircle from '@/components/layout/AvatarCircle.vue'
 import BrandLogo from '@/components/layout/BrandLogo.vue'
 import { formatMoney } from '@/utils/format'
 
@@ -85,11 +86,12 @@ async function signOut(): Promise<void> {
       </div>
 
       <div class="flex items-center gap-3">
-        <div
-          class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-secondary-500 text-xs font-bold text-white"
-        >
-          {{ (authStore.user?.name || authStore.user?.email || '?').slice(0, 2).toUpperCase() }}
-        </div>
+        <AvatarCircle
+          :name="authStore.user?.name ?? ''"
+          :email="authStore.user?.email ?? ''"
+          :avatar-url="authStore.user?.avatarUrl ?? ''"
+          :size="36"
+        />
         <div class="min-w-0 flex-1">
           <p class="truncate text-sm font-semibold text-white">
             {{ authStore.user?.name || 'VidSMM User' }}

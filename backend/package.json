@@ -17,7 +17,8 @@
     "curate:featured": "tsx scripts/curate-featured.ts",
     "loadtest": "tsx scripts/loadtest-payment.ts",
     "loadtest:multi": "tsx scripts/loadtest-multi-instance.ts",
-    "verify:redis": "tsx scripts/verify-redis-cross-instance.ts"
+    "verify:redis": "tsx scripts/verify-redis-cross-instance.ts",
+    "start:browser-test": "tsx scripts/start-browser-test.ts"
   },
   "dependencies": {
     "cors": "^2.8.6",

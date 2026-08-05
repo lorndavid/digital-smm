@@ -22,6 +22,12 @@ const routes: RouteRecordRaw[] = [
       { path: 'orders', name: 'admin-orders', component: () => import('@/views/OrdersView.vue') },
       { path: 'payments', name: 'admin-payments', component: () => import('@/views/PaymentsView.vue') },
       { path: 'announcements', name: 'admin-announcements', component: () => import('@/views/AnnouncementsView.vue') },
+      {
+        path: 'load-tests',
+        name: 'admin-load-tests',
+        component: () => import('@/views/LoadTestsView.vue'),
+        meta: { requiresSuperAdmin: true },
+      },
       { path: 'settings', name: 'admin-settings', component: () => import('@/views/SettingsView.vue') },
     ],
   },

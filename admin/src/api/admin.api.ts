@@ -11,6 +11,8 @@ import type {
   Order,
   OrderStatus,
   Paginated,
+  LoadTestStatusResponse,
+  LoadTestType,
   Payment,
   PaymentStats,
   Service,
@@ -134,4 +136,10 @@ export const adminApi = {
   listSettings: async (): Promise<Setting[]> => (await apiClient.get('/admin/settings')).data,
   setSetting: async (data: { key: string; value: unknown; description?: string }): Promise<Setting> =>
     (await apiClient.put('/admin/settings', data)).data,
+
+  // Load tests (super admin only — re-run the 100-user KHQR load tests)
+  loadTestStatus: async (): Promise<LoadTestStatusResponse> =>
+    (await apiClient.get('/admin/load-tests/status')).data,
+  runLoadTest: async (type: LoadTestType): Promise<{ status: 'running'; type: LoadTestType }> =>
+    (await apiClient.post('/admin/load-tests/run', { type })).data,
 }

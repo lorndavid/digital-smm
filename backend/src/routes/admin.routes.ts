@@ -1,7 +1,10 @@
 import { Router } from 'express'
 import { adminController } from '../controllers/admin.controller.js'
+import { loadTestController } from '../controllers/loadtest.controller.js'
 import { adminOnly, requireSuperAdmin } from '../middleware/admin.middleware.js'
 import { adminMutationLimiter, loginLimiter } from '../middleware/rate-limit.middleware.js'
+import { validate } from '../middleware/validate.middleware.js'
+import { loadTestRunBodySchema } from '../validators/index.js'
 
 export const adminRoutes = Router()
 
@@ -81,3 +84,15 @@ adminRoutes.delete('/admin/announcements/:id', adminController.deleteAnnouncemen
 adminRoutes.get('/admin/settings', adminController.listSettings)
 adminRoutes.get('/admin/settings/:key', adminController.getSetting)
 adminRoutes.put('/admin/settings', ...adminController.setSetting)
+
+// Load tests (dev/ops diagnostics) — super admin only: they spawn child
+// processes and generate 100-user synthetic load. Safe by construction (mock
+// providers + throwaway Mongo DB that the scripts drop on exit).
+adminRoutes.get('/admin/load-tests/status', requireSuperAdmin, loadTestController.status)
+adminRoutes.post(
+  '/admin/load-tests/run',
+  requireSuperAdmin,
+  adminMutationLimiter,
+  validate(loadTestRunBodySchema),
+  loadTestController.run,
+)

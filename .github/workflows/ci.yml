@@ -47,6 +47,45 @@ jobs:
       - name: Hermetic unit & API tests
         run: npm test
 
+  browser-test:
+    name: Browser test (payment auto-success via SSE)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+    env:
+      # The Playwright webServer boots its own backend on :4001 (mock
+      # providers, throwaway DB derived from MONGODB_URI) + frontend :5199.
+      MONGODB_URI: mongodb://127.0.0.1:27017/vidsmm_e2e
+      CUSTOMER_JWT_SECRET: ci-customer-jwt-secret-0123456789
+      ADMIN_JWT_SECRET: ci-admin-jwt-secret-0123456789
+      RATE_LIMIT_MAX: 100000
+      RATE_LIMIT_WINDOW_MS: 600000
+      DNS_SERVERS: ""
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install workspaces (single lockfile)
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser test — KHQR auto-success via SSE, no refresh
+        working-directory: frontend
+        run: npm run test:e2e
+        timeout-minutes: 15
+
   load-tests:
     name: Load tests (single + multi-instance)
     runs-on: ubuntu-latest

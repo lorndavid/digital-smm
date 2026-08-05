@@ -23,6 +23,10 @@ const ledger = new Map<string, number>()
  */
 const SCANNED_AFTER = Number(process.env.MOCK_PAYMENT_SCANNED_MS ?? 3_000)
 const PAID_AFTER = Number(process.env.MOCK_PAYMENT_PAID_MS ?? 8_000)
+/** Optional fake hosted-checkout URL so the e2e stack can exercise the
+ * deep-link vs hosted-checkout fallback branches (real CutLuy always sets
+ * checkoutUrl). Empty by default → chips fall back to the QR only. */
+const CHECKOUT_URL = process.env.MOCK_CHECKOUT_URL ?? ''
 
 /**
  * Mock payment provider for local development. Implements the full
@@ -53,7 +57,7 @@ export class MockPaymentProvider implements PaymentProvider {
       status: 'pending',
       qrString: payload,
       qrCodeDataUrl,
-      checkoutUrl: '',
+      checkoutUrl: CHECKOUT_URL,
       expiresAt: new Date(Date.now() + 15 * 60_000), // 15 minutes
     }
   }

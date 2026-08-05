@@ -1,16 +1,12 @@
 <script setup lang="ts">
 import { Menu } from '@lucide/vue'
 import { useAuthStore } from '@/stores/auth.store'
+import AvatarCircle from '@/components/layout/AvatarCircle.vue'
 import BrandLogo from '@/components/layout/BrandLogo.vue'
 
 defineEmits<{ toggle: [] }>()
 
 const authStore = useAuthStore()
-
-function initials(): string {
-  const source = authStore.user?.name || authStore.user?.email || 'V'
-  return source.slice(0, 2).toUpperCase()
-}
 </script>
 
 <template>
@@ -27,11 +23,16 @@ function initials(): string {
     <BrandLogo size="sm" />
     <RouterLink
       to="/dashboard/profile"
-      class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-secondary-500 text-xs font-bold text-white shadow-glow transition-transform hover:scale-105"
+      class="block rounded-full shadow-glow transition-transform hover:scale-105"
       aria-label="My profile"
       :title="authStore.user?.email ?? 'My profile'"
     >
-      {{ initials() }}
+      <AvatarCircle
+        :name="authStore.user?.name ?? ''"
+        :email="authStore.user?.email ?? ''"
+        :avatar-url="authStore.user?.avatarUrl ?? ''"
+        :size="40"
+      />
     </RouterLink>
   </header>
 </template>

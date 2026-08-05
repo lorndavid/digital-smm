@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import { ArrowRight, Mail } from '@lucide/vue'
+import { useAuthStore } from '@/stores/auth.store'
 import BaseButton from '@/components/ui/BaseButton.vue'
 
 const router = useRouter()
+const authStore = useAuthStore()
 </script>
 
 <template>
@@ -16,7 +18,11 @@ const router = useRouter()
         <h2 class="font-display text-3xl font-bold tracking-tight text-white sm:text-5xl">
           Ready to grow your social media?
         </h2>
-        <p class="mt-4 text-white/85">
+        <p v-if="authStore.isLoaded && authStore.isSignedIn" class="mt-4 text-white/85">
+          Welcome back! Jump straight into your dashboard to track orders, top up your wallet
+          and keep growing.
+        </p>
+        <p v-else class="mt-4 text-white/85">
           Join thousands of creators and agencies in Cambodia already growing with VidSMM.
           Sign up in seconds with your Google account.
         </p>
@@ -24,9 +30,10 @@ const router = useRouter()
           <BaseButton
             size="lg"
             variant="secondary"
-            @click="router.push('/sign-in')"
+            @click="router.push(authStore.isSignedIn ? '/dashboard' : '/sign-in')"
           >
-            Start Now — it's free <ArrowRight class="h-4 w-4" />
+            {{ authStore.isSignedIn ? 'Go to Dashboard' : "Start Now — it's free" }}
+            <ArrowRight class="h-4 w-4" />
           </BaseButton>
           <a
             href="mailto:support@vidsmm.com"

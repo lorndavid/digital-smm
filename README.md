@@ -363,6 +363,8 @@ ACLEDA, Wing) is a new folder + one factory branch — business logic never chan
 | GET | `/api/admin/audit-logs` | ✅ super admin | Audit trail of admin role changes |
 | GET | `/api/admin/payments` | ✅ admin | Payments |
 | GET/PUT | `/api/admin/settings` | ✅ admin | Platform settings |
+| POST | `/api/admin/load-tests/run` | ✅ super admin | Run a 100-user load test (`single` / `multi`) on demand |
+| GET | `/api/admin/load-tests/status` | ✅ super admin | In-flight / last load-test results + summary tables |
 
 ---
 
@@ -381,6 +383,16 @@ npm run start        # run the built backend (production)
 npm run loadtest        # single-instance: 100 concurrent users through the KHQR flow
 npm run loadtest:multi  # multi-instance: 100 users across 2 real backend processes (Redis SSE relay)
 npm run verify:redis    # cross-instance SSE bus relay check (needs REDIS_URL)
+
+# Or re-run either load test from the admin panel: Admin → System → Load Tests
+# (super admin only). It spawns the same scripts server-side with the mock
+# provider + throwaway DB and streams the full summary tables live.
+
+# Browser test (Playwright) — needs Google Chrome installed locally.
+npm run test:e2e        # boots its own backend (:4001) + frontend (:5199),
+                        # opens a real KHQR in Chrome, fires a signed CutLuy
+                        # webhook and asserts the auto-success screen appears
+                        # via SSE with no refresh. CI runs it on every PR.
 ```
 
 ```bash

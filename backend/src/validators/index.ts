@@ -231,3 +231,11 @@ export const serviceBulkBodySchema = z.object({
     isFeatured: z.boolean().optional(),
   }),
 })
+
+// ---------------------------------------------------------------------------
+// Admin: load tests (dev/ops diagnostics)
+// ---------------------------------------------------------------------------
+
+export const loadTestRunBodySchema = z.object({
+  type: z.enum(['single', 'multi']),
+})

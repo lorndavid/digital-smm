@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Menu, X } from '@lucide/vue'
 import {
+  Activity,
   BarChart3,
   FolderTree,
   LayoutDashboard,
@@ -66,7 +67,10 @@ const navGroups: NavGroup[] = [
   },
   {
     title: 'System',
-    items: [{ to: '/settings', label: 'Settings', icon: Settings }],
+    items: [
+      { to: '/load-tests', label: 'Load Tests', icon: Activity, superOnly: true },
+      { to: '/settings', label: 'Settings', icon: Settings },
+    ],
   },
 ]
 

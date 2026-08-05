@@ -4,14 +4,22 @@ import {
   ArrowRight,
   CheckCircle2,
   Heart,
+  LogOut,
   Play,
   ShieldCheck,
   TrendingUp,
   Users,
 } from '@lucide/vue'
+import { useAuthStore } from '@/stores/auth.store'
 import BaseButton from '@/components/ui/BaseButton.vue'
 
 const router = useRouter()
+const authStore = useAuthStore()
+
+async function onSignOut(): Promise<void> {
+  await authStore.signOut()
+  router.push('/')
+}
 </script>
 
 <template>
@@ -61,12 +69,24 @@ const router = useRouter()
           :visible="{ opacity: 1, y: 0, transition: { duration: 0.55, delay: 0.2 } }"
           class="mt-8 flex flex-wrap items-center gap-4"
         >
-          <BaseButton size="lg" @click="router.push('/sign-in')">
-            Start Now <ArrowRight class="h-4 w-4" />
-          </BaseButton>
-          <BaseButton size="lg" variant="outline" @click="router.push('/sign-in')">
-            Explore Services
-          </BaseButton>
+          <template v-if="authStore.isLoaded">
+            <template v-if="authStore.isSignedIn">
+              <BaseButton size="lg" @click="router.push('/dashboard')">
+                Go to Dashboard <ArrowRight class="h-4 w-4" />
+              </BaseButton>
+              <BaseButton size="lg" variant="outline" @click="onSignOut">
+                <LogOut class="h-4 w-4" /> Sign Out
+              </BaseButton>
+            </template>
+            <template v-else>
+              <BaseButton size="lg" @click="router.push('/sign-in')">
+                Start Now <ArrowRight class="h-4 w-4" />
+              </BaseButton>
+              <BaseButton size="lg" variant="outline" @click="router.push('/sign-in')">
+                Explore Services
+              </BaseButton>
+            </template>
+          </template>
         </div>
 
         <div
