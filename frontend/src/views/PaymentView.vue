@@ -111,7 +111,7 @@ function applySnapshot(snap: PaymentStatusResponse): void {
   payment.value = snap.payment
   order.value = snap.order
   loading.value = false
-  if (snap.payment.status === 'paid') celebrate()
+  if (snap.payment.status === 'paid') showSuccess()
 }
 
 function applyEvent(event: PaymentLiveEvent): void {
@@ -120,7 +120,7 @@ function applyEvent(event: PaymentLiveEvent): void {
   if (event.approvedAt) payment.value.approvedAt = event.approvedAt
   if (event.status === 'paid') {
     void paymentApi.status(reference.value).then(applySnapshot).catch(() => undefined)
-    celebrate()
+    showSuccess()
   }
 }
 
@@ -135,6 +135,54 @@ function celebrate(): void {
   })
   void confetti({ particleCount: 60, angle: 60, spread: 60, origin: { x: 0, y: 0.7 } })
   void confetti({ particleCount: 60, angle: 120, spread: 60, origin: { x: 1, y: 0.7 } })
+}
+
+// ---------------------------------------------------------------------------
+// Success: one subtle toast, then auto-redirect after a few seconds
+// ---------------------------------------------------------------------------
+
+const successToastShown = ref(false)
+const redirectIn = ref<number | null>(null)
+let redirectTimer: ReturnType<typeof setInterval> | null = null
+
+/** How long the success screen stays before auto-redirecting (seconds). */
+const REDIRECT_AFTER_S = 6
+
+/** Fully idempotent — fires exactly once per payment reference. */
+function showSuccess(): void {
+  if (successToastShown.value) return
+  successToastShown.value = true
+
+  celebrate()
+
+  // One subtle toast — the page below already celebrates visually.
+  if (isOrder.value) {
+    toast.success(`Order ${order.value?.orderNumber ? `#${order.value.orderNumber} ` : ''}paid — processing started`)
+  } else {
+    toast.success(`${formatMoney(payment.value?.amount ?? 0)} added to your wallet`)
+  }
+
+  startRedirectCountdown(REDIRECT_AFTER_S)
+}
+
+/** Counts down then navigates the customer to their wallet / orders. */
+function startRedirectCountdown(seconds: number): void {
+  stopRedirectCountdown()
+  redirectIn.value = seconds
+  redirectTimer = setInterval(() => {
+    if (redirectIn.value === null) return
+    redirectIn.value -= 1
+    if (redirectIn.value <= 0) {
+      stopRedirectCountdown()
+      void router.push(isOrder.value ? '/dashboard/orders' : '/dashboard/wallet')
+    }
+  }, 1000)
+}
+
+function stopRedirectCountdown(): void {
+  if (redirectTimer) clearInterval(redirectTimer)
+  redirectTimer = null
+  redirectIn.value = null
 }
 
 async function init(): Promise<void> {
@@ -160,6 +208,8 @@ async function init(): Promise<void> {
 watch(reference, () => {
   payment.value = null
   order.value = null
+  successToastShown.value = false
+  stopRedirectCountdown()
   void init()
 })
 
@@ -175,6 +225,7 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload)
   stopCloseCountdown()
+  stopRedirectCountdown()
 })
 
 // ---------------------------------------------------------------------------
@@ -332,14 +383,22 @@ const waitingCopy = computed(() =>
           </div>
         </div>
 
+        <p
+          v-if="redirectIn !== null && redirectIn > 0"
+          class="mt-5 flex items-center justify-center gap-1.5 text-xs text-white/40"
+        >
+          <Loader2 class="h-3.5 w-3.5 animate-spin" />
+          Redirecting to your {{ isOrder ? 'orders' : 'wallet' }} in {{ redirectIn }}s…
+        </p>
+
         <div class="mt-8 flex justify-center gap-3">
           <BaseButton
             variant="outline"
-            @click="router.push(isOrder ? '/dashboard/orders' : '/dashboard/wallet')"
+            @click="stopRedirectCountdown(); router.push(isOrder ? '/dashboard/orders' : '/dashboard/wallet')"
           >
             <ArrowLeft class="h-4 w-4" /> Back to dashboard
           </BaseButton>
-          <BaseButton variant="secondary" @click="router.push('/dashboard/services')">
+          <BaseButton variant="secondary" @click="stopRedirectCountdown(); router.push('/dashboard/services')">
             <Sparkles class="h-4 w-4" /> Grow more
           </BaseButton>
         </div>
