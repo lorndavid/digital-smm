@@ -83,7 +83,7 @@ async function openPaymentPage(page: Page, request: APIRequestContext) {
   expect(payment.checkoutUrl).toContain('checkout.cutluy.test') // mock env override active
   await page.addInitScript((t) => localStorage.setItem('vidsmm_session_token', t), token)
   await page.goto(`/pay/${payment.referenceId}`)
-  await expect(page.locator('img[alt="Bakong KHQR payment code"]')).toBeVisible()
+  await expect(page.locator('img[alt="KHQR"]')).toBeVisible()
   return payment
 }
 
@@ -125,7 +125,7 @@ test('desktop: tapping ABA falls back to the hosted checkout via window.open', a
 
   // The mock now supplies a checkout URL, so the hosted-checkout button and
   // every bank chip are actionable.
-  await expect(page.getByRole('button', { name: /Open hosted checkout/i })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Open Secure Checkout/i })).toBeVisible()
 
   const abaChip = page.getByRole('button', { name: /ABA Bank/ })
   await expect(abaChip).toBeEnabled()

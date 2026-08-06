@@ -7,7 +7,9 @@ import { ORDER_STATUSES, ServiceType } from '../types/index.js'
 
 export const paginationQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
+  // Up to 1,000 rows: the Explore page fetches a whole platform in one call
+  // to group services client-side into subcategories.
+  limit: z.coerce.number().int().min(1).max(1000).default(20),
 })
 
 // ---------------------------------------------------------------------------

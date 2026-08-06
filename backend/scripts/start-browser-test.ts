@@ -50,9 +50,37 @@ async function main(): Promise<void> {
   const mongoose = (await import('mongoose')).default
   const { createApp } = await import('../src/app.js')
   const { connectDatabase } = await import('../src/config/database.js')
+  const { adminService } = await import('../src/services/admin.service.js')
 
   await connectDatabase()
   console.log(`[browser-test] connected to throwaway db: ${DB_NAME}`)
+
+  // Self-healing cleanup: an abruptly-killed previous run (e.g. Playwright
+  // force-killing the webServer) can leave `vidsmm_browsertest_*` databases
+  // behind. Each one holds ~12 collections and free Atlas clusters cap at
+  // 500 collections total, so sweep every leftover EXCEPT this run's db.
+  // IMPORTANT: drop BY NAME via client.db(name).dropDatabase().
+  // connection.dropDatabase(name) ignores the arg and would drop THIS
+  // run's throwaway db (or worse, the app db if misconfigured).
+  try {
+    const adminDb = mongoose.connection.getClient().db().admin()
+    const { databases } = await adminDb.listDatabases()
+    const stale = (databases as Array<{ name: string }>)
+      .map((d) => d.name)
+      .filter((name) => name.startsWith('vidsmm_browsertest_') && name !== DB_NAME)
+    const client = mongoose.connection.getClient()
+    for (const name of stale) {
+      await client.db(name).dropDatabase().catch(() => undefined)
+      console.log(`[browser-test] dropped stale test db: ${name}`)
+    }
+  } catch (err) {
+    console.warn(`[browser-test] db sweep skipped: ${err instanceof Error ? err.message : err}`)
+  }
+
+  // Seed the mock provider catalogue (16 services across Facebook / TikTok /
+  // Telegram / …) so the Explore page has data for browser tests.
+  const seeded = await adminService.syncProviderServices()
+  console.log(`[browser-test] seeded ${seeded.total} mock provider services`)
 
   const app = createApp()
   const server = app.listen(4001, () => {

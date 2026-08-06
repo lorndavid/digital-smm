@@ -7,6 +7,7 @@ import {
 } from '../repositories/catalog.repository.js'
 import { paymentRepository } from '../repositories/finance.repository.js'
 import { Types } from 'mongoose'
+import type { Platform } from '../types/index.js'
 import { SettingModel } from '../models/setting.model.js'
 import { CategoryModel } from '../models/category.model.js'
 import { ServiceModel } from '../models/service.model.js'
@@ -19,6 +20,26 @@ function slugFor(name: string): string {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '') || 'category'
   )
+}
+
+/**
+ * Infers the storefront platform for a provider category name so cards get
+ * the right icon/branding. Only used to UPGRADE categories that are still
+ * 'other' — admin-chosen platforms are never overwritten (see sync).
+ */
+function inferPlatformForCategory(name: string): Platform {
+  const n = name.toLowerCase()
+  const rules: Array<[Platform, string[]]> = [
+    ['tiktok', ['tiktok', 'tik tok']],
+    ['facebook', ['facebook', 'fb']],
+    ['telegram', ['telegram', 'tg']],
+    ['youtube', ['youtube', 'yt']],
+    ['instagram', ['instagram', 'ig']],
+  ]
+  for (const [platform, keywords] of rules) {
+    if (keywords.some((k) => n.includes(k))) return platform
+  }
+  return 'other'
 }
 
 /** Admin operations: dashboard stats, provider sync and platform settings. */
@@ -76,6 +97,28 @@ export class AdminService {
             filter: { slug: slugFor(name) },
             update: { $setOnInsert: { name, slug: slugFor(name), platform: 'other' } },
             upsert: true,
+          },
+        })),
+        { ordered: false },
+      )
+    }
+
+    // 2b. Upgrade the default platform from 'other' to the inferred one
+    //     (Facebook / TikTok / …). Scoped to platform: 'other' so a re-sync
+    //     never stomps a platform an admin set manually in the admin panel.
+    if (names.size > 0) {
+      const platformBySlug = new Map<string, Platform>()
+      for (const name of names) {
+        const slug = slugFor(name)
+        if (!platformBySlug.has(slug)) {
+          platformBySlug.set(slug, inferPlatformForCategory(name))
+        }
+      }
+      await CategoryModel.bulkWrite(
+        [...platformBySlug.entries()].map(([slug, platform]) => ({
+          updateOne: {
+            filter: { slug, platform: 'other' },
+            update: { $set: { platform } },
           },
         })),
         { ordered: false },

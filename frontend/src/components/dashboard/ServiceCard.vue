@@ -13,6 +13,7 @@ import {
 import type { Service } from '@/types/models'
 import { formatMoney } from '@/utils/format'
 import { PLATFORM_META, SERVICE_TYPE_LABEL } from '@/utils/constants'
+import { inferPlatformFromCategoryName } from '@/utils/serviceGroups'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseBadge from '@/components/ui/BaseBadge.vue'
 
@@ -28,23 +29,30 @@ const PLATFORM_ICONS = {
   other: Sparkles,
 } as const
 
-function platformOf(service: Service) {
+/**
+ * Resolves the card's platform: prefers the category's own platform field,
+ * falls back to inferring it from the category name (synced categories are
+ * 'other' until the backend inference pass or an admin sets them).
+ */
+function categoryPlatform(service: Service) {
   const category = service.category
   if (category && typeof category === 'object' && 'platform' in category) {
-    return PLATFORM_META[category.platform as keyof typeof PLATFORM_META] ?? PLATFORM_META.other
+    const declared = category.platform
+    if (declared && declared !== 'other') return declared
+    const name = 'name' in category ? (category.name as string) : ''
+    return inferPlatformFromCategoryName(name)
   }
-  return PLATFORM_META.other
+  return 'other'
 }
 
 const platformKey = computed(() => {
-  const category = props.service.category
-  if (category && typeof category === 'object' && 'platform' in category) {
-    return (category.platform as keyof typeof PLATFORM_ICONS) in PLATFORM_ICONS
-      ? (category.platform as keyof typeof PLATFORM_ICONS)
-      : 'other'
-  }
-  return 'other'
+  const key = categoryPlatform(props.service)
+  return (key as keyof typeof PLATFORM_ICONS) in PLATFORM_ICONS ? key : 'other'
 })
+
+function platformOf(service: Service) {
+  return PLATFORM_META[categoryPlatform(service) as keyof typeof PLATFORM_META] ?? PLATFORM_META.other
+}
 </script>
 
 <template>

@@ -103,13 +103,13 @@ test('KHQR payment page auto-shows success on SSE paid event (no refresh, no pol
   // ---------------------------------------------------------------------
   await page.goto(`/pay/${payment.referenceId}`)
 
-  const qr = page.locator('img[alt="Bakong KHQR payment code"]')
+  const qr = page.locator('img[alt="KHQR"]')
   await expect(qr).toBeVisible()
   expect(await qr.getAttribute('src')).toMatch(/^data:image\/png/)
   await expect(page.getByText('Waiting for payment')).toBeVisible()
-  await expect(page.getByText('Secure checkout · Bakong KHQR')).toBeVisible()
-  // The pulsing "Live" indicator tells the customer the page is watching.
-  await expect(page.getByText('Live', { exact: true })).toBeVisible()
+  await expect(page.getByText('Secure checkout', { exact: true })).toBeVisible()
+  // The pulsing "live" indicator tells the customer the page is watching.
+  await expect(page.locator('.live-ring')).toBeVisible()
 
   // ---------------------------------------------------------------------
   // 4. Kill the polling safety net. From here on the ONLY way the page can
@@ -132,8 +132,8 @@ test('KHQR payment page auto-shows success on SSE paid event (no refresh, no pol
   // 6. The success screen must appear automatically — via SSE, with no
   //    refresh and no polling.
   // ---------------------------------------------------------------------
-  await expect(page.getByText('Wallet credited! 🎉')).toBeVisible()
-  await expect(page.getByText(/added to your wallet/)).toBeVisible()
+  await expect(page.getByText('Payment Successful 🎉')).toBeVisible()
+  await expect(page.getByText('Your balance has been topped up.')).toBeVisible()
 
   // Still on the payment page (the 6s redirect to the wallet has not run).
   expect(page.url()).toContain(`/pay/${payment.referenceId}`)
