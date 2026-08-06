@@ -1,12 +1,24 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ArrowLeft, ArrowRight, Link2, QrCode } from '@lucide/vue'
-import type { Service } from '@/types/models'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  CheckCircle2,
+  Link2,
+  Minus,
+  Plus,
+  QrCode,
+  XCircle,
+} from '@lucide/vue'
+import type { Category, Service } from '@/types/models'
 import { paymentApi } from '@/api/payment.api'
 import { ApiRequestError } from '@/api/client'
 import { formatMoney, formatUnitPrice } from '@/utils/format'
 import { SERVICE_TYPE_LABEL } from '@/utils/constants'
+import { validateLink, PLATFORM_LABEL, type DetectedPlatform } from '@/utils/linkValidation'
+import PlatformIcon from '@/components/ui/PlatformIcon.vue'
 import { useToast } from '@/composables/useToast'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -162,20 +174,69 @@ const quantityRequired = computed(
 )
 
 // ---------------------------------------------------------------------------
+// Link validation & platform detection
+// ---------------------------------------------------------------------------
+
+const linkCheck = computed(() => validateLink(link.value))
+const detectedPlatform = computed<DetectedPlatform>(() => linkCheck.value.platform)
+
+/** Pasted link is from a different platform than the service targets. */
+const platformMismatch = computed(() => {
+  const s = servicePlatform.value
+  const d = detectedPlatform.value
+  return s !== 'other' && d !== 'other' && s !== d
+})
+
+/** Platform of the service itself (from its category) — drives the header tile. */
+const servicePlatform = computed<DetectedPlatform>(() => {
+  const cat = props.service?.category
+  if (cat && typeof cat === 'object' && 'platform' in cat) {
+    const p = (cat as Category).platform
+    if (p !== 'other') return p
+  }
+  return 'other'
+})
+
+/** Quantity stepper, clamped to the service's allowed range. */
+function adjustQuantity(delta: number): void {
+  const service = props.service
+  const base = quantity.value ?? (service && service.min > 0 ? service.min : 1)
+  const next = base + delta
+  if (service) {
+    if (service.min > 0 && next < service.min) return
+    if (service.max > 0 && next > service.max) return
+  }
+  if (next >= 1) quantity.value = next
+}
+
+const stepIndex = computed(() => (step.value === 'details' ? 0 : 1))
+
+// ---------------------------------------------------------------------------
 // Pricing
 // ---------------------------------------------------------------------------
 
+const round2 = (n: number) => Math.round(n * 100) / 100
+
+/**
+ * pricePerUnit is the provider's RATE PER 1,000 units (e.g. $0.84 per 1,000
+ * viewers). Total = rate × qty / 1000. Package types have no quantity — the
+ * rate IS the one-time price.
+ */
 const totalPrice = computed(() => {
   const service = props.service
   if (!service) return 0
+  // Sold as exactly one unit (bundle/package) — the rate IS the price.
+  if (service.min === 1 && service.max === 1) return service.pricePerUnit
   if (service.type === 'Package' || service.type === 'Custom Comments Package') {
     return service.pricePerUnit
   }
   if (service.type === 'Subscriptions') {
     const min = Number(params.min) || 0
-    return Math.round(min * service.pricePerUnit * 100) / 100
+    return round2((min * service.pricePerUnit) / 1000)
   }
-  return Math.round((quantity.value ?? 0) * service.pricePerUnit * 100) / 100
+  const q = quantity.value ?? 0
+  if (q > 0) return round2((q * service.pricePerUnit) / 1000)
+  return service.pricePerUnit
 })
 
 // ---------------------------------------------------------------------------
@@ -187,9 +248,15 @@ function goToSummary(): void {
   const service = props.service
   if (!service) return
 
-  if (linkRequired.value && !link.value.trim()) {
-    error.value = 'Please enter the link to your page or post'
-    return
+  if (linkRequired.value) {
+    if (!link.value.trim()) {
+      error.value = 'Please enter the link to your page or post'
+      return
+    }
+    if (!linkCheck.value.valid) {
+      error.value = linkCheck.value.message
+      return
+    }
   }
   if (quantityRequired.value) {
     const q = quantity.value
@@ -225,7 +292,7 @@ async function continueToPayment(): Promise<void> {
   if (!props.service) return
   submitting.value = true
   error.value = ''
-  // KHQR providers charge a $0.01 minimum — real per-unit rates are tiny,
+  // KHQR providers charge a $0.01 minimum — real per-1,000 rates are tiny,
   // so small quantities can fall below it. Fail fast with a clear message.
   if (totalPrice.value < 0.01) {
     error.value = 'Order total is below the $0.01 USD minimum — increase the quantity'
@@ -266,36 +333,126 @@ const serviceTypeLabel = computed(() =>
 
 <template>
   <BaseModal :open="open" :title="stepTitles[step]" max-width="max-w-lg" @close="closeModal">
+    <!-- Step indicator -->
+    <div class="mb-4 flex items-center gap-2">
+      <template v-for="(label, i) in ['Details', 'Summary', 'Payment']" :key="label">
+        <template v-if="i > 0">
+          <span
+            class="h-px flex-1"
+            :class="i <= stepIndex ? 'bg-gradient-to-r from-brand-500 to-secondary-400' : 'bg-white/10'"
+          />
+        </template>
+        <span class="flex shrink-0 items-center gap-1.5">
+          <span
+            class="flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold transition-all duration-300"
+            :class="
+              i < stepIndex
+                ? 'bg-emerald-400/20 text-emerald-300'
+                : i === stepIndex
+                  ? 'bg-gradient-to-br from-brand-500 to-secondary-500 text-white shadow-glow'
+                  : 'bg-white/10 text-white/40'
+            "
+          >
+            <Check v-if="i < stepIndex" class="h-3.5 w-3.5" />
+            <template v-else>{{ i + 1 }}</template>
+          </span>
+          <span class="text-xs font-medium" :class="i === stepIndex ? 'text-white' : 'text-white/40'">
+            {{ label }}
+          </span>
+        </span>
+      </template>
+    </div>
+
     <!-- STEP 1: details -->
     <div v-if="step === 'details'" class="space-y-4">
-      <div class="glass rounded-2xl p-4">
-        <p class="font-display text-sm font-semibold text-white">{{ service?.name }}</p>
-        <p class="mt-0.5 text-xs text-white/45">
-          {{ serviceTypeLabel }} · {{ formatUnitPrice(service?.pricePerUnit ?? 0) }} / unit
-        </p>
+      <div class="glass flex items-center gap-3 rounded-2xl p-4">
+        <PlatformIcon :platform="servicePlatform" size="md" tile />
+        <div class="min-w-0">
+          <p class="font-display truncate text-sm font-semibold text-white">{{ service?.name }}</p>
+          <p class="mt-0.5 text-xs text-white/45">
+            {{ serviceTypeLabel }} · {{ formatUnitPrice(service?.pricePerUnit ?? 0) }} / 1,000
+          </p>
+        </div>
       </div>
 
       <BaseInput
         v-if="linkRequired"
         v-model="link"
         label="Link to your page or post"
-        placeholder="https://tiktok.com/@username"
-        hint="Paste the exact URL you want to grow."
+        placeholder="https://www.tiktok.com/@username"
+        hint="Paste the exact URL you want to grow — we detect the platform automatically."
         :error="error && !link ? error : ''"
       />
 
-      <BaseInput
-        v-if="quantityRequired"
-        :model-value="quantity"
-        @update:model-value="quantity = $event === '' || $event === null ? null : Number($event)"
-        label="Quantity"
-        type="number"
-        :min="service?.min"
-        :max="service?.max"
-        :placeholder="service ? `${service.min} – ${service.max}` : ''"
-        hint="Pick a quantity within the allowed range."
-        :error="error && !quantity ? error : ''"
-      />
+      <div
+        v-if="link"
+        class="flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium"
+        :class="
+          linkCheck.valid
+            ? linkCheck.platform !== 'other'
+              ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200'
+              : 'border-amber-400/30 bg-amber-400/10 text-amber-200'
+            : 'border-rose-400/30 bg-rose-400/10 text-rose-200'
+        "
+      >
+        <PlatformIcon
+          v-if="linkCheck.valid && linkCheck.platform !== 'other'"
+          :platform="linkCheck.platform"
+          size="xs"
+          tile
+        />
+        <CheckCircle2 v-else-if="linkCheck.valid" class="h-4 w-4 shrink-0" />
+        <XCircle v-else class="h-4 w-4 shrink-0" />
+        <span>{{ linkCheck.message }}</span>
+      </div>
+
+      <div
+        v-if="platformMismatch"
+        class="flex items-start gap-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs font-medium text-amber-200"
+      >
+        <XCircle class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        <span>
+          This service is for {{ PLATFORM_LABEL[servicePlatform] }}, but the link looks like
+          {{ PLATFORM_LABEL[detectedPlatform] }} — make sure you paste the right URL.
+        </span>
+      </div>
+
+      <div v-if="quantityRequired" class="space-y-1.5">
+        <label class="text-xs font-medium text-white/60">Quantity</label>
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/70 transition-all hover:border-brand-400/50 hover:text-white active:scale-95 disabled:opacity-30"
+            :disabled="(quantity ?? (service?.min ?? 0)) <= (service?.min ?? 0)"
+            aria-label="Decrease quantity"
+            @click="adjustQuantity(-1)"
+          >
+            <Minus class="h-4 w-4" />
+          </button>
+          <BaseInput
+            :model-value="quantity"
+            class="flex-1"
+            @update:model-value="quantity = $event === '' || $event === null ? null : Number($event)"
+            type="number"
+            :min="service?.min"
+            :max="service?.max"
+            :placeholder="service ? `${service.min} – ${service.max}` : ''"
+            :error="error && !quantity ? error : ''"
+          />
+          <button
+            type="button"
+            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/70 transition-all hover:border-brand-400/50 hover:text-white active:scale-95 disabled:opacity-30"
+            :disabled="(quantity ?? 0) >= (service?.max ?? 0)"
+            aria-label="Increase quantity"
+            @click="adjustQuantity(1)"
+          >
+            <Plus class="h-4 w-4" />
+          </button>
+        </div>
+        <p class="text-xs text-white/40">
+          Allowed range: <span class="text-white/70">{{ service?.min }} – {{ service?.max }}</span> units
+        </p>
+      </div>
 
       <div v-for="field in visibleFields" :key="field.key" class="space-y-1">
         <BaseInput
@@ -338,14 +495,19 @@ const serviceTypeLabel = computed(() =>
     <!-- STEP 2: summary -->
     <div v-else class="space-y-4">
       <div class="space-y-3 rounded-2xl bg-white/[0.03] p-5">
-        <div class="flex items-center justify-between text-sm">
-          <span class="text-white/50">Service</span>
-          <span class="font-medium text-white">{{ service?.name }}</span>
+        <div class="flex items-center justify-between gap-3 text-sm">
+          <span class="shrink-0 text-white/50">Service</span>
+          <span class="flex min-w-0 items-center gap-2 font-medium text-white">
+            <PlatformIcon v-if="servicePlatform !== 'other'" :platform="servicePlatform" size="xs" tile />
+            <span class="truncate">{{ service?.name }}</span>
+          </span>
         </div>
         <div v-if="link" class="flex items-center justify-between gap-3 text-sm">
-          <span class="text-white/50">Link</span>
-          <span class="inline-flex max-w-[60%] items-center gap-1 truncate text-white">
-            <Link2 class="h-3.5 w-3.5 shrink-0 text-brand-300" /> {{ link }}
+          <span class="shrink-0 text-white/50">Link</span>
+          <span class="inline-flex min-w-0 max-w-[60%] items-center gap-1 truncate text-white">
+            <PlatformIcon v-if="detectedPlatform !== 'other'" :platform="detectedPlatform" size="xs" tile />
+            <Link2 v-else class="h-3.5 w-3.5 shrink-0 text-brand-300" />
+            <span class="truncate">{{ link }}</span>
           </span>
         </div>
         <div v-if="quantity" class="flex items-center justify-between text-sm">
@@ -357,7 +519,7 @@ const serviceTypeLabel = computed(() =>
           <span class="max-w-[60%] truncate text-white/80">{{ Object.values(params).filter(Boolean).join(' · ') }}</span>
         </div>
         <div class="flex items-center justify-between text-sm">
-          <span class="text-white/50">Unit price</span>
+          <span class="text-white/50">Rate / 1,000</span>
           <span class="text-white">{{ formatUnitPrice(service?.pricePerUnit ?? 0) }}</span>
         </div>
         <div class="flex items-center justify-between border-t border-white/10 pt-3">

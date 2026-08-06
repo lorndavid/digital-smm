@@ -10,9 +10,9 @@ export interface ListServicesParams {
   platform?: string
   search?: string
   featured?: boolean
-  /** Min price per unit (inclusive). */
+  /** Min rate per 1,000 units (inclusive). */
   minPrice?: number
-  /** Max price per unit (inclusive). */
+  /** Max rate per 1,000 units (inclusive). */
   maxPrice?: number
   /** Exact service type filter. */
   type?: string

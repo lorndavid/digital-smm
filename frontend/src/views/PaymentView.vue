@@ -22,9 +22,12 @@ import { usePaymentEvents, type PaymentLiveEvent } from '@/composables/usePaymen
 import { useToast } from '@/composables/useToast'
 import { formatMoney, formatNumber } from '@/utils/format'
 import { buildAbaDeepLink, isTouchDevice } from '@/utils/deepLink'
+import { detectPlatform, type DetectedPlatform } from '@/utils/linkValidation'
+import PlatformIcon from '@/components/ui/PlatformIcon.vue'
 import BrandLogo from '@/components/layout/BrandLogo.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseSkeleton from '@/components/ui/BaseSkeleton.vue'
+import BaseModal from '@/components/ui/BaseModal.vue'
 import type { Order, Payment } from '@/types/models'
 
 const route = useRoute()
@@ -38,6 +41,9 @@ const order = ref<Order | null>(null)
 const loading = ref(true)
 const error = ref('')
 const actionBusy = ref(false)
+const confirmCancelOpen = ref(false)
+/** True while a manual cancel is in flight — suppress the SSE-expired auto-close. */
+const manualCancel = ref(false)
 
 const status = computed(() => payment.value?.status ?? 'pending')
 const isPaid = computed(() => status.value === 'paid')
@@ -71,6 +77,7 @@ function stopCloseCountdown(): void {
 }
 
 watch(status, (s) => {
+  if (manualCancel.value) return
   if ((s === 'expired' || s === 'failed') && !isPaid.value) startCloseCountdown()
 })
 
@@ -272,14 +279,22 @@ async function copyText(text: string, label: string): Promise<void> {
 async function cancelPayment(): Promise<void> {
   if (!payment.value) return
   actionBusy.value = true
+  manualCancel.value = true
   try {
     await paymentApi.cancel(payment.value.referenceId)
     toast.info('Payment cancelled')
+    // Stop the live stream + timers: the backend already emitted 'expired',
+    // and the page is about to leave anyway.
+    events.stop()
+    stopClock()
+    stopCloseCountdown()
     router.push(isOrder.value ? '/dashboard/orders' : '/dashboard/wallet')
   } catch (err) {
+    manualCancel.value = false
     toast.error(err instanceof Error ? err.message : 'Could not cancel payment')
   } finally {
     actionBusy.value = false
+    confirmCancelOpen.value = false
   }
 }
 
@@ -328,6 +343,18 @@ function serviceName(): string {
   if (!order.value) return ''
   return typeof order.value.service === 'object' ? order.value.service.name : 'Service'
 }
+
+/** Platform of the ordered service — from its category or the pasted link. */
+const orderPlatform = computed<DetectedPlatform>(() => {
+  const o = order.value
+  if (!o) return 'other'
+  const cat = o.service
+  if (cat && typeof cat === 'object' && 'platform' in cat) {
+    const p = (cat as { platform: string }).platform
+    if (p !== 'other') return p as DetectedPlatform
+  }
+  return detectPlatform(o.link)
+})
 
 const countdownDanger = computed(() => countdown.value.total > 0 && countdown.value.total <= 60)
 const waitingCopy = 'Waiting for payment…'
@@ -402,9 +429,12 @@ const waitingCopy = 'Waiting for payment…'
         </p>
 
         <div v-if="isOrder && order" class="glass mx-auto mt-6 max-w-sm space-y-3 rounded-2xl p-6 text-left text-sm border border-white/5 bg-white/5 backdrop-blur-md">
-          <div class="flex items-center justify-between">
-            <span class="text-white/50">Service</span>
-            <span class="font-medium text-white truncate max-w-[60%]">{{ serviceName() }}</span>
+          <div class="flex items-center justify-between gap-3">
+            <span class="shrink-0 text-white/50">Service</span>
+            <span class="flex min-w-0 items-center gap-2 font-medium text-white">
+              <PlatformIcon v-if="orderPlatform !== 'other'" :platform="orderPlatform" size="xs" tile />
+              <span class="truncate">{{ serviceName() }}</span>
+            </span>
           </div>
           <div class="flex items-center justify-between">
             <span class="text-white/50">Quantity</span>
@@ -421,9 +451,12 @@ const waitingCopy = 'Waiting for payment…'
           Redirecting in {{ redirectIn }}s…
         </p>
 
-        <div class="mt-8 flex justify-center gap-3">
+        <div class="mt-8 flex flex-wrap justify-center gap-3">
           <BaseButton variant="outline" @click="stopRedirectCountdown(); router.push(isOrder ? '/dashboard/orders' : '/dashboard/wallet')">
             <ArrowLeft class="h-4 w-4" /> Go to Dashboard
+          </BaseButton>
+          <BaseButton v-if="isOrder && order" variant="outline" @click="stopRedirectCountdown(); router.push(`/dashboard/orders/${order._id}`)">
+            <ExternalLink class="h-4 w-4" /> View Order
           </BaseButton>
           <BaseButton variant="secondary" @click="stopRedirectCountdown(); router.push('/dashboard/services')">
             <Sparkles class="h-4 w-4" /> New Order
@@ -446,9 +479,12 @@ const waitingCopy = 'Waiting for payment…'
               <h3 class="text-sm font-semibold text-white/40 uppercase tracking-wider mb-4">Summary</h3>
               
               <div v-if="isOrder && order" class="space-y-4 text-sm">
-                <div class="flex items-center justify-between">
-                  <span class="text-white/60">Service</span>
-                  <span class="font-medium text-white text-right max-w-[60%]">{{ serviceName() }}</span>
+                <div class="flex items-center justify-between gap-3">
+                  <span class="shrink-0 text-white/60">Service</span>
+                  <span class="flex min-w-0 items-center justify-end gap-2 font-medium text-white">
+                    <PlatformIcon v-if="orderPlatform !== 'other'" :platform="orderPlatform" size="xs" tile />
+                    <span class="truncate">{{ serviceName() }}</span>
+                  </span>
                 </div>
                 <div v-if="order.link" class="flex items-center justify-between">
                   <span class="text-white/60">Target</span>
@@ -459,7 +495,7 @@ const waitingCopy = 'Waiting for payment…'
                   <span class="font-medium text-white">{{ formatNumber(order.quantity) }}</span>
                 </div>
                 <div class="flex items-center justify-between">
-                  <span class="text-white/60">Unit price</span>
+                  <span class="text-white/60">Rate / 1,000</span>
                   <span class="text-white/80">{{ formatMoney(order.pricePerUnit) }}</span>
                 </div>
               </div>
@@ -495,14 +531,27 @@ const waitingCopy = 'Waiting for payment…'
 
             <!-- Cancel -->
             <button
-              v-if="!isTerminal"
+              v-if="status === 'pending' || status === 'scanned'"
               class="text-sm font-medium text-white/40 transition-colors hover:text-white"
               :disabled="actionBusy"
-              @click="cancelPayment"
+              @click="confirmCancelOpen = true"
             >
               Cancel transaction
             </button>
           </div>
+
+          <!-- Cancel confirmation -->
+          <BaseModal :open="confirmCancelOpen" title="Cancel this payment?" max-width="max-w-sm" @close="confirmCancelOpen = false">
+            <div class="space-y-4">
+              <p class="text-sm leading-relaxed text-white/60">
+                No money has been charged. {{ isOrder ? 'The order will be cancelled and you will be returned to your orders.' : 'You will be returned to your wallet.' }}
+              </p>
+              <div class="flex justify-end gap-2">
+                <BaseButton variant="ghost" :disabled="actionBusy" @click="confirmCancelOpen = false">Keep order</BaseButton>
+                <BaseButton variant="danger" :loading="actionBusy" @click="cancelPayment">Cancel payment</BaseButton>
+              </div>
+            </div>
+          </BaseModal>
 
           <!-- Right: Authentic KHQR Terminal Card -->
           <div class="relative w-full max-w-[400px] mx-auto">

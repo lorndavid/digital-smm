@@ -154,7 +154,7 @@ export function groupServices(services: Service[], platform: string): ServiceGro
       map.set(key, entry)
     }
     entry.count += 1
-    entry.minPricePerThousand = Math.min(entry.minPricePerThousand, service.pricePerUnit * 1000)
+    entry.minPricePerThousand = Math.min(entry.minPricePerThousand, service.pricePerUnit)
     entry.services.push(service)
   }
 

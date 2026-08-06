@@ -13,8 +13,12 @@ export const useOrdersStore = defineStore('orders', () => {
   const message = (err: unknown, fallback: string) =>
     err instanceof ApiRequestError ? err.message : fallback
 
-  async function fetchOrders(params: { page?: number; limit?: number; status?: string } = {}) {
-    loading.value = true
+  async function fetchOrders(
+    params: { page?: number; limit?: number; status?: string } = {},
+    /** Silent background refresh — no skeleton flash. */
+    silent = false,
+  ) {
+    if (!silent) loading.value = true
     error.value = null
     try {
       const result = await ordersApi.list(params)

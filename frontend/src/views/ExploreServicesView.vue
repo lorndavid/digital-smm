@@ -3,19 +3,14 @@ import { computed, onMounted, ref, watch } from 'vue'
 import {
   ArrowLeft,
   ArrowUpDown,
-  Camera,
   Check,
   ChevronDown,
   Layers,
-  Music2,
-  Play,
   RotateCcw,
   Search,
-  Send,
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
-  ThumbsUp,
   TrendingUp,
   X,
 } from '@lucide/vue'
@@ -23,6 +18,7 @@ import { watchDebounced } from '@vueuse/core'
 import { useServicesStore } from '@/stores/services.store'
 import ServiceCard from '@/components/dashboard/ServiceCard.vue'
 import BuyServiceModal from '@/components/dashboard/BuyServiceModal.vue'
+import PlatformIcon from '@/components/ui/PlatformIcon.vue'
 import BasePagination from '@/components/ui/BasePagination.vue'
 import BaseSkeleton from '@/components/ui/BaseSkeleton.vue'
 import BaseEmptyState from '@/components/ui/BaseEmptyState.vue'
@@ -65,11 +61,11 @@ const GROUP_CARD_CAP = 12
 // ---------------------------------------------------------------------------
 
 const MAIN_PLATFORMS = [
-  { keyword: 'facebook', label: 'Facebook', icon: ThumbsUp },
-  { keyword: 'tiktok', label: 'TikTok', icon: Music2 },
-  { keyword: 'telegram', label: 'Telegram', icon: Send },
-  { keyword: 'youtube', label: 'YouTube', icon: Play },
-  { keyword: 'instagram', label: 'Instagram', icon: Camera },
+  { keyword: 'facebook', label: 'Facebook' },
+  { keyword: 'tiktok', label: 'TikTok' },
+  { keyword: 'telegram', label: 'Telegram' },
+  { keyword: 'youtube', label: 'YouTube' },
+  { keyword: 'instagram', label: 'Instagram' },
 ] as const
 
 const activePlatform = ref('')
@@ -178,8 +174,10 @@ async function load(): Promise<void> {
         : undefined,
     search: search.value.trim() || undefined,
     sort: sort.value === 'recommended' ? undefined : sort.value,
-    minPrice: minPrice.value && Number.isFinite(min) ? min / 1000 : undefined,
-    maxPrice: maxPrice.value && Number.isFinite(max) ? max / 1000 : undefined,
+    // pricePerUnit is already the rate per 1,000 — the filter inputs are
+    // entered in the same unit, so pass them through unchanged.
+    minPrice: minPrice.value && Number.isFinite(min) ? min : undefined,
+    maxPrice: maxPrice.value && Number.isFinite(max) ? max : undefined,
     type: serviceType.value || undefined,
     refill: onlyRefill.value || undefined,
     cancel: onlyCancel.value || undefined,
@@ -217,9 +215,8 @@ const platformFiltered = computed<Service[]>(() => {
     if (onlyRefill.value && !s.refill) return false
     if (onlyCancel.value && !s.cancel) return false
     if (onlyFeatured.value && !s.isFeatured) return false
-    const perThousand = s.pricePerUnit * 1000
-    if (minPrice.value && Number.isFinite(min) && perThousand < min) return false
-    if (maxPrice.value && Number.isFinite(max) && perThousand > max) return false
+    if (minPrice.value && Number.isFinite(min) && s.pricePerUnit < min) return false
+    if (maxPrice.value && Number.isFinite(max) && s.pricePerUnit > max) return false
     return true
   })
 
@@ -438,7 +435,7 @@ onMounted(async () => {
           "
           @click="selectPlatform(platform.keyword)"
         >
-          <component :is="platform.icon" class="h-4 w-4" />
+          <PlatformIcon :platform="platform.keyword" size="xs" tile />
           {{ platform.label }}
         </button>
 
@@ -514,7 +511,7 @@ onMounted(async () => {
         <div class="relative flex flex-wrap items-center justify-between gap-3">
           <div class="flex items-center gap-3">
             <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 text-white backdrop-blur">
-              <component :is="activePlatformMeta.icon" class="h-5 w-5" />
+              <PlatformIcon :platform="activePlatformMeta.keyword" size="sm" />
             </div>
             <div>
               <p class="font-display text-lg font-bold text-white">
@@ -563,7 +560,7 @@ onMounted(async () => {
         <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <!-- Price range (per 1,000) -->
           <div class="space-y-1.5">
-            <label class="text-xs font-medium text-white/50">Price / 1,000 ($)</label>
+            <label class="text-xs font-medium text-white/50">Rate / 1,000 ($)</label>
             <div class="flex items-center gap-2">
               <input
                 v-model="minPrice"
@@ -737,7 +734,7 @@ onMounted(async () => {
                   class="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br text-white"
                   :class="activePlatformMeta?.color"
                 >
-                  <component :is="activePlatformMeta?.icon" class="h-4 w-4" />
+                  <PlatformIcon :platform="activePlatformMeta?.keyword ?? 'other'" size="xs" />
                 </div>
                 <h2 class="font-display text-lg font-semibold text-white">{{ group.label }}</h2>
                 <span class="rounded-full bg-white/10 px-2 py-0.5 text-xs font-medium text-white/60">
@@ -747,7 +744,7 @@ onMounted(async () => {
               <span class="text-xs text-white/45">
                 from
                 <span class="font-semibold text-emerald-300">{{ formatMoney(group.minPricePerThousand) }}</span>
-                / 1K
+                / 1,000
               </span>
             </div>
 

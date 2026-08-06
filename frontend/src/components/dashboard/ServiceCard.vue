@@ -1,33 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import {
-  Camera,
-  Clock,
-  Music2,
-  Play,
-  RefreshCcw,
-  Send,
-  Sparkles,
-  ThumbsUp,
-} from '@lucide/vue'
+import { Clock, RefreshCcw, Sparkles } from '@lucide/vue'
 import type { Service } from '@/types/models'
 import { formatMoney } from '@/utils/format'
 import { PLATFORM_META, SERVICE_TYPE_LABEL } from '@/utils/constants'
 import { inferPlatformFromCategoryName } from '@/utils/serviceGroups'
+import PlatformIcon from '@/components/ui/PlatformIcon.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseBadge from '@/components/ui/BaseBadge.vue'
 
 const props = defineProps<{ service: Service }>()
 const emit = defineEmits<{ buy: [service: Service] }>()
-
-const PLATFORM_ICONS = {
-  facebook: ThumbsUp,
-  tiktok: Music2,
-  telegram: Send,
-  youtube: Play,
-  instagram: Camera,
-  other: Sparkles,
-} as const
 
 /**
  * Resolves the card's platform: prefers the category's own platform field,
@@ -45,10 +28,9 @@ function categoryPlatform(service: Service) {
   return 'other'
 }
 
-const platformKey = computed(() => {
-  const key = categoryPlatform(props.service)
-  return (key as keyof typeof PLATFORM_ICONS) in PLATFORM_ICONS ? key : 'other'
-})
+// PlatformIcon falls back to its 'other' glyph for unknown platforms, so no
+// existence check is needed here.
+const platformKey = computed(() => categoryPlatform(props.service))
 
 function platformOf(service: Service) {
   return PLATFORM_META[categoryPlatform(service) as keyof typeof PLATFORM_META] ?? PLATFORM_META.other
@@ -65,11 +47,8 @@ function platformOf(service: Service) {
     />
 
     <div class="flex items-start justify-between gap-3">
-      <div
-        class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-lg transition-transform duration-300 group-hover:scale-110"
-        :class="platformOf(service).color"
-      >
-        <component :is="PLATFORM_ICONS[platformKey]" class="h-6 w-6" />
+      <div class="transition-transform duration-300 group-hover:scale-110">
+        <PlatformIcon :platform="platformKey" size="md" tile />
       </div>
       <div class="flex flex-col items-end gap-1.5">
         <BaseBadge v-if="service.isFeatured" tone="warning">
@@ -86,9 +65,10 @@ function platformOf(service: Service) {
 
     <div class="mt-4 flex items-baseline gap-1">
       <span class="font-display text-xl font-bold text-white">
-        {{ formatMoney(service.pricePerUnit * 1000, service.currency) }}
+        {{ formatMoney(service.pricePerUnit, service.currency) }}
       </span>
-      <span class="text-xs text-white/40">/ 1,000</span>
+      <span v-if="service.type === 'Package' || service.type === 'Custom Comments Package' || (service.min === 1 && service.max === 1)" class="text-xs text-white/40">/ package</span>
+      <span v-else class="text-xs text-white/40">/ 1,000</span>
     </div>
 
     <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-white/50">

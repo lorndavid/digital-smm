@@ -12,8 +12,8 @@ import type {
  * In-memory mock provider. Lets the whole order pipeline run locally
  * without an smmwiz API key (set SMM_PROVIDER=mock).
  *
- * Rates are expressed per unit (e.g. 0.0009 USD per follower, i.e.
- * $0.90 per 1,000) which matches how the real provider charges.
+ * Rates are expressed per 1,000 units (the same semantic as the real
+ * smmwiz `rate` field), e.g. 0.9 = $0.90 per 1,000 followers.
  */
 export class MockProvider implements SmmProvider {
   readonly name = 'mock'
@@ -21,22 +21,22 @@ export class MockProvider implements SmmProvider {
 
   async getServices(): Promise<ProviderService[]> {
     const raw = [
-      { providerServiceId: 1, name: 'TikTok Followers', type: 'Default', category: 'TikTok', rate: 0.0009, min: 50, max: 10000, refill: true, cancel: true },
-      { providerServiceId: 2, name: 'TikTok Likes', type: 'Default', category: 'TikTok', rate: 0.0006, min: 50, max: 50000, refill: true, cancel: true },
-      { providerServiceId: 3, name: 'TikTok Views (High Retention)', type: 'Default', category: 'TikTok', rate: 0.0005, min: 100, max: 100000, refill: true, cancel: false },
-      { providerServiceId: 4, name: 'TikTok Custom Comments', type: 'Custom Comments', category: 'TikTok', rate: 0.008, min: 10, max: 500, refill: false, cancel: true },
-      { providerServiceId: 5, name: 'Facebook Page Likes', type: 'Default', category: 'Facebook', rate: 0.0011, min: 50, max: 20000, refill: true, cancel: true },
-      { providerServiceId: 6, name: 'Facebook Post Likes', type: 'Default', category: 'Facebook', rate: 0.0007, min: 50, max: 50000, refill: true, cancel: true },
-      { providerServiceId: 7, name: 'Facebook Video Views', type: 'Default', category: 'Facebook', rate: 0.0004, min: 100, max: 100000, refill: true, cancel: false },
-      { providerServiceId: 8, name: 'Instagram Followers', type: 'Default', category: 'Instagram', rate: 0.001, min: 50, max: 20000, refill: true, cancel: true },
-      { providerServiceId: 9, name: 'Instagram Reels Likes', type: 'Default', category: 'Instagram', rate: 0.0006, min: 50, max: 50000, refill: true, cancel: true },
-      { providerServiceId: 10, name: 'Instagram Views', type: 'Default', category: 'Instagram', rate: 0.0003, min: 100, max: 200000, refill: true, cancel: false },
-      { providerServiceId: 11, name: 'YouTube Subscribers', type: 'Default', category: 'YouTube', rate: 0.004, min: 20, max: 5000, refill: true, cancel: true },
-      { providerServiceId: 12, name: 'YouTube Views', type: 'Default', category: 'YouTube', rate: 0.0008, min: 100, max: 200000, refill: true, cancel: true },
-      { providerServiceId: 13, name: 'YouTube Likes', type: 'Default', category: 'YouTube', rate: 0.0012, min: 50, max: 50000, refill: true, cancel: true },
-      { providerServiceId: 14, name: 'Telegram Members', type: 'Default', category: 'Telegram', rate: 0.0015, min: 50, max: 20000, refill: true, cancel: true },
-      { providerServiceId: 15, name: 'Telegram Post Views', type: 'Default', category: 'Telegram', rate: 0.0005, min: 100, max: 100000, refill: true, cancel: false },
-      { providerServiceId: 16, name: 'Telegram Invites from Groups', type: 'Invites from Groups', category: 'Telegram', rate: 0.004, min: 10, max: 2000, refill: false, cancel: true },
+      { providerServiceId: 1, name: 'TikTok Followers', type: 'Default', category: 'TikTok', rate: 0.9, min: 50, max: 10000, refill: true, cancel: true },
+      { providerServiceId: 2, name: 'TikTok Likes', type: 'Default', category: 'TikTok', rate: 0.6, min: 50, max: 50000, refill: true, cancel: true },
+      { providerServiceId: 3, name: 'TikTok Views (High Retention)', type: 'Default', category: 'TikTok', rate: 0.5, min: 100, max: 100000, refill: true, cancel: false },
+      { providerServiceId: 4, name: 'TikTok Custom Comments', type: 'Custom Comments', category: 'TikTok', rate: 8, min: 10, max: 500, refill: false, cancel: true },
+      { providerServiceId: 5, name: 'Facebook Page Likes', type: 'Default', category: 'Facebook', rate: 1.1, min: 50, max: 20000, refill: true, cancel: true },
+      { providerServiceId: 6, name: 'Facebook Post Likes', type: 'Default', category: 'Facebook', rate: 0.7, min: 50, max: 50000, refill: true, cancel: true },
+      { providerServiceId: 7, name: 'Facebook Video Views', type: 'Default', category: 'Facebook', rate: 0.4, min: 100, max: 100000, refill: true, cancel: false },
+      { providerServiceId: 8, name: 'Instagram Followers', type: 'Default', category: 'Instagram', rate: 1, min: 50, max: 20000, refill: true, cancel: true },
+      { providerServiceId: 9, name: 'Instagram Reels Likes', type: 'Default', category: 'Instagram', rate: 0.6, min: 50, max: 50000, refill: true, cancel: true },
+      { providerServiceId: 10, name: 'Instagram Views', type: 'Default', category: 'Instagram', rate: 0.3, min: 100, max: 200000, refill: true, cancel: false },
+      { providerServiceId: 11, name: 'YouTube Subscribers', type: 'Default', category: 'YouTube', rate: 4, min: 20, max: 5000, refill: true, cancel: true },
+      { providerServiceId: 12, name: 'YouTube Views', type: 'Default', category: 'YouTube', rate: 0.8, min: 100, max: 200000, refill: true, cancel: true },
+      { providerServiceId: 13, name: 'YouTube Likes', type: 'Default', category: 'YouTube', rate: 1.2, min: 50, max: 50000, refill: true, cancel: true },
+      { providerServiceId: 14, name: 'Telegram Members', type: 'Default', category: 'Telegram', rate: 1.5, min: 50, max: 20000, refill: true, cancel: true },
+      { providerServiceId: 15, name: 'Telegram Post Views', type: 'Default', category: 'Telegram', rate: 0.5, min: 100, max: 100000, refill: true, cancel: false },
+      { providerServiceId: 16, name: 'Telegram Invites from Groups', type: 'Invites from Groups', category: 'Telegram', rate: 4, min: 10, max: 2000, refill: false, cancel: true },
     ]
     return raw.map((s) => ({ ...s, type: s.type as ProviderService['type'] }))
   }

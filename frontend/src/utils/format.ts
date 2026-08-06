@@ -58,7 +58,7 @@ export function formatRelative(value: string | Date | null | undefined): string 
   return formatDate(date)
 }
 
-/** Formats a per-unit price with adaptive precision (e.g. $0.0009). */
+/** Formats a per-1,000 rate with adaptive precision (e.g. $0.84 or $0.0013). */
 export function formatUnitPrice(value: number | string | null | undefined, currency = 'USD'): string {
   const num = typeof value === 'string' ? Number(value) : (value ?? 0)
   if (!Number.isFinite(num)) return '—'

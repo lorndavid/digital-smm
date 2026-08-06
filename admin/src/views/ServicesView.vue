@@ -454,7 +454,7 @@ onMounted(async () => {
               </th>
               <th class="px-4 py-3 font-medium">Service</th>
               <th class="px-4 py-3 font-medium">Type</th>
-              <th class="px-4 py-3 font-medium">Price / 1k</th>
+              <th class="px-4 py-3 font-medium">Rate / 1,000</th>
               <th class="px-4 py-3 font-medium">Range</th>
               <th class="px-4 py-3 font-medium">Flags</th>
               <th class="px-4 py-3 text-right font-medium">Actions</th>
@@ -483,7 +483,7 @@ onMounted(async () => {
                 </p>
               </td>
               <td class="px-4 py-3.5 text-(--a-muted)">{{ service.type }}</td>
-              <td class="px-4 py-3.5 font-semibold text-(--a-text)">{{ formatMoney(service.pricePerUnit * 1000) }}</td>
+              <td class="px-4 py-3.5 font-semibold text-(--a-text)">{{ formatMoney(service.pricePerUnit) }}</td>
               <td class="px-4 py-3.5 text-(--a-muted)">{{ formatNumber(service.min) }}–{{ formatNumber(service.max) }}</td>
               <td class="px-4 py-3.5">
                 <div class="flex flex-wrap gap-1.5">
@@ -588,7 +588,7 @@ onMounted(async () => {
           <BaseInput v-model="form.provider" label="Provider" placeholder="smmwiz | manual" />
         </div>
         <div class="grid gap-4 sm:grid-cols-3">
-          <BaseInput v-model="form.pricePerUnit" label="Price / unit" type="number" min="0" step="0.0001" />
+          <BaseInput v-model="form.pricePerUnit" label="Rate / 1,000 ($)" type="number" min="0" step="0.01" />
           <BaseInput v-model="form.min" label="Min" type="number" min="0" />
           <BaseInput v-model="form.max" label="Max" type="number" min="0" />
         </div>

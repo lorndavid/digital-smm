@@ -3,9 +3,11 @@ import { ServiceType } from '../types/index.js'
 import type { CreateOrderInput } from '../interfaces/smm-provider.interface.js'
 import { orderRepository } from '../repositories/order.repository.js'
 import { serviceRepository, type ServiceDoc } from '../repositories/catalog.repository.js'
+import { paymentRepository } from '../repositories/finance.repository.js'
 import { OrderModel, type OrderDoc } from '../models/order.model.js'
 import { getSmmProvider } from './smm/provider.factory.js'
 import { walletService } from './wallet.service.js'
+import { emitPaymentStatus } from './payment/events.bus.js'
 import { ApiError } from '../utils/api-error.js'
 
 export interface OrderDraft {
@@ -242,7 +244,10 @@ export class OrderService {
    * place two SMM orders for one payment. Retries are allowed only when the
    * previous placement failed (order 'Paid' with a non-empty error).
    */
-  async fulfillPendingOrder(orderId: Types.ObjectId | string): Promise<OrderDoc> {
+  async fulfillPendingOrder(
+    orderId: Types.ObjectId | string,
+    paymentId?: Types.ObjectId | string,
+  ): Promise<OrderDoc> {
     const order = await orderRepository.findById(orderId.toString())
     if (!order) throw new ApiError(404, 'Order not found')
     if (order.providerOrderId) return order // already placed
@@ -285,6 +290,7 @@ export class OrderService {
         order.providerOrderId = null
         order.status = 'Processing'
         order.error = ''
+        if (paymentId) order.payment = paymentId as Types.ObjectId
         await order.save()
         return order
       }
@@ -292,6 +298,7 @@ export class OrderService {
       order.providerOrderId = result.order
       order.status = 'Processing'
       order.error = ''
+      if (paymentId) order.payment = paymentId as Types.ObjectId
       await order.save()
     } catch (err) {
       // Payment settled but the provider could not place the order yet.
@@ -314,7 +321,9 @@ export class OrderService {
     }
 
     const providerInput = buildProviderInput(service, draft)
-    const quantity = asNumber(draft.quantity) ?? 0
+    // Subscriptions are priced by their minimum tier (params.min) — the modal
+    // previews exactly this amount. All other quantity services pass `quantity`.
+    const quantity = asNumber(draft.quantity) ?? (asNumber(draft.params?.min) ?? 0)
 
     if (quantity && (service.min > 0 || service.max > 0)) {
       if (service.min > 0 && quantity < service.min) {
@@ -325,7 +334,30 @@ export class OrderService {
       }
     }
 
-    const totalPrice = round2(quantity * service.pricePerUnit)
+    // pricePerUnit is the provider's RATE PER 1,000 units (e.g. $0.84 per
+    // 1,000 viewers). 30,000 viewers at $0.84/1k = $25.20, not $25,200.
+    // Package / flat-price types have no quantity — the rate IS the price.
+    // Services sold only as exactly one unit (min=1 max=1, e.g. "Kick Live
+    // Viewer [50+50 Chats] [1-Week]" bundles) are flat-priced too — the rate
+    // is the price of that single unit, NOT a per-1,000 rate.
+    const isSingleUnit = service.min === 1 && service.max === 1
+    const totalPrice = isSingleUnit
+      ? round2(service.pricePerUnit)
+      : quantity > 0
+        ? round2((quantity * service.pricePerUnit) / 1000)
+        : round2(service.pricePerUnit)
+
+    // KHQR providers charge a $0.01 minimum — per-1k rates make small
+    // quantities round to $0.00. Enforce the same floor the UI shows, so
+    // wallet orders can never debit $0 and payments are never created for
+    // $0.00.
+    if (totalPrice > 0 && totalPrice < 0.01) {
+      throw new ApiError(
+        400,
+        'Order total is below the $0.01 USD minimum — increase the quantity',
+      )
+    }
+
     return { service, quantity, totalPrice, providerInput, link: asString(draft.link) }
   }
 
@@ -389,28 +421,56 @@ export class OrderService {
 
   async cancelOrder(userId: string, id: string) {
     const order = await this.getOrderForUser(userId, id)
-    const service = await serviceRepository.findById(order.service.toString())
-    if (!service?.cancel) throw new ApiError(400, 'This service does not support cancellation')
+    // getOrderForUser POPULATES `service`, so it is a ServiceDoc here — never
+    // call .toString() on it blindly (a populated doc stringifies to
+    // "[object Object]" and breaks the ObjectId cast below).
+    const rawService = order.service as unknown
+    const service =
+      rawService && typeof rawService === 'object' && '_id' in rawService
+        ? (rawService as ServiceDoc)
+        : await serviceRepository.findById(String(rawService))
 
     if (order.providerOrderId) {
+      // Already placed with the provider — it must support cancellation.
+      if (!service?.cancel) throw new ApiError(400, 'This service does not support cancellation')
       const results = await this.provider.cancelOrders([order.providerOrderId])
       const result = results[0]
       if (result && typeof result.cancel === 'object' && 'error' in result.cancel) {
         throw new ApiError(400, (result.cancel as { error: string }).error)
       }
     } else {
-      // Manual order (no provider to cancel) — cancel locally. Only allowed
-      // while it is still in the admin fulfilment queue.
-      if (!['Processing', 'Paid', 'Pending Payment'].includes(order.status)) {
+      // Not yet placed with the provider (still 'Pending Payment', KHQR-paid
+      // but unplaced, or in the manual fulfilment queue) — cancel locally.
+      // Provider cancellation support is irrelevant here: nothing was sent.
+      if (!['Pending Payment', 'Paid', 'Processing'].includes(order.status)) {
         throw new ApiError(400, 'This order can no longer be cancelled')
       }
     }
 
+    const priorStatus = order.status
     order.status = 'Cancelled'
     await order.save()
 
-    // Refund the wallet when the order was wallet-funded.
-    if (!order.payment) {
+    // Expire any still-pending payment so its QR can never be settled after
+    // the order is cancelled, and no fresh QR can be generated for it.
+    const pending = await paymentRepository.findPendingForOrder(order._id.toString())
+    if (pending) {
+      pending.status = 'expired'
+      await pending.save()
+      emitPaymentStatus({
+        referenceId: pending.referenceId,
+        status: 'expired',
+        orderId: order._id.toString(),
+      })
+    }
+
+    // Refund the wallet ONLY when this order was actually wallet-funded.
+    // Any payment document (even a historical order fulfilled before
+    // order.payment was backfilled) means the money came from KHQR, not the
+    // wallet — those are refunded through their provider. Unpaid pending
+    // orders never debited the wallet either.
+    const hasPayment = await paymentRepository.findOne({ order: order._id })
+    if (!hasPayment && !order.payment && !['Pending Payment', 'Paid'].includes(priorStatus)) {
       await walletService.credit(
         userId,
         order.totalPrice,

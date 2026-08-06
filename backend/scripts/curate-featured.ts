@@ -99,7 +99,7 @@ async function main(): Promise<void> {
       .map((s) => ({
         id: String(s._id),
         name: s.name,
-        pricePer1k: (s.pricePerUnit ?? 0) * 1000,
+        pricePer1k: s.pricePerUnit ?? 0,
         refill: Boolean(s.refill),
       }))
       .sort((a, b) => Number(b.refill) - Number(a.refill) || a.pricePer1k - b.pricePer1k)

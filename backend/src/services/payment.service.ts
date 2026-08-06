@@ -282,7 +282,7 @@ export class PaymentService {
       )
     } else if (payment.order) {
       try {
-        order = await orderService.fulfillPendingOrder(payment.order)
+        order = await orderService.fulfillPendingOrder(payment.order, payment._id)
       } catch (err) {
         // Order marked 'Paid'; a later poll/webhook retries placement.
         logger.error(`[payment] SMM placement failed for ${payment.referenceId}`, err)
@@ -304,7 +304,7 @@ export class PaymentService {
   private async retryOrderPlacement(payment: PaymentDoc): Promise<void> {
     if (!payment.order) return
     try {
-      const order = await orderService.fulfillPendingOrder(payment.order)
+      const order = await orderService.fulfillPendingOrder(payment.order, payment._id)
       if (order.status === 'Processing') {
         emitPaymentStatus({
           referenceId: payment.referenceId,

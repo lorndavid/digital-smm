@@ -10,7 +10,7 @@ the MVP) and real-time order tracking via the [smmwiz.com](https://smmwiz.com) A
 
 ## Architecture
 
-```
+```text
 root/
 ├── frontend/   Vue 3 + TypeScript + Vite + TailwindCSS v4 + Pinia + Google OAuth (port 5173)
 ├── backend/    Node.js + Express 5 + TypeScript + MongoDB Atlas + Mongoose   (port 4000)
