@@ -19,8 +19,13 @@ import { logger } from '../../utils/logger.js'
  * commands), so the whole app opens exactly one extra Redis connection.
  */
 
-/** How long a connect attempt may take before we give up and retry later. */
-const REDIS_CONNECT_TIMEOUT_MS = 3000
+/** How long a connect attempt may take before we give up and retry later.
+ *  Short on purpose: when Redis is down (e.g. local dev without a Redis
+ *  server), the FIRST request in each backoff window waits for this timeout
+ *  before falling back to in-memory. 3s made payment status polls stall for
+ *  3+ seconds once per 30s window; 500ms is plenty for a local connection
+ *  (sub-ms on the same host) and keeps a down-Redis hiccup imperceptible. */
+const REDIS_CONNECT_TIMEOUT_MS = 500
 /** Backoff between failed connect attempts — probes a down Redis at most
  *  once every 30s, never on the per-request hot path. */
 const RETRY_BACKOFF_MS = 30_000
@@ -60,7 +65,16 @@ async function connect(): Promise<RedisClientType | null> {
   let c: RedisClientType | null = null
   try {
     c = createClient({ url })
-    c.on('error', (err) => logger.warn('[redis.client] connection error', err))
+    // Log at most once per connect attempt. node-redis fires an 'error'
+    // event on EVERY background reconnect retry while the host is down,
+    // which would otherwise spam the log (hundreds of lines per minute)
+    // and drown out real payment/order logs.
+    let errorLogged = false
+    c.on('error', (err) => {
+      if (errorLogged) return
+      errorLogged = true
+      logger.warn('[redis.client] connection error', err)
+    })
 
     const conn = c.connect()
     // Swallow late rejections (e.g. destroy() while a connect is pending) so

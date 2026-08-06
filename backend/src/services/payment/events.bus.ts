@@ -69,8 +69,12 @@ function redisEnabled(): boolean {
   return (env.REDIS_URL ?? '').length > 0
 }
 
-/** How long a Redis connect may take before we give up and retry later. */
-const REDIS_CONNECT_TIMEOUT_MS = 3000
+/** How long a Redis connect may take before we give up and retry later.
+ *  500ms (was 3s): when Redis is down locally, each backoff-window probe
+ *  would otherwise hold the connect for 3s and — because the subscriber
+ *  connects from the SSE/status hot path — stall payment page requests.
+ *  Local Redis connects in <1ms; if it is not up in 500ms it is down. */
+const REDIS_CONNECT_TIMEOUT_MS = 500
 
 /**
  * Connects the shared Redis clients once per process. Safe to call many
@@ -93,8 +97,20 @@ async function ensureRedis(): Promise<void> {
   try {
     pub = createClient({ url })
     sub = createClient({ url })
-    pub.on('error', (err) => logger.warn('[events.bus] Redis publisher error', err))
-    sub.on('error', (err) => logger.warn('[events.bus] Redis subscriber error', err))
+    // Log at most once per connect attempt — node-redis retries a down host
+    // in the background and would otherwise emit hundreds of error lines.
+    let pubErrorLogged = false
+    let subErrorLogged = false
+    pub.on('error', (err) => {
+      if (pubErrorLogged) return
+      pubErrorLogged = true
+      logger.warn('[events.bus] Redis publisher error', err)
+    })
+    sub.on('error', (err) => {
+      if (subErrorLogged) return
+      subErrorLogged = true
+      logger.warn('[events.bus] Redis subscriber error', err)
+    })
 
     const pubConn = pub.connect()
     const subConn = sub.connect()

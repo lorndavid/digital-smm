@@ -68,6 +68,10 @@ export function usePaymentEvents(
     try {
       const res = await fetch(`${API_BASE}/payment/status?reference=${encodeURIComponent(ref)}`, {
         headers: { Authorization: `Bearer ${getAuthToken() ?? ''}` },
+        // Never let the browser HTTP cache answer a status poll — an ETag
+        // 304 (or worse, a stale cached 200) can keep the page on 'pending'
+        // even after the payment settled. Every poll must hit the backend.
+        cache: 'no-store',
       })
       if (res.ok) {
         applySnapshot((await res.json()) as PaymentStatusResponse)
@@ -87,6 +91,9 @@ export function usePaymentEvents(
       const res = await fetch(`${API_BASE}/payment/events?reference=${encodeURIComponent(ref)}`, {
         headers: { Authorization: `Bearer ${getAuthToken() ?? ''}` },
         signal: myController.signal,
+        // Same rationale as polling: an SSE stream must never be served from
+        // the browser cache (stale 'pending' forever). Always reach the app.
+        cache: 'no-store',
       })
 
       if (!res.ok || !res.body) throw new Error('SSE unavailable')

@@ -191,13 +191,43 @@ async function init(): Promise<void> {
   loading.value = true
   error.value = ''
   try {
-    const snap = await paymentApi.status(reference.value)
+    // Use VERIFY (forces a live CutLuy check), not the cached status read:
+    // when the customer refreshes after paying — or returns from their
+    // bank app — we must query the provider NOW. A stale cached 'pending'
+    // is exactly what left the page stuck on the KHQR after payment.
+    const snap = await paymentApi.verify(reference.value)
     applySnapshot(snap)
     startClock()
     events.start()
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load payment'
     loading.value = false
+  }
+}
+
+/**
+ * Re-verifies with the provider the moment the customer returns to this
+ * tab — e.g. after switching to their bank app to scan & pay. Without this,
+ * the success screen waits for the next poll cycle even though the charge
+ * already settled; with it, success appears the instant they tab back.
+ */
+let verifying = false
+async function refreshFromProvider(): Promise<void> {
+  if (isTerminal.value || !payment.value || verifying) return
+  verifying = true
+  try {
+    const snap = await paymentApi.verify(reference.value)
+    applySnapshot(snap)
+  } catch {
+    /* non-fatal — polling continues */
+  } finally {
+    verifying = false
+  }
+}
+
+function handleVisibilityChange(): void {
+  if (document.visibilityState === 'visible') {
+    void refreshFromProvider()
   }
 }
 
@@ -216,10 +246,12 @@ function handleBeforeUnload(): void {
 onMounted(() => {
   void init()
   window.addEventListener('beforeunload', handleBeforeUnload)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
 onUnmounted(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
   stopCloseCountdown()
   stopRedirectCountdown()
 })

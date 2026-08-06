@@ -172,7 +172,7 @@ export class PaymentService {
     const payment = await this.getOwnedPayment(userId, referenceId)
 
     if (forceProviderCheck || !isTerminal(payment.status)) {
-      await this.syncProviderStatus(payment)
+      await this.syncProviderStatus(payment, forceProviderCheck)
     }
 
     const order = payment.order
@@ -186,12 +186,17 @@ export class PaymentService {
     return this.status(userId, referenceId, true)
   }
 
-  private async syncProviderStatus(payment: PaymentDoc): Promise<void> {
+  private async syncProviderStatus(payment: PaymentDoc, force = false): Promise<void> {
     if (!payment.providerPaymentId) return
     // Throttle provider API calls per payment (see provider-sync-cache.ts).
     // Every payment page polls ~every 3s; 100 users would otherwise hit
     // CutLuy ~20–33×/s. Instant pushes still arrive via webhook → SSE.
-    if (!providerSyncCache.isDue(payment._id.toString())) return
+    // `force` (the customer's explicit verify / page reload) BYPASSES the
+    // throttle: when the user returns from scanning, or reloads after
+    // paying, we must hit the provider NOW — a stale cached 'pending'
+    // otherwise leaves the page stuck on the KHQR even though the bank
+    // app already settled the charge.
+    if (!force && !providerSyncCache.isDue(payment._id.toString())) return
     let providerStatus: ProviderPaymentStatus
     try {
       providerStatus = await this.provider.getPayment(payment.providerPaymentId)
