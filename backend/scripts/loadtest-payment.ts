@@ -33,6 +33,8 @@ process.env.RATE_LIMIT_WINDOW_MS = '600000'
 
 import { performance } from 'node:perf_hooks'
 import type { AddressInfo } from 'node:net'
+import { shutdownRedis } from '../src/services/payment/events.bus.js'
+import { shutdownRedisClient } from '../src/services/redis/redis.client.js'
 
 const DB_NAME = `vidsmm_loadtest_${Date.now()}`
 const N = 100
@@ -345,10 +347,23 @@ async function main() {
       console.log('\nwarning: could not drop db —', err instanceof Error ? err.message : err)
     }
     await mongoose.disconnect()
+    // Close the Redis clients the app opened (SSE bus pub/sub + rate
+    // limiter). If we don't, those handles keep this process alive after
+    // main() returns and the CI step hangs until its timeout.
+    await shutdownRedis()
+    await shutdownRedisClient()
   }
 }
 
-main().catch((err) => {
-  console.error('\nLOAD TEST FAILED:', err instanceof Error ? err.message : err)
-  process.exit(1)
-})
+main().then(
+  () => {
+    // Belt and braces: even with Redis shut down, a stray handle (SSE fetch
+    // body reader, provider timer) can keep Node alive after a load test.
+    // Force a clean exit once the output has flushed so CI never times out.
+    setTimeout(() => process.exit(0), 500)
+  },
+  (err) => {
+    console.error('\nLOAD TEST FAILED:', err instanceof Error ? err.message : err)
+    process.exit(1)
+  },
+)

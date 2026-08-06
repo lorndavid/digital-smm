@@ -34,6 +34,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { shutdownRedis } from '../src/services/payment/events.bus.js'
+import { shutdownRedisClient } from '../src/services/redis/redis.client.js'
 
 const N = 100
 const TOPUP = 5
@@ -398,10 +400,18 @@ async function main() {
 
     handles.forEach((h) => h.sse.controller.abort())
   } finally {
-    // Kill both instances.
-    for (const [port, child] of children) {
-      child.kill()
-    }
+    // Kill both instances and WAIT for them to fully exit (graceful SIGTERM
+    // shutdown: server.close → Redis quit → mongoose disconnect). Dropping
+    // the DB while an instance is still connected races with its shutdown.
+    for (const [, child] of children) child.kill()
+    await Promise.race([
+      Promise.all(
+        [...children.values()].map(
+          (c) => new Promise<void>((resolve) => c.once('exit', () => resolve())),
+        ),
+      ),
+      new Promise<void>((resolve) => setTimeout(resolve, 10_000)), // never hang CI
+    ])
     // Drop the throwaway database.
     try {
       await mongoose.connection.db?.dropDatabase()
@@ -410,11 +420,25 @@ async function main() {
       console.log('\nwarning: could not drop db —', err instanceof Error ? err.message : err)
     }
     await mongoose.disconnect()
+    // Close any Redis clients the harness opened (the two instances open
+    // their own in their own processes; this clears the harness side).
+    await shutdownRedis()
+    await shutdownRedisClient()
   }
 }
 
-main().catch((err) => {
-  console.error('\nMULTI-INSTANCE LOAD TEST FAILED:', err instanceof Error ? err.message : err)
-  for (const [port, child] of children) child.kill()
-  process.exit(1)
-})
+main().then(
+  () => {
+    // Force a clean exit — a stray handle (SSE fetch reader, mongoose pool
+    // socket) can keep the harness alive after the test completes, which
+    // made the CI step hang until its timeout.
+    setTimeout(() => process.exit(0), 500)
+  },
+  (err) => {
+    console.error('\nMULTI-INSTANCE LOAD TEST FAILED:', err instanceof Error ? err.message : err)
+    // Kill any surviving instances and give them a moment to die, so a
+    // failure never leaves orphaned processes squatting on ports 4001/4002.
+    for (const [, child] of children) child.kill()
+    setTimeout(() => process.exit(1), 1000)
+  },
+)
