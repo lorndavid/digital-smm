@@ -14,7 +14,9 @@ export default defineConfig({
     port: 5174,
     proxy: {
       '/api': {
-        target: 'http://localhost:4000',
+        // Configurable so browser-test/screenshot runs can point the admin
+        // dev server at their own backend (e.g. port 4001) instead of 4000.
+        target: process.env.VITE_PROXY_TARGET || 'http://localhost:4000',
         changeOrigin: true,
       },
     },

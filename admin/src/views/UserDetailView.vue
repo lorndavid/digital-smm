@@ -123,7 +123,8 @@ onMounted(() => {
     </div>
 
     <template v-else-if="user">
-      <div class="glass relative overflow-hidden rounded-2xl p-6 shadow-card sm:p-8">
+      <div class="mx-auto w-full max-w-3xl">
+        <div class="glass relative overflow-hidden rounded-2xl p-6 shadow-card sm:p-8">
         <div class="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-gradient-to-br from-brand-500/20 to-secondary-500/10 blur-3xl" />
         <div class="relative flex flex-col gap-6 sm:flex-row sm:items-center">
           <div class="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-secondary-500 text-2xl font-bold text-white shadow-glow">
@@ -170,6 +171,7 @@ onMounted(() => {
               {{ formatMoney(user.wallet.totalSpent) }}
             </p>
           </div>
+        </div>
         </div>
       </div>
 

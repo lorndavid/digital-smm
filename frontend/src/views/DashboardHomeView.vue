@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ArrowRight, Package, Sparkles, TrendingUp, Wallet } from '@lucide/vue'
+import { ArrowRight, Package, Sparkles, TrendingUp, User, Wallet } from '@lucide/vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useServicesStore } from '@/stores/services.store'
 import { useOrdersStore } from '@/stores/orders.store'
@@ -52,6 +52,14 @@ function openBuy(service: Service): void {
   buyingService.value = service
   buyOpen.value = true
 }
+
+/** Quick-action shortcuts for the home page. */
+const quickActions = [
+  { label: 'Explore services', to: '/dashboard/services', icon: Sparkles },
+  { label: 'My orders', to: '/dashboard/orders', icon: Package },
+  { label: 'Top up wallet', to: '/dashboard/wallet', icon: Wallet },
+  { label: 'Edit profile', to: '/dashboard/profile', icon: User },
+]
 
 onMounted(async () => {
   await Promise.allSettled([
@@ -119,84 +127,115 @@ onMounted(async () => {
       />
     </div>
 
+    <!-- Two-column content: main feed + side panel -->
     <div class="grid gap-8 lg:grid-cols-3">
-      <!-- Recent orders -->
-      <div class="lg:col-span-2">
-        <div class="mb-4 flex items-center justify-between">
-          <h2 class="font-display text-lg font-semibold text-ink">Recent orders</h2>
-          <button
-            class="inline-flex items-center gap-1 text-sm font-medium text-brand-300 transition-colors hover:text-brand-200"
-            @click="router.push('/dashboard/orders')"
-          >
-            View all <ArrowRight class="h-3.5 w-3.5" />
-          </button>
-        </div>
-
-        <div class="glass rounded-2xl shadow-card">
-          <div v-if="ordersStore.loading" class="space-y-3 p-6">
-            <BaseSkeleton v-for="n in 3" :key="n" class="h-14 w-full" />
+      <!-- Left: recent orders + featured services -->
+      <div class="min-w-0 space-y-8 lg:col-span-2">
+        <!-- Recent orders -->
+        <div>
+          <div class="mb-4 flex items-center justify-between">
+            <h2 class="font-display text-lg font-semibold text-ink">Recent orders</h2>
+            <button
+              class="inline-flex items-center gap-1 text-sm font-medium text-brand-300 transition-colors hover:text-brand-200"
+              @click="router.push('/dashboard/orders')"
+            >
+              View all <ArrowRight class="h-3.5 w-3.5" />
+            </button>
           </div>
 
-          <BaseEmptyState
-            v-else-if="ordersStore.orders.length === 0"
-            title="No orders yet"
-            message="Place your first order and it will show up here."
-          >
-            <BaseButton class="mt-2" size="sm" @click="router.push('/dashboard/services')">
-              Explore services
-            </BaseButton>
-          </BaseEmptyState>
+          <div class="glass rounded-2xl shadow-card">
+            <div v-if="ordersStore.loading" class="space-y-3 p-6">
+              <BaseSkeleton v-for="n in 3" :key="n" class="h-14 w-full" />
+            </div>
 
-          <ul v-else class="divide-y divide-ink/[0.06]">
-            <li
-              v-for="order in ordersStore.orders"
-              :key="order._id"
-              class="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-ink/[0.03]"
+            <BaseEmptyState
+              v-else-if="ordersStore.orders.length === 0"
+              title="No orders yet"
+              message="Place your first order and it will show up here."
             >
-              <div class="min-w-0">
-                <p class="truncate text-sm font-medium text-ink">{{ serviceName(order) }}</p>
-                <p class="mt-0.5 text-xs text-ink/40">
-                  #{{ order.orderNumber }} · {{ formatNumber(order.quantity) }} · {{ formatRelative(order.createdAt) }}
-                </p>
-              </div>
-              <div class="flex shrink-0 items-center gap-3">
-                <span class="text-sm font-semibold text-ink">{{ formatMoney(order.totalPrice) }}</span>
-                <BaseBadge :tone="STATUS_TONE[order.status] ?? 'neutral'" dot>
-                  {{ order.status }}
-                </BaseBadge>
-              </div>
-            </li>
-          </ul>
+              <BaseButton class="mt-2" size="sm" @click="router.push('/dashboard/services')">
+                Explore services
+              </BaseButton>
+            </BaseEmptyState>
+
+            <ul v-else class="divide-y divide-ink/[0.06]">
+              <li
+                v-for="order in ordersStore.orders"
+                :key="order._id"
+                class="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-ink/[0.03]"
+              >
+                <div class="min-w-0">
+                  <p class="truncate text-sm font-medium text-ink">{{ serviceName(order) }}</p>
+                  <p class="mt-0.5 text-xs text-ink/40">
+                    #{{ order.orderNumber }} · {{ formatNumber(order.quantity) }} · {{ formatRelative(order.createdAt) }}
+                  </p>
+                </div>
+                <div class="flex shrink-0 items-center gap-3">
+                  <span class="text-sm font-semibold text-ink">{{ formatMoney(order.totalPrice) }}</span>
+                  <BaseBadge :tone="STATUS_TONE[order.status] ?? 'neutral'" dot>
+                    {{ order.status }}
+                  </BaseBadge>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Featured services -->
+        <div>
+          <div class="mb-4 flex items-center justify-between">
+            <h2 class="font-display text-lg font-semibold text-ink">Featured services</h2>
+            <button
+              class="inline-flex items-center gap-1 text-sm font-medium text-brand-300 transition-colors hover:text-brand-200"
+              @click="router.push('/dashboard/services')"
+            >
+              Browse all <ArrowRight class="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          <div
+            v-if="servicesStore.loading"
+            class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+          >
+            <BaseSkeleton v-for="n in 6" :key="n" class="h-56 w-full" />
+          </div>
+
+          <div
+            v-else-if="servicesStore.featured.length"
+            class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+          >
+            <ServiceCard
+              v-for="service in servicesStore.featured"
+              :key="service._id"
+              :service="service"
+              @buy="openBuy"
+            />
+          </div>
         </div>
       </div>
 
-      <!-- Announcements -->
-      <AnnouncementsPanel />
-    </div>
+      <!-- Right: announcements + quick actions -->
+      <div class="min-w-0 space-y-8">
+        <AnnouncementsPanel />
 
-    <!-- Featured services -->
-    <div>
-      <div class="mb-4 flex items-center justify-between">
-        <h2 class="font-display text-lg font-semibold text-ink">Featured services</h2>
-        <button
-          class="inline-flex items-center gap-1 text-sm font-medium text-brand-300 transition-colors hover:text-brand-200"
-          @click="router.push('/dashboard/services')"
-        >
-          Browse all <ArrowRight class="h-3.5 w-3.5" />
-        </button>
-      </div>
-
-      <div v-if="servicesStore.loading" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <BaseSkeleton v-for="n in 4" :key="n" class="h-56 w-full" />
-      </div>
-
-      <div v-else-if="servicesStore.featured.length" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <ServiceCard
-          v-for="service in servicesStore.featured"
-          :key="service._id"
-          :service="service"
-          @buy="openBuy"
-        />
+        <div class="glass rounded-2xl p-6 shadow-card">
+          <h3 class="font-display text-base font-semibold text-ink">Quick actions</h3>
+          <div class="mt-4 space-y-2">
+            <button
+              v-for="action in quickActions"
+              :key="action.label"
+              class="group flex w-full items-center gap-3 rounded-xl border border-ink/10 bg-soft px-3.5 py-2.5 text-sm font-medium text-ink/75 transition-all hover:border-brand-400/40 hover:text-ink"
+              @click="router.push(action.to)"
+            >
+              <component :is="action.icon" class="h-4 w-4 text-brand-300 transition-transform group-hover:scale-110" />
+              {{ action.label }}
+              <ArrowRight class="ml-auto h-3.5 w-3.5 text-ink/25 transition-transform group-hover:translate-x-0.5 group-hover:text-brand-300" />
+            </button>
+          </div>
+          <p class="mt-4 border-t border-ink/10 pt-4 text-xs leading-relaxed text-ink/40">
+            Tip: top up your wallet with KHQR and services are paid instantly — no checkout needed.
+          </p>
+        </div>
       </div>
     </div>
 

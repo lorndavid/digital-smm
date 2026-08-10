@@ -48,7 +48,7 @@ async function save(): Promise<void> {
 </script>
 
 <template>
-  <div class="w-full space-y-6">
+  <div class="mx-auto w-full max-w-3xl space-y-6">
     <div>
       <h1 class="font-display text-2xl font-bold text-ink">Profile</h1>
       <p class="mt-1 text-sm text-ink/50">Manage how you appear on VidSMM.</p>

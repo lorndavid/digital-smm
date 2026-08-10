@@ -90,7 +90,7 @@ async function pickService(page: import('@playwright/test').Page, name: string):
     return
   }
   // No search text: open the searchable Service combobox and pick the row.
-  await page.getByRole('button', { name: /Search or select a service/ }).click()
+  await page.getByPlaceholder(/Search or select a service/).click()
   await page.getByRole('button', { name: new RegExp(name) }).click()
 }
 
@@ -145,12 +145,27 @@ test('keyboard: arrow down + Enter picks the highlighted search result', async (
   await expect(page.getByLabel('Category').locator('option:checked')).toHaveText('Facebook')
 })
 
+test('service combobox: typing filters the list, Enter picks the highlight', async ({ page }) => {
+  // Type directly into the Service field — the dropdown filters instantly
+  // (no extra click into a hidden filter box needed).
+  await page.getByPlaceholder(/Search or select a service/).fill('TikTok')
+  await expect(page.getByRole('button', { name: /TikTok Followers/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toHaveCount(0)
+
+  // Arrow down highlights the first match; Enter picks it and fills the field.
+  await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('heading', { name: 'TikTok Followers', level: 3 })).toBeVisible()
+  await expect(page.getByLabel('Category').locator('option:checked')).toHaveText('TikTok')
+  await expect(page.getByPlaceholder(/Search or select a service/)).toHaveValue('TikTok Followers')
+})
+
 test('category dropdown filters the service list', async ({ page }) => {
   // Pick the Facebook category from the dropdown.
   await page.getByLabel('Category').selectOption({ label: 'Facebook' })
 
   // The combobox now lists only Facebook services.
-  await page.getByRole('button', { name: /Search or select a service/ }).click()
+  await page.getByPlaceholder(/Search or select a service/).click()
   await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toBeVisible()
   await expect(page.getByRole('button', { name: /TikTok Followers/ })).toHaveCount(0)
 })

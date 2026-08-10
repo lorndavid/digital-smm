@@ -35,3 +35,6 @@ coverage/
 test-results/
 playwright-report/
 blob-report/
+
+# Dashboard screenshot pass output
+frontend/shots/

@@ -453,7 +453,7 @@ onUnmounted(() => {
     <div v-if="loading && !order" class="space-y-4">
       <BaseSkeleton class="h-36 w-full rounded-3xl" />
       <BaseSkeleton class="h-72 w-full rounded-3xl" />
-      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
         <BaseSkeleton v-for="n in 6" :key="n" class="h-24 w-full rounded-2xl" />
       </div>
     </div>
@@ -525,7 +525,7 @@ onUnmounted(() => {
       </div>
 
       <!-- Progress analytics -->
-      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
         <div
           v-for="item in analytics"
           :key="item.label"

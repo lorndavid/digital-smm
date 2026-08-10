@@ -51,6 +51,7 @@ async function main(): Promise<void> {
   const { createApp } = await import('../src/app.js')
   const { connectDatabase } = await import('../src/config/database.js')
   const { adminService } = await import('../src/services/admin.service.js')
+  const { seedSuperAdmin } = await import('../src/services/admin-auth.service.js')
 
   await connectDatabase()
   console.log(`[browser-test] connected to throwaway db: ${DB_NAME}`)
@@ -81,6 +82,10 @@ async function main(): Promise<void> {
   // Telegram / …) so the Explore page has data for browser tests.
   const seeded = await adminService.syncProviderServices()
   console.log(`[browser-test] seeded ${seeded.total} mock provider services`)
+
+  // Seed an admin account when SUPER_ADMIN_EMAIL/PASSWORD are provided (no-op
+  // otherwise), so browser-test runs can exercise the admin dashboard too.
+  await seedSuperAdmin()
 
   const app = createApp()
   const server = app.listen(4001, () => {

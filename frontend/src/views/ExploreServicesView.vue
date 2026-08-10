@@ -55,9 +55,13 @@ const loadError = ref('')
 const search = ref('')
 const categoryId = ref('')
 
-/** Live mini-search inside the service dropdown (client-side, instant). */
-const panelQuery = ref('')
+/** Search text inside the service combobox trigger (client-side, instant). */
+const trigger = ref('')
 const panelOpen = ref(false)
+/** Index of the keyboard-highlighted row in the service dropdown (-1 = none). */
+const panelIndex = ref(-1)
+/** Scrollable results container inside the service dropdown. */
+const panelListEl = ref<HTMLElement | null>(null)
 /** Autocomplete dropdown under the main search box. */
 const searchOpen = ref(false)
 /** True while a freshly-typed query is still debouncing (no results yet). */
@@ -102,13 +106,14 @@ function changeCategory(): void {
   void loadServices()
 }
 
-/** Services shown in the dropdown; the selected one is always pinned on top. */
+/** Services shown in the dropdown — filtered live by the trigger's text. */
 const dropdownServices = computed<Service[]>(() => {
-  const q = panelQuery.value.trim().toLowerCase()
+  const q = trigger.value.trim().toLowerCase()
   let list = q
     ? services.value.filter((s) => s.name.toLowerCase().includes(q))
     : services.value
-  if (selected.value && !list.some((s) => s._id === selected.value?._id)) {
+  // The selected service is pinned on top while browsing (no query typed).
+  if (!q && selected.value && !list.some((s) => s._id === selected.value?._id)) {
     list = [selected.value, ...list]
   }
   return list
@@ -204,17 +209,71 @@ function setService(service: Service): void {
 function selectService(service: Service): void {
   setService(service)
   panelOpen.value = false
-  panelQuery.value = ''
+  panelIndex.value = -1
+  trigger.value = service.name
 }
 
 /** Picked from the search autocomplete — fills the box and auto-sets the category. */
 function selectServiceFromSearch(service: Service): void {
   setService(service)
   search.value = service.name
+  trigger.value = service.name
   closeSearch()
   panelOpen.value = false
-  panelQuery.value = ''
+  panelIndex.value = -1
 }
+
+/** Opens the service dropdown (trigger's focus event). */
+function openServicePanel(): void {
+  panelOpen.value = true
+  panelIndex.value = -1
+  closeSearch()
+}
+
+/** Closes the dropdown, restoring the selected service's name in the trigger. */
+function closePanel(): void {
+  panelOpen.value = false
+  panelIndex.value = -1
+  trigger.value = selected.value?.name ?? ''
+}
+
+/** Typing in the trigger filters the service list instantly. */
+function onPanelInput(): void {
+  panelOpen.value = true
+  panelIndex.value = -1
+}
+
+/** Arrow up/down + Enter navigation inside the service dropdown. */
+function onPanelKeydown(event: KeyboardEvent): void {
+  const list = dropdownServices.value
+  if (list.length === 0) return
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault()
+    panelOpen.value = true
+    panelIndex.value =
+      event.key === 'ArrowDown'
+        ? (panelIndex.value + 1) % list.length
+        : panelIndex.value < 0
+          ? list.length - 1
+          : (panelIndex.value - 1 + list.length) % list.length
+  } else if (event.key === 'Enter') {
+    const item = list[panelIndex.value]
+    if (item) {
+      event.preventDefault()
+      selectService(item)
+    }
+  }
+}
+
+// Keep the highlighted service row visible while navigating with arrow keys.
+watch(
+  panelIndex,
+  (index) => {
+    if (index < 0) return
+    panelListEl.value?.querySelectorAll('button')[index]?.scrollIntoView({ block: 'nearest' })
+  },
+  { flush: 'post' },
+)
 
 function clearOrder(): void {
   link.value = ''
@@ -443,10 +502,8 @@ onMounted(async () => {
       </div>
     </div>
 
-    <div class="glass space-y-6 rounded-2xl p-5 shadow-card sm:p-7">
-      <!-- ==============================================================
-           Step 1 — Find your service
-           ============================================================== -->
+    <!-- Step 1 — Find your service (full width) -->
+    <div class="glass rounded-2xl p-5 shadow-card sm:p-7">
       <section class="space-y-4">
         <div class="flex items-center gap-2.5">
           <span
@@ -466,7 +523,7 @@ onMounted(async () => {
             type="search"
             placeholder="Search all services… e.g. Facebook Live"
             class="h-12 w-full rounded-xl border border-ink/10 bg-ink/5 pl-10 pr-4 text-sm text-ink placeholder:text-ink/30 transition-colors focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
-            @focus="searchOpen = true; panelOpen = false; highlightedIndex = -1"
+            @focus="searchOpen = true; closePanel(); highlightedIndex = -1"
             @input="onSearchInput"
             @keydown="onSearchKeydown"
             @keydown.esc="closeSearch"
@@ -532,56 +589,55 @@ onMounted(async () => {
             @update:model-value="categoryId = $event; changeCategory()"
           />
 
-          <!-- Service combobox -->
+          <!-- Service combobox — type to search, click or Enter to select -->
           <div class="block">
             <span class="mb-1.5 block text-sm font-medium text-ink/80">Service</span>
             <div class="relative">
-              <button
-                type="button"
-                class="relative z-20 flex h-11 w-full items-center justify-between gap-2 rounded-xl border border-ink/10 bg-ink/5 px-4 text-left text-sm transition-colors hover:border-brand-400/50 focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
-                @click="panelOpen = !panelOpen; closeSearch()"
-              >
-                <span v-if="selected" class="flex min-w-0 items-center gap-2">
-                  <PlatformIcon v-if="servicePlatform !== 'other'" :platform="servicePlatform" size="xs" tile />
-                  <span class="truncate text-ink">{{ selected.name }}</span>
-                </span>
-                <span v-else-if="loading" class="flex items-center gap-2 text-ink/40">
-                  <BaseSkeleton class="h-3 w-28" /> Loading…
-                </span>
-                <span v-else class="text-ink/40">Search or select a service</span>
-                <ChevronDown
-                  class="h-4 w-4 shrink-0 text-ink/40 transition-transform"
-                  :class="panelOpen ? 'rotate-180' : ''"
-                />
-              </button>
+              <Search
+                class="pointer-events-none absolute left-3.5 top-1/2 z-20 h-4 w-4 -translate-y-1/2 text-ink/35"
+              />
+              <input
+                v-model="trigger"
+                type="text"
+                role="combobox"
+                :aria-expanded="panelOpen"
+                placeholder="Search or select a service…"
+                autocomplete="off"
+                spellcheck="false"
+                class="relative z-20 h-11 w-full rounded-xl border border-ink/10 bg-ink/5 pl-10 pr-10 text-sm text-ink placeholder:text-ink/30 transition-colors focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
+                @focus="openServicePanel"
+                @input="onPanelInput"
+                @keydown="onPanelKeydown"
+                @keydown.esc="closePanel"
+                @blur="closePanel"
+              />
+              <ChevronDown
+                class="pointer-events-none absolute right-3.5 top-1/2 z-20 h-4 w-4 -translate-y-1/2 text-ink/40 transition-transform"
+                :class="panelOpen ? 'rotate-180' : ''"
+              />
 
               <!-- Click-away overlay -->
-              <div v-if="panelOpen" class="fixed inset-0 z-20" @click="panelOpen = false" />
+              <div v-if="panelOpen" class="fixed inset-0 z-20" @click="closePanel" />
 
               <Transition name="fade">
                 <div
                   v-if="panelOpen"
                   class="absolute z-30 mt-2 w-full overflow-hidden rounded-2xl border border-ink/10 bg-card/95 shadow-glow backdrop-blur-xl"
                 >
-                  <div class="border-b border-ink/10 p-2.5">
-                    <div class="relative">
-                      <Search class="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink/35" />
-                      <input
-                        v-model="panelQuery"
-                        type="search"
-                        placeholder="Filter services…"
-                        class="h-9 w-full rounded-lg border border-ink/10 bg-ink/5 pl-9 pr-3 text-sm text-ink placeholder:text-ink/30 focus:border-brand-400/60 focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div class="max-h-72 overflow-y-auto p-1.5">
+                  <div ref="panelListEl" class="max-h-72 overflow-y-auto p-1.5">
                     <button
-                      v-for="s in dropdownServices"
+                      v-for="(s, index) in dropdownServices"
                       :key="s._id"
                       type="button"
                       class="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-ink/5"
-                      :class="selected?._id === s._id ? 'bg-brand-500/15' : ''"
+                      :class="
+                        selected?._id === s._id
+                          ? 'bg-brand-500/15'
+                          : index === panelIndex
+                            ? 'bg-ink/10 ring-1 ring-brand-400/40'
+                            : ''
+                      "
+                      @mousedown.prevent
                       @click="selectService(s)"
                     >
                       <span class="min-w-0">
@@ -647,11 +703,15 @@ onMounted(async () => {
           </button>
         </div>
       </section>
+    </div>
 
-      <!-- ==============================================================
-           Step 2 — Selected service details
-           ============================================================== -->
-      <section v-if="selected" class="space-y-4">
+    <!-- ==============================================================
+         Order form — centered readable column (once a service is picked)
+         ============================================================== -->
+    <div v-if="selected" class="mx-auto w-full max-w-3xl space-y-6">
+      <div class="glass space-y-6 rounded-2xl p-5 shadow-card sm:p-7">
+        <!-- Step 2 — Selected service details -->
+        <section class="space-y-4">
         <div class="flex items-center gap-2.5">
           <span
             class="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-secondary-500 text-[11px] font-bold text-white shadow-glow"
@@ -722,10 +782,8 @@ onMounted(async () => {
         </div>
       </section>
 
-      <!-- ==============================================================
-           Step 3 — Order details
-           ============================================================== -->
-      <section v-if="selected" class="space-y-4">
+        <!-- Step 3 — Order details -->
+        <section class="space-y-4">
         <div class="flex items-center gap-2.5">
           <span
             class="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-secondary-500 text-[11px] font-bold text-white shadow-glow"
@@ -902,17 +960,18 @@ onMounted(async () => {
           </p>
         </div>
       </footer>
-
-      <!-- Empty state before any service is picked -->
-      <div
-        v-else
-        class="rounded-2xl border border-dashed border-ink/10 px-6 py-10 text-center"
-      >
-        <p class="text-sm text-ink/40">
-          Search above or pick a category, then choose a service to see its details, price and
-          order form.
-        </p>
       </div>
+    </div>
+
+    <!-- Empty state before any service is picked -->
+    <div
+      v-else
+      class="mx-auto w-full max-w-3xl rounded-2xl border border-dashed border-ink/10 px-6 py-10 text-center"
+    >
+      <p class="text-sm text-ink/40">
+        Search above or pick a category, then choose a service to see its details, price and
+        order form.
+      </p>
     </div>
   </div>
 </template>
