@@ -17,14 +17,14 @@ const steps = [
   {
     icon: CreditCard,
     step: '03',
-    title: 'Pay with KHQR',
-    description: 'Scan the QR with Bakong, ABA, ACLEDA or Wing and confirm instantly.',
+    title: 'Top up your wallet',
+    description: 'Fund with KHQR — scan with Bakong, ABA, ACLEDA or Wing and get credited instantly.',
   },
   {
     icon: Rocket,
     step: '04',
-    title: 'Watch it grow',
-    description: 'Track delivery in real time with automatic refills on qualified orders.',
+    title: 'Place & track',
+    description: 'Order straight from your wallet balance and track delivery in real time.',
   },
 ]
 </script>

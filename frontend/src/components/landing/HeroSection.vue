@@ -60,7 +60,7 @@ async function onSignOut(): Promise<void> {
           class="mt-6 max-w-xl text-base leading-relaxed text-ink/60 sm:text-lg"
         >
           Buy real TikTok, Facebook, Instagram, YouTube and Telegram growth with instant
-          delivery, real-time tracking and secure Bakong KHQR payments — trusted by creators
+          delivery, real-time tracking and secure KHQR wallet top-ups — trusted by creators
           and agencies across Cambodia.
         </p>
 
@@ -121,8 +121,8 @@ async function onSignOut(): Promise<void> {
         >
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-xs text-ink/50">Your balance</p>
-              <p class="font-display text-3xl font-bold text-ink">$124.50</p>
+              <p class="text-xs text-ink/50">Live order activity</p>
+              <p class="font-display text-2xl font-bold text-ink">2 active orders</p>
             </div>
             <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-secondary-500 shadow-glow">
               <TrendingUp class="h-6 w-6 text-white" />

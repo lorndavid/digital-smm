@@ -5,7 +5,6 @@ import FeaturesSection from '@/components/landing/FeaturesSection.vue'
 import PlatformsSection from '@/components/landing/PlatformsSection.vue'
 import HowItWorksSection from '@/components/landing/HowItWorksSection.vue'
 import StatsSection from '@/components/landing/StatsSection.vue'
-import PricingSection from '@/components/landing/PricingSection.vue'
 import FaqSection from '@/components/landing/FaqSection.vue'
 import TestimonialsSection from '@/components/landing/TestimonialsSection.vue'
 import CtaSection from '@/components/landing/CtaSection.vue'
@@ -21,7 +20,6 @@ import LandingFooter from '@/components/landing/LandingFooter.vue'
       <PlatformsSection />
       <HowItWorksSection />
       <StatsSection />
-      <PricingSection />
       <FaqSection />
       <TestimonialsSection />
       <CtaSection />

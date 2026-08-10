@@ -5,7 +5,7 @@ import BrandLogo from '../layout/BrandLogo.vue'
 const columns = [
   {
     title: 'Product',
-    links: ['Explore Services', 'Pricing', 'Wallet & KHQR', 'API Access', 'Affiliates'],
+    links: ['Explore Services', 'How It Works', 'Wallet & KHQR', 'API Access', 'Affiliates'],
   },
   {
     title: 'Company',
