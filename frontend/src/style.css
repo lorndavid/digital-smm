@@ -99,6 +99,9 @@
 /* ------------------------------------------------------------------ */
 html {
   scroll-behavior: smooth;
+  /* Fixed landing navbar is h-16 (4rem) — keep in-page anchor jumps
+     (#how-it-works, #faq, #contact, …) from hiding under the header. */
+  scroll-padding-top: 5rem;
 }
 
 body {

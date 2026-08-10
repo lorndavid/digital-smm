@@ -83,6 +83,26 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    path: '/terms',
+    name: 'terms',
+    component: () => import('@/views/TermsView.vue'),
+  },
+  {
+    path: '/privacy',
+    name: 'privacy',
+    component: () => import('@/views/PrivacyView.vue'),
+  },
+  {
+    path: '/refund-policy',
+    name: 'refund-policy',
+    component: () => import('@/views/RefundPolicyView.vue'),
+  },
+  {
+    path: '/cookies',
+    name: 'cookies',
+    component: () => import('@/views/CookiesView.vue'),
+  },
+  {
     path: '/403',
     name: 'forbidden',
     component: () => import('@/views/ForbiddenView.vue'),

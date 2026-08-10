@@ -72,6 +72,70 @@ test('returning signed-in user sees Sign Out + Dashboard, never Sign In / Get St
   await expect(cta.getByRole('button', { name: /Go to Dashboard/ })).toBeVisible()
 })
 
+test('footer links navigate to real pages instead of # placeholders', async ({
+  page,
+  request,
+}) => {
+  const token = await bootstrapToken(request)
+  await page.addInitScript((t) => localStorage.setItem('vidsmm_session_token', t), token)
+  await page.goto('/')
+
+  const footer = page.locator('footer')
+
+  // Product column → real dashboard routes (auth-gated, session already valid).
+  await footer.getByText('Explore Services', { exact: true }).click()
+  await expect(page).toHaveURL(/\/dashboard\/services/)
+
+  await page.goto('/')
+  await footer.getByText('Wallet & KHQR', { exact: true }).click()
+  await expect(page).toHaveURL(/\/dashboard\/wallet/)
+
+  await page.goto('/')
+  await footer.getByText('Order Status', { exact: true }).click()
+  await expect(page).toHaveURL(/\/dashboard\/orders/)
+})
+
+test('legal footer links open the legal pages', async ({ page }) => {
+  await page.goto('/')
+  const footer = page.locator('footer')
+
+  const legal = [
+    { link: 'Terms of Service', url: /\/terms/, heading: 'Terms of Service' },
+    { link: 'Privacy Policy', url: /\/privacy/, heading: 'Privacy Policy' },
+    { link: 'Refund Policy', url: /\/refund-policy/, heading: 'Refund Policy' },
+    { link: 'Cookies', url: /\/cookies/, heading: 'Cookies Policy' },
+  ]
+
+  for (const { link, url, heading } of legal) {
+    await page.goto('/')
+    await footer.getByText(link, { exact: true }).click()
+    await expect(page).toHaveURL(url)
+    await expect(page.getByRole('heading', { name: heading, level: 1 })).toBeVisible()
+    // Back-home link returns to the landing page.
+    await page.getByRole('link', { name: /Back to home/ }).click()
+    await expect(page).toHaveURL('/')
+  }
+})
+
+test('navbar Services routes signed-out users into the sign-in flow', async ({
+  page,
+}) => {
+  await page.goto('/')
+  const nav = page.locator('header')
+
+  // Clicking Services as a guest goes through the auth guard, which
+  // sends them to sign-in with a redirect back to the catalog.
+  await nav.getByRole('link', { name: 'Services', exact: true }).click()
+  await expect(page).toHaveURL(/\/sign-in\?redirect=\/dashboard\/services/)
+
+  // In-page section anchors still scroll (fixed header no longer covers them).
+  await page.goto('/')
+  await nav.getByRole('link', { name: 'How it works', exact: true }).click()
+  await expect(page).toHaveURL(/#how-it-works/)
+  const howItWorks = page.locator('#how-it-works')
+  await expect(howItWorks).toBeInViewport()
+})
+
 test('signed-out visitor still sees Sign In + Get Started', async ({ page }) => {
   await page.goto('/')
 

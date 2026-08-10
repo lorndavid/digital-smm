@@ -29,9 +29,12 @@ onUnmounted(() => {
   window.removeEventListener('scroll', onScroll)
 })
 
-const links = [
+// Section links scroll in-page; 'Services' navigates to the real catalog.
+// It is auth-gated, so the router guard smooth-redirects signed-out users
+// to /sign-in?redirect=/dashboard/services and back after they sign in.
+const links: { label: string; href?: string; to?: string }[] = [
   { label: 'Home', href: '#home' },
-  { label: 'Services', href: '#services' },
+  { label: 'Services', to: '/dashboard/services' },
   { label: 'How it works', href: '#how-it-works' },
   { label: 'FAQ', href: '#faq' },
   { label: 'Contact', href: '#contact' },
@@ -75,14 +78,22 @@ const profileItems = [
       <a href="#home" class="shrink-0"><BrandLogo /></a>
 
       <div class="hidden items-center gap-8 lg:flex">
-        <a
-          v-for="link in links"
-          :key="link.label"
-          :href="link.href"
-          class="text-sm font-medium text-ink/60 transition-colors hover:text-ink"
-        >
-          {{ link.label }}
-        </a>
+        <template v-for="link in links" :key="link.label">
+          <RouterLink
+            v-if="link.to"
+            :to="link.to"
+            class="text-sm font-medium text-ink/60 transition-colors hover:text-ink"
+          >
+            {{ link.label }}
+          </RouterLink>
+          <a
+            v-else
+            :href="link.href"
+            class="text-sm font-medium text-ink/60 transition-colors hover:text-ink"
+          >
+            {{ link.label }}
+          </a>
+        </template>
       </div>
 
       <div class="hidden items-center gap-3 lg:flex">
@@ -131,15 +142,24 @@ const profileItems = [
         class="glass-strong border-t border-ink/10 px-4 pb-6 pt-3 lg:hidden"
       >
         <div class="flex flex-col gap-4">
-          <a
-            v-for="link in links"
-            :key="link.label"
-            :href="link.href"
-            class="text-sm font-medium text-ink/70 transition-colors hover:text-ink"
-            @click="mobileOpen = false"
-          >
-            {{ link.label }}
-          </a>
+          <template v-for="link in links" :key="link.label">
+            <RouterLink
+              v-if="link.to"
+              :to="link.to"
+              class="text-sm font-medium text-ink/70 transition-colors hover:text-ink"
+              @click="mobileOpen = false"
+            >
+              {{ link.label }}
+            </RouterLink>
+            <a
+              v-else
+              :href="link.href"
+              class="text-sm font-medium text-ink/70 transition-colors hover:text-ink"
+              @click="mobileOpen = false"
+            >
+              {{ link.label }}
+            </a>
+          </template>
           <!-- Same isLoaded guard as the desktop row: a returning signed-in
                user must never see the sign-in buttons flash on revisit. -->
           <template v-if="authStore.isLoaded && authStore.isSignedIn">              <div class="flex items-center gap-3">
