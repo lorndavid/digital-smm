@@ -5,13 +5,13 @@ const sections: LegalSection[] = [
   {
     heading: '1. Acceptance of Terms',
     paragraphs: [
-      'By creating an account or using VidSMM ("the Service"), you agree to these Terms of Service. If you do not agree with any part of these terms, please do not use the Service.',
+      'By creating an account or using DigitalSMM ("the Service"), you agree to these Terms of Service. If you do not agree with any part of these terms, please do not use the Service.',
     ],
   },
   {
     heading: '2. Description of Service',
     paragraphs: [
-      'VidSMM is a social media marketing platform that lets you purchase growth services — such as followers, likes, views and similar — for platforms including TikTok, Facebook, Instagram, YouTube and Telegram.',
+      'DigitalSMM is a social media marketing platform that lets you purchase growth services — such as followers, likes, views and similar — for platforms including TikTok, Facebook, Instagram, YouTube and Telegram.',
       'Services are delivered by third-party providers. We make reasonable efforts to ensure delivery, but delivery start times and completion times vary by service and cannot be guaranteed.',
     ],
   },
@@ -25,7 +25,7 @@ const sections: LegalSection[] = [
   {
     heading: '4. Wallet & Payments',
     paragraphs: [
-      'VidSMM is pay-as-you-go. You top up your wallet using KHQR payments (Bakong, ABA, ACLEDA or Wing), and orders are paid from your wallet balance.',
+      'DigitalSMM is pay-as-you-go. You top up your wallet using KHQR payments (Bakong, ABA, ACLEDA or Wing), and orders are paid from your wallet balance.',
       'Top-ups are credited to your wallet instantly once the payment is confirmed. Wallet balances do not expire, but are not redeemable for cash.',
     ],
   },
@@ -57,7 +57,7 @@ const sections: LegalSection[] = [
   {
     heading: '8. Limitation of Liability',
     paragraphs: [
-      'To the maximum extent permitted by law, VidSMM is not liable for indirect, incidental or consequential damages arising from your use of the Service, including losses resulting from actions taken by third-party providers or social platforms.',
+      'To the maximum extent permitted by law, DigitalSMM is not liable for indirect, incidental or consequential damages arising from your use of the Service, including losses resulting from actions taken by third-party providers or social platforms.',
     ],
   },
   {

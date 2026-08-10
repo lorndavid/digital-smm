@@ -77,7 +77,7 @@ test('payments page shows settled summary and exports a PDF statement', async ({
 }) => {
   const { token, payment, webhookSecret } = await bootstrap(request)
   await settleTopUp(request, payment, webhookSecret)
-  await page.addInitScript((t) => localStorage.setItem('vidsmm_session_token', t), token)
+  await page.addInitScript((t) => localStorage.setItem('digitalsmm_session_token', t), token)
 
   await page.goto('/dashboard/payments')
   await expect(page.getByRole('heading', { name: 'Payments' })).toBeVisible()
@@ -103,7 +103,7 @@ test('payments page shows settled summary and exports a PDF statement', async ({
   const downloadPromise = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Export Today', exact: true }).click()
   const download = await downloadPromise
-  expect(download.suggestedFilename()).toMatch(/^vidsmm-payments-\d{4}-\d{2}-\d{2}\.pdf$/)
+  expect(download.suggestedFilename()).toMatch(/^digitalsmm-payments-\d{4}-\d{2}-\d{2}\.pdf$/)
 
   // The PDF should be a real file with content (header, table, totals).
   const stream = await download.createReadStream()

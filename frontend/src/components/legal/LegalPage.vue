@@ -19,7 +19,7 @@ defineProps<{
   <div class="min-h-screen">
     <header class="border-b border-ink/10 bg-card/40">
       <div class="mx-auto flex h-16 max-w-4xl items-center justify-between px-4 sm:px-6">
-        <RouterLink to="/" aria-label="VidSMM home"><BrandLogo /></RouterLink>
+        <RouterLink to="/" aria-label="DigitalSMM home"><BrandLogo /></RouterLink>
         <RouterLink
           to="/"
           class="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-ink/60 transition-colors hover:bg-ink/5 hover:text-ink"
@@ -57,7 +57,7 @@ defineProps<{
     </main>
 
     <footer class="border-t border-ink/10 bg-card/40 py-6 text-center text-xs text-ink/40">
-      © {{ new Date().getFullYear() }} VidSMM. All rights reserved.
+      © {{ new Date().getFullYear() }} DigitalSMM. All rights reserved.
     </footer>
   </div>
 </template>

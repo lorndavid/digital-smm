@@ -2,20 +2,18 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  ArrowLeft,
-  ArrowRight,
-  Check,
+  ArrowUpRight,
   CheckCircle2,
-  Link2,
   Minus,
   Plus,
-  QrCode,
+  Wallet,
   XCircle,
 } from '@lucide/vue'
 import type { Category, Service } from '@/types/models'
-import { paymentApi } from '@/api/payment.api'
+import { ordersApi } from '@/api/orders.api'
 import { ApiRequestError } from '@/api/client'
-import { formatMoney, formatUnitPrice } from '@/utils/format'
+import { useWalletStore } from '@/stores/wallet.store'
+import { formatMoney, formatNumber, formatUnitPrice } from '@/utils/format'
 import { SERVICE_TYPE_LABEL } from '@/utils/constants'
 import { validateLink, PLATFORM_LABEL, type DetectedPlatform } from '@/utils/linkValidation'
 import PlatformIcon from '@/components/ui/PlatformIcon.vue'
@@ -32,9 +30,8 @@ const emit = defineEmits<{ close: [] }>()
 
 const router = useRouter()
 const toast = useToast()
+const walletStore = useWalletStore()
 
-type Step = 'details' | 'summary'
-const step = ref<Step>('details')
 const link = ref('')
 const quantity = ref<number | null>(null)
 const params = reactive<Record<string, string>>({})
@@ -44,12 +41,15 @@ const submitting = ref(false)
 watch(
   () => props.open,
   (open) => {
-    if (open) reset()
+    if (open) {
+      reset()
+      // Keep the balance fresh so the insufficient-balance prompt is accurate.
+      void walletStore.fetchWallet().catch(() => undefined)
+    }
   },
 )
 
 function reset(): void {
-  step.value = 'details'
   link.value = ''
   quantity.value = null
   for (const key of Object.keys(params)) delete params[key]
@@ -108,10 +108,8 @@ function adjustQuantity(delta: number): void {
   if (next >= 1) quantity.value = next
 }
 
-const stepIndex = computed(() => (step.value === 'details' ? 0 : 1))
-
 // ---------------------------------------------------------------------------
-// Pricing
+// Pricing & wallet
 // ---------------------------------------------------------------------------
 
 const round2 = (n: number) => Math.round(n * 100) / 100
@@ -135,82 +133,106 @@ const totalPrice = computed(() => {
   }
   const q = quantity.value ?? 0
   if (q > 0) return round2((q * service.pricePerUnit) / 1000)
-  return service.pricePerUnit
+  return 0
 })
+
+const balance = computed(() => walletStore.wallet?.balance ?? 0)
+const insufficient = computed(() => totalPrice.value > 0 && totalPrice.value > balance.value)
+const balanceAfter = computed(() => round2(Math.max(0, balance.value - totalPrice.value)))
+const shortfall = computed(() => round2(totalPrice.value - balance.value))
+
+const serviceTypeLabel = computed(() =>
+  props.service ? SERVICE_TYPE_LABEL[props.service.type] ?? props.service.type : '',
+)
 
 // ---------------------------------------------------------------------------
 // Flow
 // ---------------------------------------------------------------------------
 
-function goToSummary(): void {
+function validate(): boolean {
   error.value = ''
   const service = props.service
-  if (!service) return
-
+  if (!service) {
+    error.value = 'Please choose a service first'
+    return false
+  }
   if (linkRequired.value) {
     if (!link.value.trim()) {
       error.value = 'Please enter the link to your page or post'
-      return
+      return false
     }
     if (!linkCheck.value.valid) {
       error.value = linkCheck.value.message
-      return
+      return false
     }
   }
   if (quantityRequired.value) {
     const q = quantity.value
     if (!q || q <= 0) {
       error.value = 'Please enter a quantity'
-      return
+      return false
     }
     if (service.min > 0 && q < service.min) {
-      error.value = `Minimum quantity for this service is ${service.min}`
-      return
+      error.value = `Minimum quantity for this service is ${formatNumber(service.min)}`
+      return false
     }
     if (service.max > 0 && q > service.max) {
-      error.value = `Maximum quantity for this service is ${service.max}`
-      return
+      error.value = `Maximum quantity for this service is ${formatNumber(service.max)}`
+      return false
     }
   }
   for (const field of visibleFields.value) {
     const value = params[field.key]?.trim()
     if (field.required && !value) {
       error.value = `${field.label} is required`
-      return
+      return false
     }
     if (field.numeric && value && Number.isNaN(Number(value))) {
       error.value = `${field.label} must be a number`
-      return
+      return false
     }
   }
-  step.value = 'summary'
+  if (totalPrice.value > 0 && totalPrice.value < 0.01) {
+    error.value = 'Order total is below the $0.01 USD minimum — increase the quantity'
+    return false
+  }
+  return true
 }
 
-/** Creates the payment (and local pending order) then opens the checkout page. */
-async function continueToPayment(): Promise<void> {
-  if (!props.service) return
-  submitting.value = true
-  error.value = ''
-  // KHQR providers charge a $0.01 minimum — real per-1,000 rates are tiny,
-  // so small quantities can fall below it. Fail fast with a clear message.
-  if (totalPrice.value < 0.01) {
-    error.value = 'Order total is below the $0.01 USD minimum — increase the quantity'
-    submitting.value = false
+/** Places the order using the wallet balance (top-up prompt when short). */
+async function placeOrder(): Promise<void> {
+  if (!validate()) return
+  if (insufficient.value) {
+    error.value = 'Your wallet balance is not enough for this order — top up to continue.'
     return
   }
+  const service = props.service
+  if (!service) return
+  submitting.value = true
+  error.value = ''
   try {
-    const { payment } = await paymentApi.create({
-      purpose: 'order',
-      serviceId: props.service._id,
+    const order = await ordersApi.create({
+      serviceId: service._id,
       link: link.value.trim() || undefined,
       quantity: quantity.value ?? undefined,
       params: { ...params },
     })
     emit('close')
-    toast.success('Payment ready — scan the KHQR to pay')
-    await router.push(`/pay/${payment.referenceId}`)
+    toast.success('Order placed — track it from your orders')
+    await walletStore.refreshWallet().catch(() => undefined)
+    await router.push(`/dashboard/orders/${order._id}`)
   } catch (err) {
-    error.value = err instanceof ApiRequestError ? err.message : 'Failed to create payment'
+    const message = err instanceof ApiRequestError ? err.message : 'Failed to place order'
+    const isBalanceError =
+      err instanceof ApiRequestError &&
+      (message.toLowerCase().includes('insufficient') ||
+        (typeof err.details === 'object' &&
+          err.details !== null &&
+          'balance' in err.details))
+    error.value = isBalanceError
+      ? 'Your wallet balance is not enough — top up to continue.'
+      : message
+    await walletStore.fetchWallet().catch(() => undefined)
   } finally {
     submitting.value = false
   }
@@ -219,51 +241,12 @@ async function continueToPayment(): Promise<void> {
 function closeModal(): void {
   emit('close')
 }
-
-const stepTitles: Record<Step, string> = {
-  details: 'Buy service',
-  summary: 'Order summary',
-}
-
-const serviceTypeLabel = computed(() =>
-  props.service ? SERVICE_TYPE_LABEL[props.service.type] ?? props.service.type : '',
-)
 </script>
 
 <template>
-  <BaseModal :open="open" :title="stepTitles[step]" max-width="max-w-lg" @close="closeModal">
-    <!-- Step indicator -->
-    <div class="mb-4 flex items-center gap-2">
-      <template v-for="(label, i) in ['Details', 'Summary', 'Payment']" :key="label">
-        <template v-if="i > 0">
-          <span
-            class="h-px flex-1"
-            :class="i <= stepIndex ? 'bg-gradient-to-r from-brand-500 to-secondary-400' : 'bg-ink/10'"
-          />
-        </template>
-        <span class="flex shrink-0 items-center gap-1.5">
-          <span
-            class="flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold transition-all duration-300"
-            :class="
-              i < stepIndex
-                ? 'bg-emerald-400/20 text-emerald-300'
-                : i === stepIndex
-                  ? 'bg-gradient-to-br from-brand-500 to-secondary-500 text-white shadow-glow'
-                  : 'bg-ink/10 text-ink/40'
-            "
-          >
-            <Check v-if="i < stepIndex" class="h-3.5 w-3.5" />
-            <template v-else>{{ i + 1 }}</template>
-          </span>
-          <span class="text-xs font-medium" :class="i === stepIndex ? 'text-ink' : 'text-ink/40'">
-            {{ label }}
-          </span>
-        </span>
-      </template>
-    </div>
-
-    <!-- STEP 1: details -->
-    <div v-if="step === 'details'" class="space-y-4">
+  <BaseModal :open="open" title="Buy service" max-width="max-w-lg" @close="closeModal">
+    <div class="space-y-5">
+      <!-- Selected service -->
       <div class="glass flex items-center gap-3 rounded-2xl p-4">
         <PlatformIcon :platform="servicePlatform" size="md" tile />
         <div class="min-w-0">
@@ -274,12 +257,12 @@ const serviceTypeLabel = computed(() =>
         </div>
       </div>
 
+      <!-- Link -->
       <BaseInput
         v-if="linkRequired"
         v-model="link"
         label="Link to your page or post"
         placeholder="https://www.tiktok.com/@username"
-        hint="Paste the exact URL you want to grow — we detect the platform automatically."
         :error="error && !link ? error : ''"
       />
 
@@ -316,6 +299,7 @@ const serviceTypeLabel = computed(() =>
         </span>
       </div>
 
+      <!-- Quantity -->
       <div v-if="quantityRequired" class="space-y-1.5">
         <label class="text-xs font-medium text-ink/60">Quantity</label>
         <div class="flex items-center gap-2">
@@ -335,7 +319,7 @@ const serviceTypeLabel = computed(() =>
             type="number"
             :min="service?.min"
             :max="service?.max"
-            :placeholder="service ? `${service.min} – ${service.max}` : ''"
+            :placeholder="service ? formatNumber(service.min) + ' – ' + formatNumber(service.max) : ''"
             :error="error && !quantity ? error : ''"
           />
           <button
@@ -348,11 +332,9 @@ const serviceTypeLabel = computed(() =>
             <Plus class="h-4 w-4" />
           </button>
         </div>
-        <p class="text-xs text-ink/40">
-          Allowed range: <span class="text-ink/70">{{ service?.min }} – {{ service?.max }}</span> units
-        </p>
       </div>
 
+      <!-- Type-specific fields -->
       <div v-for="field in visibleFields" :key="field.key" class="space-y-1">
         <BaseInput
           v-if="field.type === 'input'"
@@ -379,69 +361,57 @@ const serviceTypeLabel = computed(() =>
         />
       </div>
 
-      <p v-if="error && (link || quantity || visibleFields.some((f) => params[f.key]))" class="text-sm text-rose-300">
-        {{ error }}
-      </p>
-
-      <div class="flex items-center justify-between pt-2">
-        <p class="text-sm text-ink/50">
-          Total: <span class="font-semibold text-ink">{{ formatMoney(totalPrice) }}</span>
-        </p>
-        <BaseButton @click="goToSummary">Continue <ArrowRight class="h-4 w-4" /></BaseButton>
-      </div>
-    </div>
-
-    <!-- STEP 2: summary -->
-    <div v-else class="space-y-4">
-      <div class="space-y-3 rounded-2xl bg-ink/[0.03] p-5">
-        <div class="flex items-center justify-between gap-3 text-sm">
-          <span class="shrink-0 text-ink/50">Service</span>
-          <span class="flex min-w-0 items-center gap-2 font-medium text-ink">
-            <PlatformIcon v-if="servicePlatform !== 'other'" :platform="servicePlatform" size="xs" tile />
-            <span class="truncate">{{ service?.name }}</span>
-          </span>
+      <!-- Insufficient balance alert -->
+      <div
+        v-if="insufficient"
+        class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-400/40 bg-amber-400/10 p-3.5"
+      >
+        <div class="flex min-w-0 items-center gap-2.5">
+          <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-400/15 text-amber-300">
+            <Wallet class="h-4 w-4" />
+          </div>
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-amber-200">Not enough balance</p>
+            <p class="mt-0.5 text-xs text-amber-300">
+              Top up <b>{{ formatMoney(shortfall) }}</b> more to buy this service.
+            </p>
+          </div>
         </div>
-        <div v-if="link" class="flex items-center justify-between gap-3 text-sm">
-          <span class="shrink-0 text-ink/50">Link</span>
-          <span class="inline-flex min-w-0 max-w-[60%] items-center gap-1 truncate text-ink">
-            <PlatformIcon v-if="detectedPlatform !== 'other'" :platform="detectedPlatform" size="xs" tile />
-            <Link2 v-else class="h-3.5 w-3.5 shrink-0 text-brand-300" />
-            <span class="truncate">{{ link }}</span>
-          </span>
-        </div>
-        <div v-if="quantity" class="flex items-center justify-between text-sm">
-          <span class="text-ink/50">Quantity</span>
-          <span class="font-medium text-ink">{{ quantity.toLocaleString() }}</span>
-        </div>
-        <div v-if="params && Object.keys(params).length" class="flex items-center justify-between text-sm">
-          <span class="text-ink/50">Options</span>
-          <span class="max-w-[60%] truncate text-ink/80">{{ Object.values(params).filter(Boolean).join(' · ') }}</span>
-        </div>
-        <div class="flex items-center justify-between text-sm">
-          <span class="text-ink/50">Rate / 1,000</span>
-          <span class="text-ink">{{ formatUnitPrice(service?.pricePerUnit ?? 0) }}</span>
-        </div>
-        <div class="flex items-center justify-between border-t border-ink/10 pt-3">
-          <span class="text-sm font-medium text-ink">Total</span>
-          <span class="font-display text-xl font-bold text-ink">{{ formatMoney(totalPrice) }}</span>
-        </div>
-      </div>
-
-      <p class="flex items-center gap-2 text-xs text-ink/40">
-        <QrCode class="h-4 w-4 text-secondary-400" />
-        You'll pay securely with Bakong KHQR. Your order is reserved until the payment settles.
-      </p>
-
-      <p v-if="error" class="text-sm text-rose-300">{{ error }}</p>
-
-      <div class="flex items-center justify-between pt-2">
-        <BaseButton variant="ghost" @click="step = 'details'">
-          <ArrowLeft class="h-4 w-4" /> Back
-        </BaseButton>
-        <BaseButton :loading="submitting" @click="continueToPayment">
-          Continue to payment <ArrowRight class="h-4 w-4" />
+        <BaseButton variant="secondary" size="sm" @click="router.push('/dashboard/wallet')">
+          Top up wallet <ArrowUpRight class="h-3.5 w-3.5" />
         </BaseButton>
       </div>
+
+      <!-- Footer: charge + balance + submit -->
+      <footer class="border-t border-ink/10 pt-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p class="text-sm text-ink/50">
+              Charge
+              <span v-if="totalPrice > 0" class="ml-1 text-xs text-ink/30">
+                {{ formatUnitPrice(service?.pricePerUnit ?? 0) }}
+                × {{ formatNumber(quantity ?? (service && service.min > 0 ? service.min : 1)) }} / 1,000
+              </span>
+            </p>
+            <p class="mt-0.5 font-display text-2xl font-bold text-ink">
+              {{ formatMoney(totalPrice) }}
+            </p>
+          </div>
+          <div class="text-right text-sm">
+            <p class="text-xs text-ink/40">Balance</p>
+            <p class="font-semibold text-ink">{{ formatMoney(balance) }}</p>
+            <p v-if="totalPrice > 0 && !insufficient" class="text-xs text-emerald-300">
+              After: {{ formatMoney(balanceAfter) }}
+            </p>
+          </div>
+        </div>
+
+        <p v-if="error" class="mt-3 text-sm text-rose-300">{{ error }}</p>
+
+        <BaseButton size="lg" block class="mt-4" :loading="submitting" @click="placeOrder">
+          Place order <ArrowUpRight class="h-4 w-4" />
+        </BaseButton>
+      </footer>
     </div>
   </BaseModal>
 </template>

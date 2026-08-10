@@ -3,4 +3,4 @@ Allow: /
 Disallow: /dashboard
 Disallow: /sign-in
 
-Sitemap: https://vidsmm.com/sitemap.xml
+Sitemap: https://digitalsmm.shop/sitemap.xml

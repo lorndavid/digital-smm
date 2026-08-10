@@ -28,7 +28,7 @@ test('returning signed-in user sees Sign Out + Dashboard, never Sign In / Get St
 }) => {
   const token = await bootstrapToken(request)
   // Inject the session BEFORE the app boots so authStore.init() revalidates it.
-  await page.addInitScript((t) => localStorage.setItem('vidsmm_session_token', t), token)
+  await page.addInitScript((t) => localStorage.setItem('digitalsmm_session_token', t), token)
   await page.goto('/')
 
   const nav = page.locator('header')
@@ -77,7 +77,7 @@ test('footer links navigate to real pages instead of # placeholders', async ({
   request,
 }) => {
   const token = await bootstrapToken(request)
-  await page.addInitScript((t) => localStorage.setItem('vidsmm_session_token', t), token)
+  await page.addInitScript((t) => localStorage.setItem('digitalsmm_session_token', t), token)
   await page.goto('/')
 
   const footer = page.locator('footer')

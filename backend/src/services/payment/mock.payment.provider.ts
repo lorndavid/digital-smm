@@ -41,7 +41,7 @@ export class MockPaymentProvider implements PaymentProvider {
     ledger.set(providerPaymentId, Date.now())
 
     const payload = buildMockKhqr({
-      merchant: 'VidSMM',
+      merchant: 'DigitalSMM',
       reference: input.referenceId,
       amount: input.amount,
       currency: input.currency,

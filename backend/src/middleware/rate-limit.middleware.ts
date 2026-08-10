@@ -28,6 +28,22 @@ export const apiLimiter = rateLimit({
   store: createDistributedStore('vidsmm:rl:api:'),
 })
 
+/**
+ * Storefront catalogue limiter — the public read-only endpoints the landing,
+ * dashboard and Explore pages hit on every load (categories, services,
+ * announcements). These get a GENEROUS dedicated budget so a busy shop front
+ * can never lock its own customers out of browsing, and so catalogue traffic
+ * never competes with the stricter global budget that also covers writes.
+ * Env: RATE_LIMIT_CATALOGUE_MAX (default 10000 per window).
+ */
+export const catalogueLimiter = rateLimit({
+  windowMs: env.RATE_LIMIT_WINDOW_MS,
+  limit: env.RATE_LIMIT_CATALOGUE_MAX,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  store: createDistributedStore('vidsmm:rl:catalogue:'),
+})
+
 /** Stricter limiter for payment and order checkout endpoints. */
 export const checkoutLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute sliding window

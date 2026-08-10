@@ -137,7 +137,7 @@ test('customer dashboard width pass', async ({ page, request }) => {
   }
   expect(placed.length, 'expected at least one seeded order').toBeGreaterThan(0)
 
-  await page.addInitScript((t) => localStorage.setItem('vidsmm_session_token', t), token)
+  await page.addInitScript((t) => localStorage.setItem('digitalsmm_session_token', t), token)
 
   const routes: Array<[string, string]> = [
     ['user-01-dashboard', '/dashboard'],
@@ -181,7 +181,7 @@ test('admin dashboard width pass', async ({ page, request }) => {
 
   // Grab the first customer id so the User Detail route can be captured.
   let userId = ''
-  const token = await page.evaluate(() => localStorage.getItem('vidsmm_admin_token'))
+  const token = await page.evaluate(() => localStorage.getItem('digitalsmm_admin_token'))
   if (token) {
     const res = await request.get(`${BACKEND}/api/admin/users?limit=10`, {
       headers: { Authorization: `Bearer ${token}` },

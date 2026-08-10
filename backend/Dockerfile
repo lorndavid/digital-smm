@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# VidSMM backend — Express 5 + TypeScript.
+# DigitalSMM backend — Express 5 + TypeScript.
 # Build context: repo ROOT (see docker-compose.yml), so the single root
 # package-lock.json drives one deterministic `npm ci` for all workspaces.
 

@@ -33,16 +33,6 @@ async function onSignOut(): Promise<void> {
     <div class="relative mx-auto grid max-w-7xl items-center gap-16 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
       <!-- Copy -->
       <div>
-        <div
-          v-motion
-          :initial="{ opacity: 0, y: 24 }"
-          :visible="{ opacity: 1, y: 0, transition: { duration: 0.5 } }"
-          class="glass mb-6 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium text-ink/75"
-        >
-          <span class="h-1.5 w-1.5 rounded-full bg-gradient-to-r from-brand-500 to-secondary-500" />
-          🇰🇭 The #1 Cambodia Social Media Marketing Platform
-        </div>
-
         <h1
           v-motion
           :initial="{ opacity: 0, y: 24 }"

@@ -71,7 +71,7 @@ function gallery() {
       </figure>`
     })
     .join('\n')
-  return page('VidSMM — Dashboard width screenshot pass', `<div class="grid">${cards}</div>`)
+  return page('DigitalSMM — Dashboard width screenshot pass', `<div class="grid">${cards}</div>`)
 }
 
 createServer((req, res) => {

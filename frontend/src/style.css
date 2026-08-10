@@ -5,7 +5,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ------------------------------------------------------------------ */
-/* Design tokens — VidSMM brand palette                               */
+/* Design tokens — DigitalSMM brand palette                               */
 /* ------------------------------------------------------------------ */
 @theme {
   --color-night: #050816;

@@ -171,7 +171,7 @@ const profileItems = [
                 />
                 <div class="min-w-0 flex-1">
                   <p class="truncate text-sm font-semibold text-ink">
-                    {{ authStore.user?.name || 'VidSMM User' }}
+                    {{ authStore.user?.name || 'DigitalSMM User' }}
                   </p>
                   <p class="truncate text-xs text-ink/40">{{ authStore.user?.email ?? '' }}</p>
                 </div>

@@ -497,6 +497,29 @@ export class OrderService {
       { path: 'user', select: 'name email avatarUrl' },
     ])
   }
+
+  /**
+   * Support-agent "Order again": re-places an existing order for the SAME
+   * customer, funded from their wallet — identical to the customer's own
+   * wallet-order flow. Throws the wallet's insufficient-balance error when
+   * the customer cannot cover the charge.
+   */
+  async placeOrderAgainForAdmin(id: string) {
+    const order = await orderRepository.findById(id)
+    if (!order) throw new ApiError(404, 'Order not found')
+
+    const userId = order.user.toString()
+    const draft: OrderDraft = {
+      serviceId: order.service.toString(),
+      link: order.link,
+      quantity: order.quantity,
+      params: (order.params ?? {}) as Record<string, unknown>,
+    }
+    const { service, quantity, totalPrice, providerInput, link } =
+      await this.validateAndPrice(draft)
+    await walletService.debit(userId, totalPrice, `Order: ${service.name}`, 'order')
+    return this.placeOrder(userId, service, draft, quantity, totalPrice, providerInput, link, null)
+  }
 }
 
 export const orderService = new OrderService()

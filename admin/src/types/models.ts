@@ -107,10 +107,15 @@ export interface AdminAuditLog {
   _id: string
   actorId: string
   actorEmail: string
-  action: 'admin.create' | 'admin.set_role' | 'admin.remove_role' | 'admin.bulk_services'
+  action:
+    | 'admin.create'
+    | 'admin.set_role'
+    | 'admin.remove_role'
+    | 'admin.bulk_services'
+    | 'admin.order_again'
   targetId: string | null
   targetEmail: string
-  details: { role?: string; name?: string }
+  details: { role?: string; name?: string; orderNumber?: number }
   createdAt: string
 }
 
@@ -137,9 +142,11 @@ export interface Order {
   type: ServiceType
   link: string
   quantity: number
+  pricePerUnit: number
   totalPrice: number
   currency: string
   status: OrderStatus
+  params?: Record<string, unknown>
   startCount: number
   remains: number
   charge: number

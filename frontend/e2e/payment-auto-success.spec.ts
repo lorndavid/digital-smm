@@ -96,7 +96,7 @@ test('KHQR payment page auto-shows success on SSE paid event (no refresh, no pol
   page.on('load', () => {
     loads += 1
   })
-  await page.addInitScript((t) => localStorage.setItem('vidsmm_session_token', t), token)
+  await page.addInitScript((t) => localStorage.setItem('digitalsmm_session_token', t), token)
 
   // ---------------------------------------------------------------------
   // 3. Open the payment page and wait for the REAL KHQR image.

@@ -2,7 +2,7 @@
   "name": "vidsmm",
   "version": "1.0.0",
   "private": true,
-  "description": "VidSMM - The #1 Cambodia Social Media Marketing Platform",
+  "description": "DigitalSMM - The #1 Cambodia Social Media Marketing Platform",
   "license": "MIT",
   "workspaces": [
     "frontend",

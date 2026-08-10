@@ -43,7 +43,9 @@ const auditActionLabel = (action: string): string =>
       ? 'changed role of'
       : action === 'admin.bulk_services'
         ? 'bulk-updated services for'
-        : 'removed admin access from'
+        : action === 'admin.order_again'
+          ? 'placed an order again for'
+          : 'removed admin access from'
 
 async function load(): Promise<void> {
   loading.value = true
@@ -329,6 +331,9 @@ onMounted(() => {
               </template>
               <template v-else-if="log.action === 'admin.bulk_services'">
                 <span class="text-(--a-muted-3)">(catalog curation)</span>
+              </template>
+              <template v-else-if="log.action === 'admin.order_again'">
+                <span class="text-(--a-muted-3)">(duplicate order #{{ log.details?.orderNumber }})</span>
               </template>
               <span v-if="log.details?.role" class="text-secondary-300">→ {{ log.details.role }}</span>
             </p>

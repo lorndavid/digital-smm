@@ -23,7 +23,7 @@ const authStore = useAuthStore()
           and keep growing.
         </p>
         <p v-else class="mt-4 text-white/85">
-          Join thousands of creators and agencies in Cambodia already growing with VidSMM.
+          Join thousands of creators and agencies in Cambodia already growing with DigitalSMM.
           Sign up in seconds with your Google account.
         </p>
         <div class="mt-8 flex flex-wrap items-center justify-center gap-4">
@@ -36,7 +36,7 @@ const authStore = useAuthStore()
             <ArrowRight class="h-4 w-4" />
           </BaseButton>
           <a
-            href="mailto:support@vidsmm.com"
+            href="mailto:support@digitalsmm.shop"
             class="inline-flex h-12 items-center gap-2 rounded-xl border border-white/40 px-7 text-base font-semibold text-white transition-colors hover:bg-white/10"
           >
             <Mail class="h-4 w-4" /> Contact us

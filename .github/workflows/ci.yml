@@ -1,4 +1,4 @@
-# VidSMM CI — fast feedback on every PR/push: typecheck, unit tests, and a
+# DigitalSMM CI — fast feedback on every PR/push: typecheck, unit tests, and a
 # real-browser e2e that proves the KHQR payment auto-success flow works.
 #
 #   job `test`          → typecheck (backend + frontend + admin) + hermetic

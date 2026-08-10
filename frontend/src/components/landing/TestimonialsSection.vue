@@ -4,7 +4,7 @@ import { Star } from '@lucide/vue'
 const testimonials = [
   {
     quote:
-      'VidSMM is the only service I trust for my TikTok shop brand. Orders start instantly and the KHQR top-up takes seconds. Amazing support too.',
+      'DigitalSMM is the only service I trust for my TikTok shop brand. Orders start instantly and the KHQR top-up takes seconds. Amazing support too.',
     name: 'Sokha Chan',
     role: 'Brand Owner · Phnom Penh',
     initials: 'SC',
@@ -12,7 +12,7 @@ const testimonials = [
   },
   {
     quote:
-      'We manage 40+ client pages and VidSMM handles all the heavy lifting. The real-time tracking and auto-refills save us hours every single week.',
+      'We manage 40+ client pages and DigitalSMM handles all the heavy lifting. The real-time tracking and auto-refills save us hours every single week.',
     name: 'Dara Kim',
     role: 'Agency Founder · Siem Reap',
     initials: 'DK',
@@ -20,7 +20,7 @@ const testimonials = [
   },
   {
     quote:
-      'Started with $10 to test. Delivery was so fast and clean that I now run my whole content strategy through VidSMM. Best decision this year.',
+      'Started with $10 to test. Delivery was so fast and clean that I now run my whole content strategy through DigitalSMM. Best decision this year.',
     name: 'Malis Rath',
     role: 'Content Creator · Battambang',
     initials: 'MR',

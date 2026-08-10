@@ -1,12 +1,21 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ChevronRight, CreditCard, ExternalLink, RefreshCcw, RefreshCw, XCircle } from '@lucide/vue'
+import {
+  ChevronRight,
+  CreditCard,
+  ExternalLink,
+  RefreshCcw,
+  RefreshCw,
+  Repeat,
+  XCircle,
+} from '@lucide/vue'
 import { useOrdersStore } from '@/stores/orders.store'
 import { ordersApi } from '@/api/orders.api'
 import { paymentApi } from '@/api/payment.api'
 import { useToast } from '@/composables/useToast'
 import { detectPlatform, type DetectedPlatform } from '@/utils/linkValidation'
+import { buildOrderAgainQuery } from '@/utils/orderPrefill'
 import BaseBadge from '@/components/ui/BaseBadge.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BasePagination from '@/components/ui/BasePagination.vue'
@@ -50,6 +59,14 @@ function serviceName(order: Order): string {
 
 function openDetail(order: Order): void {
   void router.push(`/dashboard/orders/${order._id}`)
+}
+
+/**
+ * Quick re-order straight from the list: jump to Explore Services with this
+ * order's service, link, quantity and options prefilled.
+ */
+function orderAgain(order: Order): void {
+  void router.push({ name: 'services', query: buildOrderAgainQuery(order) })
 }
 
 function orderPlatform(order: Order): DetectedPlatform {
@@ -299,6 +316,14 @@ onUnmounted(() => {
               </td>
               <td class="px-5 py-3.5 text-right" @click.stop>
                 <div class="flex items-center justify-end gap-0.5">
+                  <button
+                    class="flex h-8 w-8 items-center justify-center rounded-lg text-ink/45 transition-colors hover:bg-brand-500/10 hover:text-brand-600 dark:hover:text-brand-300"
+                    :title="`Order again #${order.orderNumber}`"
+                    aria-label="Order again"
+                    @click="orderAgain(order)"
+                  >
+                    <Repeat class="h-4 w-4" />
+                  </button>
                   <button
                     v-if="order.status === 'Pending Payment'"
                     class="flex h-8 w-8 items-center justify-center rounded-lg text-ink/45 transition-colors hover:bg-brand-500/10 hover:text-brand-600 dark:hover:text-brand-300"

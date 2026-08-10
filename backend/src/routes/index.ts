@@ -16,11 +16,17 @@ export const apiRoutes = Router()
 // (Google → callback → exchange) is never throttled.
 apiRoutes.use(authRoutes)
 
+// Storefront catalogue reads (categories / services / announcements) carry
+// their OWN generous limiter (catalogueLimiter, applied per-route). Mounted
+// BEFORE the global limiter: catalogue handlers respond here, so those
+// requests never reach apiLimiter — every other /api/* route still gets the
+// stricter global quota that also covers writes and admin traffic.
+apiRoutes.use(catalogRoutes)
+
 // Every other /api/* route rate-limited.
 apiRoutes.use(apiLimiter)
 
 apiRoutes.use(healthRoutes)
-apiRoutes.use(catalogRoutes)
 apiRoutes.use(orderRoutes)
 apiRoutes.use(paymentRoutes)
 apiRoutes.use(profileRoutes)

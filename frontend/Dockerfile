@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# VidSMM customer app — Vue 3 + Vite, built then served by nginx.
+# DigitalSMM customer app — Vue 3 + Vite, built then served by nginx.
 # Build context: repo ROOT (see docker-compose.yml).
 # The nginx config is mounted read-only from docker/nginx.conf at runtime.
 

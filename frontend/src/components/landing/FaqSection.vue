@@ -25,7 +25,7 @@ const faqs = [
   },
   {
     q: 'Do I need a subscription?',
-    a: 'No. VidSMM is pay-as-you-go. Top up your wallet when you need it — there are no recurring fees.',
+    a: 'No. DigitalSMM is pay-as-you-go. Top up your wallet when you need it — there are no recurring fees.',
   },
 ]
 

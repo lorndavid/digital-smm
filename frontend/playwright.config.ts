@@ -1,7 +1,7 @@
 import { defineConfig } from '@playwright/test'
 
 /**
- * Playwright browser tests for the VidSMM customer app.
+ * Playwright browser tests for the DigitalSMM customer app.
  *
  * The `webServer` array boots the REAL stack before any test runs:
  *   1. Backend  — `npm run start:browser-test` (backend/scripts/start-browser-test.ts):

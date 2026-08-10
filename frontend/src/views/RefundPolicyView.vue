@@ -12,7 +12,7 @@ const sections: LegalSection[] = [
   {
     heading: '2. Refund Method',
     paragraphs: [
-      'Approved refunds are credited to your VidSMM wallet balance and can be used for future orders immediately.',
+      'Approved refunds are credited to your DigitalSMM wallet balance and can be used for future orders immediately.',
       'KHQR wallet top-ups are not refundable in cash once credited to your account.',
     ],
   },

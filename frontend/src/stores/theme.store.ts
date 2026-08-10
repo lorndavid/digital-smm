@@ -3,7 +3,7 @@ import { ref } from 'vue'
 
 export type Theme = 'light' | 'dark'
 
-const KEY = 'vidsmm:theme'
+const KEY = 'digitalsmm:theme'
 
 function initialTheme(): Theme {
   if (typeof localStorage === 'undefined') return 'light'

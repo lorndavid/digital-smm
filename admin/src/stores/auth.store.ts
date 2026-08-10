@@ -7,7 +7,7 @@ import { adminApi } from '@/api/admin.api'
  * The JWT is persisted in localStorage; /admin/auth/me revalidates it on boot.
  */
 
-const TOKEN_KEY = 'vidsmm_admin_token'
+const TOKEN_KEY = 'digitalsmm_admin_token'
 
 export interface AdminIdentity {
   id: string

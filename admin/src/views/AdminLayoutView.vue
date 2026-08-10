@@ -197,7 +197,7 @@ const pageTitle = computed(() => {
           <Menu class="h-5 w-5" />
         </button>
         <div class="hidden text-sm text-(--a-muted) lg:block">
-          VidSMM <span class="mx-1 text-(--a-muted-3)">/</span>
+          DigitalSMM <span class="mx-1 text-(--a-muted-3)">/</span>
           <span class="font-medium text-(--a-text)">{{ pageTitle }}</span>
         </div>
         <div class="flex items-center gap-3">

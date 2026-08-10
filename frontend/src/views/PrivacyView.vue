@@ -4,7 +4,7 @@ import LegalPage, { type LegalSection } from '@/components/legal/LegalPage.vue'
 const sections: LegalSection[] = [
   {
     heading: '1. Information We Collect',
-    paragraphs: ['When you use VidSMM, we collect the information needed to provide the Service:'],
+    paragraphs: ['When you use DigitalSMM, we collect the information needed to provide the Service:'],
     list: [
       'Account information from Google sign-in (your name, email address and profile photo)',
       'Order details, including the services you buy and the links and quantities you provide',
@@ -52,7 +52,7 @@ const sections: LegalSection[] = [
   },
   {
     heading: '8. Contact Us',
-    paragraphs: ['If you have any questions about this Privacy Policy, contact us at support@vidsmm.com.'],
+    paragraphs: ['If you have any questions about this Privacy Policy, contact us at support@digitalsmm.shop.'],
   },
 ]
 </script>

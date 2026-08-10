@@ -1,5 +1,5 @@
 # ============================================================
-# VidSMM — full stack, one command:  docker compose up --build -d
+# DigitalSMM — full stack, one command:  docker compose up --build -d
 #
 #   mongo    local MongoDB 7          (internal)
 #   redis    local Redis 7            (internal — cross-instance SSE bus)

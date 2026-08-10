@@ -1,4 +1,4 @@
-# VidSMM 🇰🇭
+# DigitalSMM 🇰🇭
 
 **The #1 Cambodia Social Media Marketing Platform.**
 

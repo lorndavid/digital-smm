@@ -6,7 +6,7 @@ import autoTable from 'jspdf-autotable'
  *
  * Builds a clean A4 report (brand header, account + period info, summary
  * boxes, a detailed transactions table and a totals footer) and downloads it
- * as `vidsmm-payments-<date>.pdf`. Used by the customer Payments page with
+ * as `digitalsmm-payments-<date>.pdf`. Used by the customer Payments page with
  * the Today / This week / This month / All time range presets.
  */
 
@@ -164,7 +164,7 @@ export function downloadPaymentReport(options: PaymentReportOptions): void {
   doc.setTextColor(255, 255, 255)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(21)
-  doc.text('VidSMM', margin, 46)
+  doc.text('DigitalSMM', margin, 46)
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(10)
   doc.setTextColor(201, 187, 254)
@@ -284,7 +284,7 @@ export function downloadPaymentReport(options: PaymentReportOptions): void {
         doc.setFontSize(8)
         doc.setTextColor(...MUTED)
         doc.text(`Page ${data.pageNumber}`, margin, pageH - 24)
-        doc.text('VidSMM · Payment Statement', pageW - margin, pageH - 24, { align: 'right' })
+        doc.text('DigitalSMM · Payment Statement', pageW - margin, pageH - 24, { align: 'right' })
         doc.setDrawColor(...LINE)
         doc.setLineWidth(0.5)
         doc.line(margin, pageH - 34, pageW - margin, pageH - 34)
@@ -293,5 +293,5 @@ export function downloadPaymentReport(options: PaymentReportOptions): void {
   }
 
   const slug = now.toISOString().slice(0, 10)
-  doc.save(`vidsmm-payments-${slug}.pdf`)
+  doc.save(`digitalsmm-payments-${slug}.pdf`)
 }

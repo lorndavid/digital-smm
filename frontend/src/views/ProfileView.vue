@@ -51,7 +51,7 @@ async function save(): Promise<void> {
   <div class="mx-auto w-full max-w-3xl space-y-6">
     <div>
       <h1 class="font-display text-2xl font-bold text-ink">Profile</h1>
-      <p class="mt-1 text-sm text-ink/50">Manage how you appear on VidSMM.</p>
+      <p class="mt-1 text-sm text-ink/50">Manage how you appear on DigitalSMM.</p>
     </div>
 
     <div v-if="loading" class="space-y-3">
@@ -81,7 +81,7 @@ async function save(): Promise<void> {
           </div>
         </div>
         <div>
-          <p class="font-display text-lg font-semibold text-ink">{{ name || 'VidSMM User' }}</p>
+          <p class="font-display text-lg font-semibold text-ink">{{ name || 'DigitalSMM User' }}</p>
           <p class="text-sm text-ink/45">{{ email }}</p>
           <p class="mt-1 text-xs text-ink/35">Email is managed by your Google account.</p>
         </div>

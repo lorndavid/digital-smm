@@ -106,6 +106,9 @@ export const adminApi = {
   getOrder: async (id: string): Promise<Order> => (await apiClient.get(`/admin/orders/${id}`)).data,
   updateOrderStatus: async (id: string, status: OrderStatus): Promise<Order> =>
     (await apiClient.put(`/admin/orders/${id}/status`, { status })).data,
+  /** Support-agent "Order again" — re-places the order for the same customer, funded from their wallet. */
+  placeOrderAgain: async (id: string): Promise<Order> =>
+    (await apiClient.post(`/admin/orders/${id}/again`)).data,
 
   // Payments
   listPayments: async (params: ListParams = {}): Promise<Paginated<Payment>> =>

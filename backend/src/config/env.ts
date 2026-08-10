@@ -91,6 +91,10 @@ const envSchema = z.object({
   // Rate limiting
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(15 * 60 * 1000),
   RATE_LIMIT_MAX: z.coerce.number().default(3000),
+  // Storefront catalogue reads (categories / services / announcements) get
+  // their OWN budget — browsing must never be throttled by the stricter
+  // global quota that also covers writes and admin traffic.
+  RATE_LIMIT_CATALOGUE_MAX: z.coerce.number().default(10000),
 
   // Optional Redis — enables cross-instance SSE delivery AND a distributed
   // rate limiter (global quotas across all backend instances) when running

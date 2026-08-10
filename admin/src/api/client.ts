@@ -1,6 +1,6 @@
 import axios, { AxiosError } from 'axios'
 
-const TOKEN_KEY = 'vidsmm_admin_token'
+const TOKEN_KEY = 'digitalsmm_admin_token'
 const baseURL = import.meta.env.VITE_API_BASE_URL || '/api'
 
 export function getAdminToken(): string | null {

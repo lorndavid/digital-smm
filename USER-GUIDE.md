@@ -1,7 +1,7 @@
-# VidSMM — User Guide
+# DigitalSMM — User Guide
 
 A complete guide for **customers** (using the storefront) and **admins** (running the
-platform). VidSMM is a social-media marketing (SMM) panel for the Cambodian market:
+platform). DigitalSMM is a social-media marketing (SMM) panel for the Cambodian market:
 customers buy followers, views, likes, comments… for TikTok, Facebook, Instagram,
 YouTube, Telegram, X and more, pay with **Bakong KHQR**, and track delivery in real time.
 

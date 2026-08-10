@@ -11,7 +11,7 @@ const sections: LegalSection[] = [
   {
     heading: '2. How We Use Local Storage',
     paragraphs: [
-      'VidSMM primarily uses browser local storage rather than cookies to provide essential functionality:',
+      'DigitalSMM primarily uses browser local storage rather than cookies to provide essential functionality:',
     ],
     list: [
       'Keeping you signed in (your session token)',

@@ -66,6 +66,9 @@ adminRoutes.get('/admin/audit-logs', requireSuperAdmin, ...adminController.listA
 adminRoutes.get('/admin/orders', ...adminController.listOrders)
 adminRoutes.get('/admin/orders/:id', adminController.getOrder)
 adminRoutes.put('/admin/orders/:id/status', ...adminController.updateOrderStatus)
+// Support-agent "Order again" — re-places an order for the same customer,
+// funded from their wallet (audited in the admin activity trail).
+adminRoutes.post('/admin/orders/:id/again', adminController.placeOrderAgain)
 
 // Payments
 adminRoutes.get('/admin/payments', ...adminController.listPayments)

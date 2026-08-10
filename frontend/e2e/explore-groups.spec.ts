@@ -96,7 +96,7 @@ async function pickService(page: import('@playwright/test').Page, name: string):
 
 test.beforeEach(async ({ page, request }) => {
   const { token } = await bootstrap(request)
-  await page.addInitScript((t) => localStorage.setItem('vidsmm_session_token', t), token)
+  await page.addInitScript((t) => localStorage.setItem('digitalsmm_session_token', t), token)
   await page.goto('/dashboard/services')
   await expect(page.getByRole('heading', { name: 'Explore Services' })).toBeVisible()
 })
@@ -104,9 +104,6 @@ test.beforeEach(async ({ page, request }) => {
 test('search-all finds a service; selecting it shows details and the order form', async ({
   page,
 }) => {
-  // No-markup promise is visible on the page.
-  await expect(page.getByText(/no markup/i)).toBeVisible()
-
   // The search box searches the WHOLE catalogue (not a per-category grid)
   // and shows a LIVE dropdown of matching services as you type.
   await page.getByPlaceholder('Search all services…').fill('Facebook Page Likes')
@@ -145,10 +142,15 @@ test('keyboard: arrow down + Enter picks the highlighted search result', async (
   await expect(page.getByLabel('Category').locator('option:checked')).toHaveText('Facebook')
 })
 
-test('service combobox: typing filters the list, Enter picks the highlight', async ({ page }) => {
-  // Type directly into the Service field — the dropdown filters instantly
-  // (no extra click into a hidden filter box needed).
-  await page.getByPlaceholder(/Search or select a service/).fill('TikTok')
+test('service combobox: real click + typing filters, Enter picks the highlight', async ({
+  page,
+}) => {
+  const field = page.getByPlaceholder(/Search or select a service/)
+
+  // Real user flow: click into the field, then type character-by-character.
+  // (A regression here would close the dropdown on focus and swallow the keys.)
+  await field.click()
+  await field.pressSequentially('TikTok')
   await expect(page.getByRole('button', { name: /TikTok Followers/ })).toBeVisible()
   await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toHaveCount(0)
 
@@ -157,17 +159,73 @@ test('service combobox: typing filters the list, Enter picks the highlight', asy
   await page.keyboard.press('Enter')
   await expect(page.getByRole('heading', { name: 'TikTok Followers', level: 3 })).toBeVisible()
   await expect(page.getByLabel('Category').locator('option:checked')).toHaveText('TikTok')
-  await expect(page.getByPlaceholder(/Search or select a service/)).toHaveValue('TikTok Followers')
+  await expect(field).toHaveValue('TikTok Followers')
 })
 
-test('category dropdown filters the service list', async ({ page }) => {
+test('platform chips filter the catalogue; the open combobox still shows everything', async ({
+  page,
+}) => {
+  // Header shows platform chips (replacing the wallet balance card). The chip's
+  // accessible name is exactly the platform label (the svg adds no name).
+  const facebookChip = page.getByRole('button', { name: 'Facebook', exact: true })
+  await expect(facebookChip).toBeVisible()
+
+  // Click Facebook → chip active; Facebook services lead the dropdown…
+  await facebookChip.click()
+  await expect(facebookChip).toHaveAttribute('aria-pressed', 'true')
+
+  await page.getByPlaceholder(/Search or select a service/).click()
+  await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toBeVisible()
+  // …but opening the dropdown reveals the WHOLE catalogue, so changing the
+  // service is never trapped inside the filtered platform.
+  await expect(page.getByRole('button', { name: /TikTok Followers/ })).toBeVisible()
+
+  // Click TikTok → the active chip switches.
+  const tiktokChip = page.getByRole('button', { name: 'TikTok', exact: true })
+  await tiktokChip.click()
+  await expect(tiktokChip).toHaveAttribute('aria-pressed', 'true')
+  await expect(facebookChip).toHaveAttribute('aria-pressed', 'false')
+
+  await page.getByPlaceholder(/Search or select a service/).click()
+  await expect(page.getByRole('button', { name: /TikTok Followers/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toBeVisible()
+})
+
+test('category loads its services first; the open combobox shows every category', async ({
+  page,
+}) => {
   // Pick the Facebook category from the dropdown.
   await page.getByLabel('Category').selectOption({ label: 'Facebook' })
 
-  // The combobox now lists only Facebook services.
+  // The combobox auto-loads the selected category's services (labelled group).
   await page.getByPlaceholder(/Search or select a service/).click()
   await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toBeVisible()
-  await expect(page.getByRole('button', { name: /TikTok Followers/ })).toHaveCount(0)
+
+  // Opening the dropdown to change the service shows ALL categories — the
+  // category filter leads the list but never cages it.
+  await expect(page.getByRole('button', { name: /TikTok Followers/ })).toBeVisible()
+  await expect(page.getByText('All services', { exact: true })).toBeVisible()
+})
+
+test('changing the category resets the service and order form', async ({ page }) => {
+  // Pick a service and fill the order form.
+  await page.getByPlaceholder('Search all services…').fill('TikTok Followers')
+  await pickService(page, 'TikTok Followers')
+  await expect(page.getByRole('heading', { name: 'TikTok Followers', level: 3 })).toBeVisible()
+  await page.getByLabel('Link to your page or post').fill('https://www.tiktok.com/@e2e-user')
+  await expect(page.getByLabel('Link to your page or post')).toHaveValue(
+    'https://www.tiktok.com/@e2e-user',
+  )
+
+  // Switch category → the service + order form reset to the empty state.
+  await page.getByLabel('Category').selectOption({ label: 'Facebook' })
+  await expect(page.getByPlaceholder(/Search or select a service/)).toHaveValue('')
+  await expect(page.getByRole('heading', { name: 'TikTok Followers', level: 3 })).toHaveCount(0)
+  await expect(page.getByText('Pick a service above to get started.')).toBeVisible()
+
+  // The dropdown still reveals every category, so changing service is easy.
+  await page.getByPlaceholder(/Search or select a service/).click()
+  await expect(page.getByRole('button', { name: /TikTok Followers/ })).toBeVisible()
 })
 
 test('orders are paid from the wallet; empty balance prompts a top-up', async ({ page }) => {
@@ -195,7 +253,7 @@ test('happy path: funded wallet places the order and redirects to it', async ({
   // top-up via a signed webhook, then sign in as that same user.
   const { token, payment, webhookSecret } = await bootstrap(request)
   await settleTopUp(request, payment, webhookSecret)
-  await page.addInitScript((t) => localStorage.setItem('vidsmm_session_token', t), token)
+  await page.addInitScript((t) => localStorage.setItem('digitalsmm_session_token', t), token)
 
   await page.goto('/dashboard/services')
   await expect(page.getByText('$5.00').first()).toBeVisible()
@@ -210,4 +268,86 @@ test('happy path: funded wallet places the order and redirects to it', async ({
 
   // Redirected to the new order's detail page.
   await page.waitForURL(/\/dashboard\/orders\/[a-f0-9]{24}$/)
+})
+
+test('order again: prefills the Explore form from a previous order', async ({
+  page,
+  request,
+}) => {
+  // Funded user places an order (same steps as the happy path).
+  const { token, payment, webhookSecret } = await bootstrap(request)
+  await settleTopUp(request, payment, webhookSecret)
+  await page.addInitScript((t) => localStorage.setItem('digitalsmm_session_token', t), token)
+
+  await page.goto('/dashboard/services')
+  await page.getByPlaceholder('Search all services…').fill('TikTok Followers')
+  await pickService(page, 'TikTok Followers')
+  await page.getByLabel('Link to your page or post').fill('https://www.tiktok.com/@e2e-user')
+  await page.getByPlaceholder(/50\s*–\s*10,000/).fill('2500')
+  await page.getByRole('button', { name: /Place order/ }).click()
+  await page.waitForURL(/\/dashboard\/orders\/[a-f0-9]{24}$/)
+
+  // 'Order again' takes us back to Explore with the form pre-filled.
+  await page.getByRole('button', { name: /Order again/ }).click()
+  await page.waitForURL(/\/dashboard\/services/)
+
+  // Same service selected (combobox + details panel), category auto-set.
+  await expect(page.getByRole('heading', { name: 'TikTok Followers', level: 3 })).toBeVisible()
+  await expect(page.getByPlaceholder(/Search or select a service/)).toHaveValue('TikTok Followers')
+  await expect(page.getByLabel('Category').locator('option:checked')).toHaveText('TikTok')
+
+  // Link + quantity carried over.
+  await expect(page.getByLabel('Link to your page or post')).toHaveValue(
+    'https://www.tiktok.com/@e2e-user',
+  )
+  await expect(page.locator('input[type="number"]')).toHaveValue('2500')
+
+  // The platform chip is auto-activated from the prefilled link.
+  await expect(page.getByRole('button', { name: 'TikTok', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+
+  // The charge reflects the carried quantity (2500 × $0.90/1k = $2.25).
+  await expect(page.getByText('$2.25', { exact: true })).toBeVisible()
+})
+
+test('order again from the Orders list row prefills the Explore form', async ({
+  page,
+  request,
+}) => {
+  // Funded user places an order, then lands on the Orders list.
+  const { token, payment, webhookSecret } = await bootstrap(request)
+  await settleTopUp(request, payment, webhookSecret)
+  await page.addInitScript((t) => localStorage.setItem('digitalsmm_session_token', t), token)
+
+  await page.goto('/dashboard/services')
+  await page.getByPlaceholder('Search all services…').fill('TikTok Followers')
+  await pickService(page, 'TikTok Followers')
+  await page.getByLabel('Link to your page or post').fill('https://www.tiktok.com/@e2e-user')
+  await page.getByPlaceholder(/50\s*–\s*10,000/).fill('3000')
+  await page.getByRole('button', { name: /Place order/ }).click()
+  await page.waitForURL(/\/dashboard\/orders\/[a-f0-9]{24}$/)
+
+  await page.goto('/dashboard/orders')
+  await expect(page.getByRole('heading', { name: 'Orders' })).toBeVisible()
+
+  // The row's 'Order again' icon button jumps straight to a prefilled form.
+  await page.getByRole('button', { name: 'Order again' }).click()
+  await page.waitForURL(/\/dashboard\/services/)
+
+  await expect(page.getByRole('heading', { name: 'TikTok Followers', level: 3 })).toBeVisible()
+  await expect(page.getByPlaceholder(/Search or select a service/)).toHaveValue('TikTok Followers')
+  await expect(page.getByLabel('Category').locator('option:checked')).toHaveText('TikTok')
+  await expect(page.getByLabel('Link to your page or post')).toHaveValue(
+    'https://www.tiktok.com/@e2e-user',
+  )
+  await expect(page.locator('input[type="number"]')).toHaveValue('3000')
+  // The platform chip is auto-activated from the prefilled link.
+  await expect(page.getByRole('button', { name: 'TikTok', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+  // 3000 × $0.90/1k = $2.70
+  await expect(page.getByText('$2.70', { exact: true })).toBeVisible()
 })

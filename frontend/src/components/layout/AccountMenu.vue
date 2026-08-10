@@ -64,7 +64,7 @@ async function signOut(): Promise<void> {
         :size="28"
       />
       <span class="hidden max-w-[110px] truncate text-sm font-semibold text-ink/90 sm:block">
-        {{ authStore.user?.name || 'VidSMM User' }}
+        {{ authStore.user?.name || 'DigitalSMM User' }}
       </span>
       <ChevronDown
         class="h-3.5 w-3.5 text-ink/40 transition-transform duration-200"
@@ -89,7 +89,7 @@ async function signOut(): Promise<void> {
           />
           <div class="min-w-0">
             <p class="truncate text-sm font-semibold text-ink">
-              {{ authStore.user?.name || 'VidSMM User' }}
+              {{ authStore.user?.name || 'DigitalSMM User' }}
             </p>
             <p class="truncate text-xs text-ink/40">{{ authStore.user?.email ?? '' }}</p>
           </div>

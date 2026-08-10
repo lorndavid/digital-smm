@@ -53,11 +53,11 @@ const columns: { title: string; links: FooterLink[] }[] = [
 // Social account links — swap these for the real handles whenever you have
 // them (one place to update, used by the icon row below).
 const socials = [
-  { icon: MessageCircle, label: 'Telegram', href: 'https://t.me/vidsmm' },
-  { icon: ThumbsUp, label: 'Facebook', href: 'https://facebook.com/vidsmm' },
-  { icon: Camera, label: 'Instagram', href: 'https://instagram.com/vidsmm' },
-  { icon: Play, label: 'YouTube', href: 'https://youtube.com/@vidsmm' },
-  { icon: Send, label: 'Telegram Channel', href: 'https://t.me/vidsmm_channel' },
+  { icon: MessageCircle, label: 'Telegram', href: 'https://t.me/digitalsmm' },
+  { icon: ThumbsUp, label: 'Facebook', href: 'https://facebook.com/digitalsmm' },
+  { icon: Camera, label: 'Instagram', href: 'https://instagram.com/digitalsmm' },
+  { icon: Play, label: 'YouTube', href: 'https://youtube.com/@digitalsmm' },
+  { icon: Send, label: 'Telegram Channel', href: 'https://t.me/digitalsmm_channel' },
 ]
 </script>
 
@@ -68,8 +68,7 @@ const socials = [
         <div class="lg:col-span-2">
           <BrandLogo size="md" />
           <p class="mt-4 max-w-xs text-sm leading-relaxed text-ink/50">
-            The #1 Cambodia Social Media Marketing Platform. Fast delivery, secure KHQR
-            payments and 24/7 support.
+            Fast delivery, secure KHQR payments and 24/7 support.
           </p>
           <div class="mt-5 flex gap-3">
             <a
@@ -114,7 +113,7 @@ const socials = [
         class="mt-12 flex flex-col items-center justify-between gap-4 border-t border-ink/10 pt-6 sm:flex-row"
       >
         <p class="text-xs text-ink/40">
-          © {{ new Date().getFullYear() }} VidSMM. All rights reserved.
+          © {{ new Date().getFullYear() }} DigitalSMM. All rights reserved.
         </p>
         <p class="text-xs text-ink/40">Made with ❤️ in Cambodia 🇰🇭</p>
       </div>

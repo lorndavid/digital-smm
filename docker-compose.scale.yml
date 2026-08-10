@@ -1,5 +1,5 @@
 # ============================================================
-# VidSMM — backend scaling override.
+# DigitalSMM — backend scaling override.
 #
 # Run the whole stack with N load-balanced backend instances:
 #

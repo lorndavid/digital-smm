@@ -3,7 +3,12 @@ import { AuditLogModel } from '../models/audit-log.model.js'
 export interface AuditEntry {
   actorId: string
   actorEmail?: string
-  action: 'admin.create' | 'admin.set_role' | 'admin.remove_role' | 'admin.bulk_services'
+  action:
+    | 'admin.create'
+    | 'admin.set_role'
+    | 'admin.remove_role'
+    | 'admin.bulk_services'
+    | 'admin.order_again'
   targetId?: string | null
   targetEmail?: string
   details?: Record<string, unknown>

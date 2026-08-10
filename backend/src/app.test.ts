@@ -76,7 +76,7 @@ vi.mock('./utils/api-error.js', () => apiError)
 
 import { createApp } from './app.js'
 
-describe('VidSMM API', () => {
+describe('DigitalSMM API', () => {
   it('GET /api/health reports ok (db disconnected in tests)', async () => {
     const res = await request(createApp()).get('/api/health')
     expect(res.status).toBe(200)

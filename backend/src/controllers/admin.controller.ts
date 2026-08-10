@@ -472,6 +472,28 @@ export const adminController = {
     }),
   ],
 
+  /**
+   * Support-agent "Order again": re-places an order for the same customer,
+   * funded from their wallet (insufficient balance → 400 with the wallet's
+   * details). Audited so duplicate placements are traceable.
+   */
+  placeOrderAgain: asyncHandler(async (req, res) => {
+    const id = req.params.id as string
+    const order = await orderService.placeOrderAgainForAdmin(id)
+    await logAdminAction({
+      actorId: req.admin?.sub ?? '',
+      actorEmail: req.admin?.email,
+      action: 'admin.order_again',
+      targetId: id,
+      details: {
+        newOrderId: order._id.toString(),
+        orderNumber: order.orderNumber,
+        totalPrice: order.totalPrice,
+      },
+    })
+    res.status(201).json(order)
+  }),
+
   // ------------------------------------------------------------------
   // Payments
   // ------------------------------------------------------------------

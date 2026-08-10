@@ -12,10 +12,10 @@ const authStore = useAuthStore()
 const themeStore = useThemeStore()
 
 // Preferences persisted locally (these are client-side preferences).
-const emailNotifications = useLocalStorage('vidsmm:email-notifications', true)
-const orderUpdates = useLocalStorage('vidsmm:order-updates', true)
-const promoEmails = useLocalStorage('vidsmm:promo-emails', false)
-const language = useLocalStorage('vidsmm:language', 'en')
+const emailNotifications = useLocalStorage('digitalsmm:email-notifications', true)
+const orderUpdates = useLocalStorage('digitalsmm:order-updates', true)
+const promoEmails = useLocalStorage('digitalsmm:promo-emails', false)
+const language = useLocalStorage('digitalsmm:language', 'en')
 
 interface ToggleRow {
   label: string
@@ -51,7 +51,7 @@ async function signOut(): Promise<void> {
   <div class="mx-auto w-full max-w-3xl space-y-6">
     <div>
       <h1 class="font-display text-2xl font-bold text-ink">Settings</h1>
-      <p class="mt-1 text-sm text-ink/50">Personalize your VidSMM experience.</p>
+      <p class="mt-1 text-sm text-ink/50">Personalize your DigitalSMM experience.</p>
     </div>
 
     <!-- Notifications -->

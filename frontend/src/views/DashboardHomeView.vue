@@ -85,7 +85,7 @@ onMounted(async () => {
             {{ firstName }} 👋
           </h1>
           <p class="mt-2 max-w-md text-sm text-ink/75">
-            Ready to grow today? Pick a service, pay with KHQR and watch the numbers climb.
+            Ready to grow today? Pick a service, order instantly from your wallet balance.
           </p>
         </div>
         <div class="flex flex-wrap gap-3">
@@ -233,7 +233,7 @@ onMounted(async () => {
             </button>
           </div>
           <p class="mt-4 border-t border-ink/10 pt-4 text-xs leading-relaxed text-ink/40">
-            Tip: top up your wallet with KHQR and services are paid instantly — no checkout needed.
+            Tip: top up your wallet and services are paid instantly from your balance.
           </p>
         </div>
       </div>

@@ -45,7 +45,7 @@ async function submit(): Promise<void> {
           <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-secondary-500 shadow-glow">
             <ShieldCheck class="h-7 w-7 text-(--a-text)" />
           </div>
-          <h1 class="font-display mt-5 text-2xl font-bold text-(--a-text)">VidSMM Admin</h1>
+          <h1 class="font-display mt-5 text-2xl font-bold text-(--a-text)">DigitalSMM Admin</h1>
           <p class="mt-2 text-sm text-(--a-muted)">
             Restricted area — sign in with your admin email and password.
           </p>

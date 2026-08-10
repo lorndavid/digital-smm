@@ -12,6 +12,7 @@ import {
   QrCode,
   RefreshCcw,
   RefreshCw,
+  Repeat,
   Timer,
   TrendingUp,
   XCircle,
@@ -25,6 +26,7 @@ import { STATUS_META } from '@/utils/constants'
 import { SERVICE_TYPE_LABEL } from '@/utils/constants'
 import { formatMoney, formatNumber, formatRelative } from '@/utils/format'
 import { detectPlatform, type DetectedPlatform } from '@/utils/linkValidation'
+import { buildOrderAgainQuery } from '@/utils/orderPrefill'
 import OrderStatusTimeline from '@/components/dashboard/OrderStatusTimeline.vue'
 import PlatformIcon from '@/components/ui/PlatformIcon.vue'
 import BaseBadge from '@/components/ui/BaseBadge.vue'
@@ -203,6 +205,16 @@ async function requestRefill(): Promise<void> {
 
 function openLink(url: string): void {
   if (url) window.open(url, '_blank', 'noopener')
+}
+
+/**
+ * Quick re-order: jump to Explore Services with this order's service, link,
+ * quantity and options prefilled — one tap and the form is ready to submit.
+ */
+function orderAgain(): void {
+  const o = order.value
+  if (!o) return
+  void router.push({ name: 'services', query: buildOrderAgainQuery(o) })
 }
 
 async function copyText(text: string, label: string): Promise<void> {
@@ -698,8 +710,8 @@ onUnmounted(() => {
         >
           <RefreshCcw class="h-4 w-4" /> Request refill
         </BaseButton>
-        <BaseButton variant="ghost" class="ml-auto" @click="router.push('/dashboard/services')">
-          <ExternalLink class="h-4 w-4" /> New order
+        <BaseButton v-if="serviceInfo" variant="outline" class="ml-auto" @click="orderAgain">
+          <Repeat class="h-4 w-4" /> Order again
         </BaseButton>
       </div>
 

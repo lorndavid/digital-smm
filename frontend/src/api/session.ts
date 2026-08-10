@@ -6,7 +6,7 @@
  * (Same pattern the admin panel uses for its sessions.)
  */
 
-const TOKEN_KEY = 'vidsmm_session_token'
+const TOKEN_KEY = 'digitalsmm_session_token'
 
 /** Returns the stored session token (or null when signed out). */
 export function getAuthToken(): string | null {

@@ -81,7 +81,7 @@ async function openPaymentPage(page: Page, request: APIRequestContext) {
   }
   expect(payment.qrString).toBeTruthy()
   expect(payment.checkoutUrl).toContain('checkout.cutluy.test') // mock env override active
-  await page.addInitScript((t) => localStorage.setItem('vidsmm_session_token', t), token)
+  await page.addInitScript((t) => localStorage.setItem('digitalsmm_session_token', t), token)
   await page.goto(`/pay/${payment.referenceId}`)
   await expect(page.locator('img[alt="KHQR"]')).toBeVisible()
   return payment

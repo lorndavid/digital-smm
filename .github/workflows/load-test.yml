@@ -1,4 +1,4 @@
-# VidSMM Load Tests — MANUAL ONLY.
+# DigitalSMM Load Tests — MANUAL ONLY.
 #
 # The 100-user payment load tests are deliberately NOT part of CI: they need
 # real Mongo + Redis, spawn extra processes, and used to exceed the CI step

@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# VidSMM admin panel — Vue 3 + Vite, built then served by nginx.
+# DigitalSMM admin panel — Vue 3 + Vite, built then served by nginx.
 # Build context: repo ROOT (see docker-compose.yml).
 # The nginx config is mounted read-only from docker/nginx.conf at runtime.
 

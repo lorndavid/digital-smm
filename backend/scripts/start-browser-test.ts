@@ -33,6 +33,13 @@ process.env.MOCK_CHECKOUT_URL = 'https://checkout.cutluy.test/pay/demo'
 // The browser test is one user — never let the rate limiter interfere.
 process.env.RATE_LIMIT_MAX = '100000'
 process.env.RATE_LIMIT_WINDOW_MS = '600000'
+// Force Redis OFF: the distributed rate limiter + SSE bus would otherwise
+// share the same REDIS_URL as the developer's dev/prod backend and their
+// per-IP counters — every test/screenshot run would burn the developer's
+// real rate-limit quota and produce spurious 429s. The test stack is a
+// single instance, so the in-memory limiter + in-memory SSE bus behave
+// identically for the browser tests.
+process.env.REDIS_URL = ''
 
 const DB_NAME = `vidsmm_browsertest_${Date.now()}`
 

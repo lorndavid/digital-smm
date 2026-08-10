@@ -6,7 +6,7 @@
  * travels through a URL, which is what makes the code non-interceptable.
  */
 
-const VERIFIER_KEY = 'vidsmm_oauth_verifier'
+const VERIFIER_KEY = 'digitalsmm_oauth_verifier'
 const CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~'
 
 function randomVerifier(length = 64): string {

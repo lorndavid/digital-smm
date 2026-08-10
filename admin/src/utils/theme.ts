@@ -3,7 +3,7 @@
  * Default is LIGHT (white background, black text); dark mode is persisted
  * per browser via localStorage.
  */
-const KEY = 'vidsmm-admin-theme'
+const KEY = 'digitalsmm-admin-theme'
 
 export type Theme = 'light' | 'dark'
 

@@ -22,7 +22,7 @@ async function bootstrap(): Promise<void> {
 
   const app = createApp()
   const server = app.listen(env.PORT, () => {
-    logger.info(`[server] VidSMM backend listening on http://localhost:${env.PORT}`)
+    logger.info(`[server] DigitalSMM backend listening on http://localhost:${env.PORT}`)
   })
 
   startOrderSyncJob()

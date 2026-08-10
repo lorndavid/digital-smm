@@ -1,5 +1,5 @@
 /**
- * Shared domain types for the VidSMM backend.
+ * Shared domain types for the DigitalSMM backend.
  */
 
 /** The order/service types supported by the SMM provider API. */

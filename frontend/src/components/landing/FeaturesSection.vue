@@ -38,7 +38,7 @@ const features = [
 <template>
   <section class="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
     <div class="mx-auto max-w-2xl text-center">
-      <p class="text-sm font-semibold uppercase tracking-widest text-brand-300">Why VidSMM</p>
+      <p class="text-sm font-semibold uppercase tracking-widest text-brand-300">Why DigitalSMM</p>
       <h2 class="font-display mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
         Everything you need to <span class="text-gradient">grow</span>
       </h2>
