@@ -71,7 +71,7 @@ const tile = computed(() => TILE[props.platform] ?? TILE.other)
 
 <template>
   <span v-if="tile" :class="[TILE_SIZE[size], 'inline-flex items-center justify-center bg-gradient-to-br shadow-lg', tile, tileClass]">
-    <svg viewBox="0 0 24 24" fill="currentColor" class="text-white" :class="GLYPH_SIZE[size]">
+    <svg viewBox="0 0 24 24" fill="currentColor" class="text-ink" :class="GLYPH_SIZE[size]">
       <path :d="glyph" />
     </svg>
   </span>

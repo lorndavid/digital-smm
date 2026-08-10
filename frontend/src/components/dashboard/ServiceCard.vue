@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { Clock, RefreshCcw, Sparkles } from '@lucide/vue'
 import type { Service } from '@/types/models'
 import { formatMoney } from '@/utils/format'
-import { PLATFORM_META, SERVICE_TYPE_LABEL } from '@/utils/constants'
+import { PLATFORM_META, SERVICE_TYPE_LABEL, SMM_PROVIDER_LABEL } from '@/utils/constants'
 import { inferPlatformFromCategoryName } from '@/utils/serviceGroups'
 import PlatformIcon from '@/components/ui/PlatformIcon.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -54,24 +54,27 @@ function platformOf(service: Service) {
         <BaseBadge v-if="service.isFeatured" tone="warning">
           <Sparkles class="mr-1 h-3 w-3" /> Trending
         </BaseBadge>
+        <BaseBadge v-if="service.provider && SMM_PROVIDER_LABEL[service.provider]" tone="neutral" class="text-[10px]">
+          {{ SMM_PROVIDER_LABEL[service.provider] ?? service.provider }}
+        </BaseBadge>
         <BaseBadge tone="brand">{{ SERVICE_TYPE_LABEL[service.type] ?? service.type }}</BaseBadge>
       </div>
     </div>
 
-    <h3 class="font-display mt-4 text-base font-semibold text-white">{{ service.name }}</h3>
-    <p v-if="service.description" class="mt-1 line-clamp-2 text-xs leading-relaxed text-white/45">
+    <h3 class="font-display mt-4 text-base font-semibold text-ink">{{ service.name }}</h3>
+    <p v-if="service.description" class="mt-1 line-clamp-2 text-xs leading-relaxed text-ink/45">
       {{ service.description }}
     </p>
 
     <div class="mt-4 flex items-baseline gap-1">
-      <span class="font-display text-xl font-bold text-white">
+      <span class="font-display text-xl font-bold text-ink">
         {{ formatMoney(service.pricePerUnit, service.currency) }}
       </span>
-      <span v-if="service.type === 'Package' || service.type === 'Custom Comments Package' || (service.min === 1 && service.max === 1)" class="text-xs text-white/40">/ package</span>
-      <span v-else class="text-xs text-white/40">/ 1,000</span>
+      <span v-if="service.type === 'Package' || service.type === 'Custom Comments Package' || (service.min === 1 && service.max === 1)" class="text-xs text-ink/40">/ package</span>
+      <span v-else class="text-xs text-ink/40">/ 1,000</span>
     </div>
 
-    <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-white/50">
+    <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink/50">
       <span>Min {{ service.min.toLocaleString() }}</span>
       <span>Max {{ service.max.toLocaleString() }}</span>
       <span v-if="service.deliveryTime" class="inline-flex items-center gap-1">

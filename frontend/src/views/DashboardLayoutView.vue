@@ -16,7 +16,7 @@ const mobileOpen = ref(false)
     <!-- Mobile drawer -->
     <Transition name="drawer">
       <div v-if="mobileOpen" class="fixed inset-0 z-50 lg:hidden">
-        <div class="absolute inset-0 bg-night/80 backdrop-blur-sm" @click="mobileOpen = false" />
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="mobileOpen = false" />
         <div class="absolute inset-y-0 left-0">
           <DashboardSidebar />
         </div>

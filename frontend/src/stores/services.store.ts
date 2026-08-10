@@ -51,6 +51,7 @@ export const useServicesStore = defineStore('services', () => {
     type?: string
     refill?: boolean
     cancel?: boolean
+    provider?: string
     sort?: 'price_asc' | 'price_desc' | 'name_asc' | 'newest'
   } = {}): Promise<void> {
     loading.value = true

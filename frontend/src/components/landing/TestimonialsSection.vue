@@ -51,20 +51,20 @@ const testimonials = [
           <div class="flex gap-1">
             <Star v-for="n in 5" :key="n" class="h-4 w-4 text-amber-400" fill="currentColor" />
           </div>
-          <blockquote class="mt-4 text-sm leading-relaxed text-white/70">
+          <blockquote class="mt-4 text-sm leading-relaxed text-ink/70">
             “{{ testimonial.quote }}”
           </blockquote>
         </div>
         <figcaption class="mt-6 flex items-center gap-3">
           <div
-            class="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br text-sm font-bold text-white"
+            class="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br text-sm font-bold text-ink"
             :class="testimonial.gradient"
           >
             {{ testimonial.initials }}
           </div>
           <div>
-            <p class="text-sm font-semibold text-white">{{ testimonial.name }}</p>
-            <p class="text-xs text-white/45">{{ testimonial.role }}</p>
+            <p class="text-sm font-semibold text-ink">{{ testimonial.name }}</p>
+            <p class="text-xs text-ink/45">{{ testimonial.role }}</p>
           </div>
         </figcaption>
       </figure>

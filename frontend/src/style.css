@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* The app toggles dark mode with the `.dark` class on <html> (not the OS
+   preference), so `dark:` utilities must key off that class. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ------------------------------------------------------------------ */
 /* Design tokens — VidSMM brand palette                               */
 /* ------------------------------------------------------------------ */
@@ -37,32 +41,89 @@
 }
 
 /* ------------------------------------------------------------------ */
-/* Base                                                                */
+/* Semantic, theme-aware tokens                                       */
+/* Light is the default; `.dark` on <html> flips every token.         */
 /* ------------------------------------------------------------------ */
+@theme inline {
+  --color-surface: var(--surface); /* page background */
+  --color-card: var(--card); /* elevated surfaces: cards, panels, dropdowns */
+  --color-soft: var(--soft); /* subtle fills: inputs, chips, hovers */
+  --color-ink: var(--ink); /* primary text */
+  --color-ink-soft: var(--ink-soft); /* secondary text */
+  --color-line: var(--line); /* borders & dividers */
+}
+
 :root {
+  --surface: #f6f7fb;
+  --card: #ffffff;
+  --soft: rgba(11, 18, 32, 0.05);
+  --ink: #0b1220;
+  --ink-soft: rgba(11, 18, 32, 0.62);
+  --line: rgba(11, 18, 32, 0.12);
+
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-strong-bg: rgba(255, 255, 255, 0.9);
+  --grid-line: rgba(11, 18, 32, 0.045);
+  --card-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.04), 0 12px 32px -18px rgba(16, 24, 40, 0.16);
+  --skeleton-shine: rgba(255, 255, 255, 0.7);
+  --selection-bg: rgba(108, 59, 255, 0.16);
+  --selection-color: #0b1220;
+
+  color-scheme: light;
+}
+
+.dark {
+  --surface: #050816;
+  --card: #0d1430;
+  --soft: rgba(255, 255, 255, 0.06);
+  --ink: #ffffff;
+  --ink-soft: rgba(255, 255, 255, 0.6);
+  --line: rgba(255, 255, 255, 0.1);
+
+  --glass-bg: rgba(255, 255, 255, 0.04);
+  --glass-strong-bg: rgba(13, 20, 48, 0.72);
+  --grid-line: rgba(255, 255, 255, 0.035);
+  --card-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 20px 50px -24px rgba(0, 0, 0, 0.8);
+  --skeleton-shine: rgba(255, 255, 255, 0.08);
+  --selection-bg: rgba(108, 59, 255, 0.55);
+  --selection-color: #ffffff;
+
   color-scheme: dark;
 }
 
+/* ------------------------------------------------------------------ */
+/* Base                                                                */
+/* ------------------------------------------------------------------ */
 html {
   scroll-behavior: smooth;
 }
 
 body {
-  background-color: var(--color-night);
-  color: #fff;
+  background-color: var(--surface);
+  color: var(--ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   background-image:
-    radial-gradient(1100px 500px at 85% -10%, rgba(108, 59, 255, 0.18), transparent 60%),
-    radial-gradient(900px 480px at 0% 0%, rgba(0, 229, 255, 0.1), transparent 55%);
+    radial-gradient(1100px 500px at 85% -10%, rgba(108, 59, 255, 0.055), transparent 60%),
+    radial-gradient(900px 480px at 0% 0%, rgba(0, 229, 255, 0.04), transparent 55%);
   background-attachment: fixed;
   min-height: 100vh;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+.dark body {
+  background-image:
+    radial-gradient(1100px 500px at 85% -10%, rgba(108, 59, 255, 0.18), transparent 60%),
+    radial-gradient(900px 480px at 0% 0%, rgba(0, 229, 255, 0.1), transparent 55%);
 }
 
 ::selection {
-  background: rgba(108, 59, 255, 0.55);
-  color: #fff;
+  background: var(--selection-bg);
+  color: var(--selection-color);
 }
 
 /* Scrollbar */
@@ -71,27 +132,27 @@ body {
   height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: #050816;
+  background: var(--surface);
 }
 ::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg, #4d16cf, #00b4cc);
   border-radius: 999px;
-  border: 2px solid #050816;
+  border: 2px solid var(--surface);
 }
 
 /* ------------------------------------------------------------------ */
 /* Utilities                                                           */
 /* ------------------------------------------------------------------ */
 @utility glass {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--glass-bg);
+  border: 1px solid var(--line);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
 }
 
 @utility glass-strong {
-  background: rgba(13, 20, 48, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--glass-strong-bg);
+  border: 1px solid var(--line);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 }
@@ -105,8 +166,8 @@ body {
 
 @utility bg-grid {
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
   background-size: 44px 44px;
 }
 
@@ -117,9 +178,31 @@ body {
 }
 
 @utility shadow-card {
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.04) inset,
-    0 20px 50px -24px rgba(0, 0, 0, 0.8);
+  box-shadow: var(--card-shadow);
+}
+
+/* Status-accent legibility on light surfaces.
+   Tailwind's -300 shades are tuned for dark mode; on white they need to
+   drop a few steps darker to keep WCAG-ish contrast. */
+:root:not(.dark) {
+  .text-emerald-200 { color: #047857; }
+  .text-emerald-300 { color: #047857; }
+  .text-emerald-400 { color: #059669; }
+  .text-rose-200 { color: #be123c; }
+  .text-rose-300 { color: #e11d48; }
+  .text-amber-200 { color: #b45309; }
+  .text-amber-300 { color: #b45309; }
+  .text-sky-200 { color: #0369a1; }
+  .text-sky-300 { color: #0369a1; }
+  .text-blue-200 { color: #1d4ed8; }
+  .text-blue-300 { color: #1d4ed8; }
+  .text-fuchsia-300 { color: #c026d3; }
+  .text-violet-300 { color: #6d28d9; }
+  .text-brand-200 { color: #6c3bff; }
+  .text-brand-300 { color: #5b21f0; }
+  .text-brand-400 { color: #6c3bff; }
+  .text-secondary-300 { color: #0090a6; }
+  .text-secondary-400 { color: #00a3b8; }
 }
 
 /* ------------------------------------------------------------------ */
@@ -190,7 +273,7 @@ body {
 .skeleton {
   position: relative;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--soft);
 }
 .skeleton::after {
   content: "";
@@ -200,7 +283,7 @@ body {
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(255, 255, 255, 0.08),
+    var(--skeleton-shine),
     transparent
   );
   animation: shimmer 1.6s infinite;

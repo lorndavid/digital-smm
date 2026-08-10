@@ -35,7 +35,7 @@ function primaryCta(): void {
 </script>
 
 <template>
-  <div class="relative flex min-h-screen items-center justify-center overflow-hidden bg-night px-4 py-10">
+  <div class="relative flex min-h-screen items-center justify-center overflow-hidden bg-surface px-4 py-10">
     <div class="bg-grid pointer-events-none absolute inset-0 opacity-40" />
     <div
       class="animate-gradient pointer-events-none absolute -top-40 left-1/2 h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-gradient-to-r from-brand-600/40 via-brand-500/20 to-secondary-500/30 blur-[110px]"
@@ -65,13 +65,13 @@ function primaryCta(): void {
             stroke-linejoin="round"
           />
         </svg>
-        <X v-else class="h-12 w-12 text-white" />
+        <X v-else class="h-12 w-12 text-ink" />
       </div>
 
-      <h1 class="font-display mt-6 text-3xl font-bold text-white">
+      <h1 class="font-display mt-6 text-3xl font-bold text-ink">
         {{ isSuccess ? 'Thank you! 🎉' : 'Payment not completed' }}
       </h1>
-      <p class="mx-auto mt-3 max-w-sm text-white/55">
+      <p class="mx-auto mt-3 max-w-sm text-ink/55">
         {{
           isSuccess
             ? 'Your payment was received and your order will be processed automatically. Check your dashboard for live status.'
@@ -81,15 +81,15 @@ function primaryCta(): void {
 
       <div class="glass mx-auto mt-6 max-w-sm space-y-2 rounded-2xl p-5 text-left text-sm">
         <div v-if="referenceId" class="flex items-center justify-between">
-          <span class="text-white/45">Reference</span>
-          <span class="font-mono text-xs text-white/70">{{ referenceId }}</span>
+          <span class="text-ink/45">Reference</span>
+          <span class="font-mono text-xs text-ink/70">{{ referenceId }}</span>
         </div>
         <div v-if="paymentId" class="flex items-center justify-between">
-          <span class="text-white/45">Payment ID</span>
-          <span class="max-w-[55%] truncate font-mono text-xs text-white/70">{{ paymentId }}</span>
+          <span class="text-ink/45">Payment ID</span>
+          <span class="max-w-[55%] truncate font-mono text-xs text-ink/70">{{ paymentId }}</span>
         </div>
         <div v-if="isSuccess" class="flex items-center justify-between">
-          <span class="text-white/45">Status</span>
+          <span class="text-ink/45">Status</span>
           <span class="font-semibold text-emerald-300">Paid</span>
         </div>
       </div>
@@ -109,7 +109,7 @@ function primaryCta(): void {
         </BaseButton>
       </div>
 
-      <p class="mt-8 text-xs text-white/30">
+      <p class="mt-8 text-xs text-ink/30">
         Powered by CutLuy · Bakong KHQR · Secure USD checkout
       </p>
     </div>

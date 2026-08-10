@@ -56,15 +56,15 @@ function toggle(index: number): void {
           class="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
           @click="toggle(index)"
         >
-          <span class="text-sm font-semibold text-white sm:text-base">{{ faq.q }}</span>
+          <span class="text-sm font-semibold text-ink sm:text-base">{{ faq.q }}</span>
           <ChevronDown
-            class="h-5 w-5 shrink-0 text-white/40 transition-transform duration-300"
+            class="h-5 w-5 shrink-0 text-ink/40 transition-transform duration-300"
             :class="openIndex === index ? 'rotate-180 text-brand-300' : ''"
           />
         </button>
         <Transition name="accordion">
           <div v-if="openIndex === index" class="px-6 pb-5">
-            <p class="text-sm leading-relaxed text-white/60">{{ faq.a }}</p>
+            <p class="text-sm leading-relaxed text-ink/60">{{ faq.a }}</p>
           </div>
         </Transition>
       </div>

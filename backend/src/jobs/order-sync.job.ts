@@ -17,39 +17,56 @@ let timer: NodeJS.Timeout | null = null
 /**
  * Polls the provider for the status of in-flight orders and syncs the
  * local database (status, remains, startCount, charge).
+ * Groups orders by provider and queries each provider separately.
  */
 export async function runOrderSync(): Promise<void> {
   try {
     const orders = await orderRepository.findSyncable(100)
     if (orders.length === 0) return
 
-    const provider = getSmmProvider()
-    const ids = orders
-      .map((o) => o.providerOrderId)
-      .filter((id): id is number => id !== null && id !== undefined)
+    // Group order IDs by provider so each provider is queried once.
+    const byProvider = new Map<string, number[]>()
+    for (const order of orders) {
+      const service = order.service
+      const providerName =
+        service && typeof service === 'object' && 'provider' in service
+          ? (service as { provider: string }).provider
+          : 'smmwiz'
+      const ids = byProvider.get(providerName) ?? []
+      if (order.providerOrderId !== null && order.providerOrderId !== undefined) {
+        ids.push(order.providerOrderId)
+      }
+      byProvider.set(providerName, ids)
+    }
 
-    const statuses = await provider.getOrdersStatus(ids)
     let updated = 0
 
-    for (const order of orders) {
-      const info = statuses[String(order.providerOrderId)]
-      if (!info || info.error) continue
+    for (const [providerName, ids] of byProvider) {
+      if (ids.length === 0) continue
+      const provider = getSmmProvider(providerName)
+      const statuses = await provider.getOrdersStatus(ids)
 
-      const changes: Record<string, unknown> = {}
-      const mapped = info.status ? STATUS_MAP[info.status] : undefined
-      if (mapped && mapped !== order.status) {
-        changes.status = mapped
-        if (mapped === 'Completed') changes.remains = 0
-      }
-      if (info.remains !== undefined && Number.isFinite(info.remains)) changes.remains = info.remains
-      if (info.startCount !== undefined && Number.isFinite(info.startCount)) {
-        changes.startCount = info.startCount
-      }
-      if (info.charge !== undefined && Number.isFinite(info.charge)) changes.charge = info.charge
+      for (const order of orders) {
+        if (order.providerOrderId === null || order.providerOrderId === undefined) continue
+        const info = statuses[String(order.providerOrderId)]
+        if (!info || info.error) continue
 
-      if (Object.keys(changes).length > 0) {
-        await orderRepository.update(order._id.toString(), { $set: changes })
-        updated += 1
+        const changes: Record<string, unknown> = {}
+        const mapped = info.status ? STATUS_MAP[info.status] : undefined
+        if (mapped && mapped !== order.status) {
+          changes.status = mapped
+          if (mapped === 'Completed') changes.remains = 0
+        }
+        if (info.remains !== undefined && Number.isFinite(info.remains)) changes.remains = info.remains
+        if (info.startCount !== undefined && Number.isFinite(info.startCount)) {
+          changes.startCount = info.startCount
+        }
+        if (info.charge !== undefined && Number.isFinite(info.charge)) changes.charge = info.charge
+
+        if (Object.keys(changes).length > 0) {
+          await orderRepository.update(order._id.toString(), { $set: changes })
+          updated += 1
+        }
       }
     }
 

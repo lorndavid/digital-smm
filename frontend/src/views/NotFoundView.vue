@@ -12,8 +12,8 @@ const router = useRouter()
     <div class="pointer-events-none absolute top-1/4 h-80 w-80 rounded-full bg-brand-500/20 blur-[100px]" />
     <div class="relative">
       <p class="font-display text-[7rem] font-bold leading-none text-gradient sm:text-[10rem]">404</p>
-      <h1 class="font-display mt-2 text-2xl font-bold text-white">Page not found</h1>
-      <p class="mx-auto mt-3 max-w-sm text-sm text-white/50">
+      <h1 class="font-display mt-2 text-2xl font-bold text-ink">Page not found</h1>
+      <p class="mx-auto mt-3 max-w-sm text-sm text-ink/50">
         The page you're looking for doesn't exist or has been moved.
       </p>
       <div class="mt-8 flex items-center justify-center gap-3">

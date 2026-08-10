@@ -28,7 +28,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
     <Transition name="modal">
       <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
-          class="absolute inset-0 bg-night/80 backdrop-blur-sm"
+          class="absolute inset-0 bg-black/60 backdrop-blur-sm"
           @click="closeOnBackdrop && emit('close')"
         />
         <div
@@ -37,13 +37,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         >
           <div
             v-if="!hideHeader && (title || $slots.header)"
-            class="sticky top-0 z-10 flex items-center justify-between border-b border-white/10 bg-night-soft/80 px-6 py-4 backdrop-blur-xl"
+            class="sticky top-0 z-10 flex items-center justify-between border-b border-ink/10 bg-card/80 px-6 py-4 backdrop-blur-xl"
           >
             <slot name="header">
-              <h3 class="font-display text-lg font-semibold text-white">{{ title }}</h3>
+              <h3 class="font-display text-lg font-semibold text-ink">{{ title }}</h3>
             </slot>
             <button
-              class="flex h-8 w-8 items-center justify-center rounded-lg text-white/50 transition-colors hover:bg-white/10 hover:text-white"
+              class="flex h-8 w-8 items-center justify-center rounded-lg text-ink/50 transition-colors hover:bg-ink/10 hover:text-ink"
               aria-label="Close"
               @click="emit('close')"
             >

@@ -65,10 +65,10 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="mx-auto max-w-5xl space-y-6">
+  <div class="w-full space-y-6">
     <div>
-      <h1 class="font-display text-2xl font-bold text-white">Wallet</h1>
-      <p class="mt-1 text-sm text-white/50">Top up with KHQR and track every transaction.</p>
+      <h1 class="font-display text-2xl font-bold text-ink">Wallet</h1>
+      <p class="mt-1 text-sm text-ink/50">Top up with KHQR and track every transaction.</p>
     </div>
 
     <!-- Balance hero -->
@@ -78,14 +78,14 @@ onMounted(() => {
       <div class="bg-grid pointer-events-none absolute inset-0 opacity-20" />
       <div class="relative flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
         <div>
-          <div class="flex items-center gap-2 text-white/70">
+          <div class="flex items-center gap-2 text-ink/70">
             <Wallet class="h-4 w-4" />
             <span class="text-sm">Available balance</span>
           </div>
-          <p class="font-display mt-2 text-4xl font-bold text-white">
+          <p class="font-display mt-2 text-4xl font-bold text-ink">
             {{ formatMoney(store.wallet?.balance ?? 0) }}
           </p>
-          <div class="mt-3 flex gap-6 text-sm text-white/75">
+          <div class="mt-3 flex gap-6 text-sm text-ink/75">
             <span>Top-ups: <b>{{ formatMoney(store.wallet?.totalTopUp ?? 0) }}</b></span>
             <span>Spent: <b>{{ formatMoney(store.wallet?.totalSpent ?? 0) }}</b></span>
           </div>
@@ -98,8 +98,8 @@ onMounted(() => {
 
     <!-- Transactions -->
     <div class="glass rounded-2xl shadow-card">
-      <div class="border-b border-white/10 px-6 py-4">
-        <h2 class="font-display text-base font-semibold text-white">Transaction history</h2>
+      <div class="border-b border-ink/10 px-6 py-4">
+        <h2 class="font-display text-base font-semibold text-ink">Transaction history</h2>
       </div>
 
       <div v-if="store.loading" class="space-y-3 p-6">
@@ -112,7 +112,7 @@ onMounted(() => {
         message="Top up your wallet to get started."
       />
 
-      <ul v-else class="divide-y divide-white/[0.06]">
+      <ul v-else class="divide-y divide-ink/[0.06]">
         <li
           v-for="(tx, index) in transactions"
           :key="tx._id ?? index"
@@ -127,8 +127,8 @@ onMounted(() => {
               <ArrowUpRight v-else class="h-4 w-4" />
             </div>
             <div>
-              <p class="text-sm font-medium text-white">{{ tx.description || tx.refType }}</p>
-              <p class="text-xs text-white/40">{{ formatDate(tx.createdAt) }}</p>
+              <p class="text-sm font-medium text-ink">{{ tx.description || tx.refType }}</p>
+              <p class="text-xs text-ink/40">{{ formatDate(tx.createdAt) }}</p>
             </div>
           </div>
           <p
@@ -149,7 +149,7 @@ onMounted(() => {
             v-for="quick in quickAmounts"
             :key="quick"
             class="rounded-xl border py-2.5 text-sm font-semibold transition-all"
-            :class="amount === quick ? 'border-brand-400/60 bg-brand-500/15 text-white' : 'border-white/10 text-white/60 hover:border-white/25'"
+            :class="amount === quick ? 'border-brand-400/60 bg-brand-500/15 text-ink' : 'border-ink/10 text-ink/60 hover:border-ink/25'"
             @click="amount = quick"
           >
             ${{ quick }}
@@ -164,7 +164,7 @@ onMounted(() => {
           placeholder="e.g. 20"
           :error="error"
         />
-        <p class="flex items-center gap-2 text-xs text-white/40">
+        <p class="flex items-center gap-2 text-xs text-ink/40">
           <Wallet class="h-4 w-4 text-secondary-400" />
           You'll pay securely with Bakong KHQR on the next screen.
         </p>

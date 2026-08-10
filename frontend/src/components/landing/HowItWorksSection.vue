@@ -38,7 +38,7 @@ const steps = [
         <h2 class="font-display mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
           Growth in <span class="text-gradient">4 simple steps</span>
         </h2>
-        <p class="mt-4 text-white/60">From sign-up to results in under five minutes.</p>
+        <p class="mt-4 text-ink/60">From sign-up to results in under five minutes.</p>
       </div>
 
       <div class="relative mt-16 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
@@ -58,12 +58,12 @@ const steps = [
           <p class="font-display mt-5 text-sm font-bold tracking-widest text-brand-400">
             {{ step.step }}
           </p>
-          <h3 class="font-display mt-2 text-lg font-semibold text-white">{{ step.title }}</h3>
-          <p class="mt-2 text-sm leading-relaxed text-white/55">{{ step.description }}</p>
+          <h3 class="font-display mt-2 text-lg font-semibold text-ink">{{ step.title }}</h3>
+          <p class="mt-2 text-sm leading-relaxed text-ink/55">{{ step.description }}</p>
 
           <div
             v-if="index < steps.length - 1"
-            class="absolute -right-6 top-8 hidden text-white/20 lg:block"
+            class="absolute -right-6 top-8 hidden text-ink/20 lg:block"
           >
             →
           </div>

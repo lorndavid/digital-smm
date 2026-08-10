@@ -17,18 +17,18 @@ function go(page: number): void {
 <template>
   <div v-if="totalPages > 1" class="flex items-center justify-center gap-3 pt-6">
     <button
-      class="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 text-white/70 transition-colors hover:border-brand-400/50 hover:text-white disabled:opacity-30 disabled:pointer-events-none"
+      class="flex h-9 w-9 items-center justify-center rounded-xl border border-ink/10 text-ink/70 transition-colors hover:border-brand-400/50 hover:text-ink disabled:opacity-30 disabled:pointer-events-none"
       :disabled="page <= 1"
       aria-label="Previous page"
       @click="go(page - 1)"
     >
       <ChevronLeft class="h-4 w-4" />
     </button>
-    <span class="text-sm text-white/50">
-      Page <span class="font-semibold text-white">{{ page }}</span> of {{ totalPages }}
+    <span class="text-sm text-ink/50">
+      Page <span class="font-semibold text-ink">{{ page }}</span> of {{ totalPages }}
     </span>
     <button
-      class="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 text-white/70 transition-colors hover:border-brand-400/50 hover:text-white disabled:opacity-30 disabled:pointer-events-none"
+      class="flex h-9 w-9 items-center justify-center rounded-xl border border-ink/10 text-ink/70 transition-colors hover:border-brand-400/50 hover:text-ink disabled:opacity-30 disabled:pointer-events-none"
       :disabled="page >= totalPages"
       aria-label="Next page"
       @click="go(page + 1)"

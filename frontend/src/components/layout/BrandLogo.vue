@@ -15,7 +15,7 @@ const text = { sm: 'text-lg', md: 'text-xl', lg: 'text-2xl' }
     >
       <Zap class="h-1/2 w-1/2 text-white" :stroke-width="2.5" fill="currentColor" />
     </div>
-    <span class="font-display font-bold tracking-tight text-white" :class="text[size]">
+    <span class="font-display font-bold tracking-tight text-ink" :class="text[size]">
       Vid<span class="text-gradient">SMM</span>
     </span>
   </div>

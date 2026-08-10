@@ -20,23 +20,12 @@ import { SERVICE_TYPE_LABEL } from '@/utils/constants'
 import { validateLink, PLATFORM_LABEL, type DetectedPlatform } from '@/utils/linkValidation'
 import PlatformIcon from '@/components/ui/PlatformIcon.vue'
 import { useToast } from '@/composables/useToast'
+import { serviceFields, QUANTITY_TYPES, type FieldSpec } from '@/composables/useServiceFields'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
 import BaseTextarea from '@/components/ui/BaseTextarea.vue'
-
-interface FieldSpec {
-  key: string
-  label: string
-  type: 'input' | 'textarea' | 'select'
-  required: boolean
-  numeric?: boolean
-  placeholder?: string
-  options?: string[] | Array<{ value: string; label: string }>
-  /** Web Traffic: only show for the matching type_of_traffic. */
-  showWhenTraffic?: string
-}
 
 const props = defineProps<{ open: boolean; service: Service | null }>()
 const emit = defineEmits<{ close: [] }>()
@@ -72,97 +61,7 @@ function reset(): void {
 // Type-aware fields
 // ---------------------------------------------------------------------------
 
-const QUANTITY_TYPES = [
-  'Default',
-  'SEO',
-  'Mentions',
-  'Mentions User Followers',
-  'Comment Likes',
-  'Poll',
-  'Invites from Groups',
-  'Web Traffic',
-]
-
-const fields = computed<FieldSpec[]>(() => {
-  const service = props.service
-  if (!service) return []
-  switch (service.type) {
-    case 'Custom Comments':
-    case 'Custom Comments Package':
-      return [
-        { key: 'comments', label: 'Comments (one per line)', type: 'textarea', required: true },
-      ]
-    case 'Comment Replies':
-      return [
-        { key: 'username', label: 'Username', type: 'input', required: true },
-        { key: 'comments', label: 'Comments (one per line)', type: 'textarea', required: true },
-      ]
-    case 'Mentions':
-      return [
-        { key: 'usernames', label: 'Usernames (one per line)', type: 'textarea', required: true },
-      ]
-    case 'Mentions User Followers':
-    case 'Comment Likes':
-      return [{ key: 'username', label: 'Username', type: 'input', required: true }]
-    case 'Poll':
-      return [
-        { key: 'answerNumber', label: 'Answer number', type: 'input', required: true, numeric: true },
-      ]
-    case 'SEO':
-      return [
-        { key: 'keywords', label: 'Keywords (one per line)', type: 'textarea', required: true },
-      ]
-    case 'Invites from Groups':
-      return [
-        { key: 'groups', label: 'Groups (one per line)', type: 'textarea', required: true },
-      ]
-    case 'Subscriptions':
-      return [
-        { key: 'username', label: 'Username', type: 'input', required: true },
-        { key: 'min', label: 'Min quantity', type: 'input', required: true, numeric: true },
-        { key: 'max', label: 'Max quantity', type: 'input', required: true, numeric: true },
-        {
-          key: 'delay',
-          label: 'Delay (minutes)',
-          type: 'select',
-          required: true,
-          options: ['0', '5', '10', '15', '20', '30', '40', '50', '60', '90', '120', '150', '180', '210', '240', '270', '300', '360', '420', '480', '540', '600'],
-        },
-      ]
-    case 'Web Traffic':
-      return [
-        { key: 'country', label: 'Country (e.g. "US" or "United States")', type: 'input', required: true },
-        {
-          key: 'device',
-          label: 'Device',
-          type: 'select',
-          required: true,
-          options: [
-            { value: '1', label: 'Desktop' },
-            { value: '2', label: 'Mobile (Android)' },
-            { value: '3', label: 'Mobile (iOS)' },
-            { value: '4', label: 'Mixed (Mobile)' },
-            { value: '5', label: 'Mixed (Mobile & Desktop)' },
-          ],
-        },
-        {
-          key: 'typeOfTraffic',
-          label: 'Type of traffic',
-          type: 'select',
-          required: true,
-          options: [
-            { value: '1', label: 'Google Keyword' },
-            { value: '2', label: 'Custom Referrer' },
-            { value: '3', label: 'Blank Referrer' },
-          ],
-        },
-        { key: 'googleKeyword', label: 'Google keyword', type: 'input', required: true, showWhenTraffic: '1' },
-        { key: 'referringUrl', label: 'Referring URL', type: 'input', required: true, showWhenTraffic: '2' },
-      ]
-    default:
-      return []
-  }
-})
+const fields = computed<FieldSpec[]>(() => serviceFields(props.service))
 
 const visibleFields = computed(() =>
   fields.value.filter((f) => !f.showWhenTraffic || params.typeOfTraffic === f.showWhenTraffic),
@@ -339,7 +238,7 @@ const serviceTypeLabel = computed(() =>
         <template v-if="i > 0">
           <span
             class="h-px flex-1"
-            :class="i <= stepIndex ? 'bg-gradient-to-r from-brand-500 to-secondary-400' : 'bg-white/10'"
+            :class="i <= stepIndex ? 'bg-gradient-to-r from-brand-500 to-secondary-400' : 'bg-ink/10'"
           />
         </template>
         <span class="flex shrink-0 items-center gap-1.5">
@@ -350,13 +249,13 @@ const serviceTypeLabel = computed(() =>
                 ? 'bg-emerald-400/20 text-emerald-300'
                 : i === stepIndex
                   ? 'bg-gradient-to-br from-brand-500 to-secondary-500 text-white shadow-glow'
-                  : 'bg-white/10 text-white/40'
+                  : 'bg-ink/10 text-ink/40'
             "
           >
             <Check v-if="i < stepIndex" class="h-3.5 w-3.5" />
             <template v-else>{{ i + 1 }}</template>
           </span>
-          <span class="text-xs font-medium" :class="i === stepIndex ? 'text-white' : 'text-white/40'">
+          <span class="text-xs font-medium" :class="i === stepIndex ? 'text-ink' : 'text-ink/40'">
             {{ label }}
           </span>
         </span>
@@ -368,8 +267,8 @@ const serviceTypeLabel = computed(() =>
       <div class="glass flex items-center gap-3 rounded-2xl p-4">
         <PlatformIcon :platform="servicePlatform" size="md" tile />
         <div class="min-w-0">
-          <p class="font-display truncate text-sm font-semibold text-white">{{ service?.name }}</p>
-          <p class="mt-0.5 text-xs text-white/45">
+          <p class="font-display truncate text-sm font-semibold text-ink">{{ service?.name }}</p>
+          <p class="mt-0.5 text-xs text-ink/45">
             {{ serviceTypeLabel }} · {{ formatUnitPrice(service?.pricePerUnit ?? 0) }} / 1,000
           </p>
         </div>
@@ -418,11 +317,11 @@ const serviceTypeLabel = computed(() =>
       </div>
 
       <div v-if="quantityRequired" class="space-y-1.5">
-        <label class="text-xs font-medium text-white/60">Quantity</label>
+        <label class="text-xs font-medium text-ink/60">Quantity</label>
         <div class="flex items-center gap-2">
           <button
             type="button"
-            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/70 transition-all hover:border-brand-400/50 hover:text-white active:scale-95 disabled:opacity-30"
+            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-ink/10 bg-ink/5 text-ink/70 transition-all hover:border-brand-400/50 hover:text-ink active:scale-95 disabled:opacity-30"
             :disabled="(quantity ?? (service?.min ?? 0)) <= (service?.min ?? 0)"
             aria-label="Decrease quantity"
             @click="adjustQuantity(-1)"
@@ -441,7 +340,7 @@ const serviceTypeLabel = computed(() =>
           />
           <button
             type="button"
-            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/70 transition-all hover:border-brand-400/50 hover:text-white active:scale-95 disabled:opacity-30"
+            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-ink/10 bg-ink/5 text-ink/70 transition-all hover:border-brand-400/50 hover:text-ink active:scale-95 disabled:opacity-30"
             :disabled="(quantity ?? 0) >= (service?.max ?? 0)"
             aria-label="Increase quantity"
             @click="adjustQuantity(1)"
@@ -449,8 +348,8 @@ const serviceTypeLabel = computed(() =>
             <Plus class="h-4 w-4" />
           </button>
         </div>
-        <p class="text-xs text-white/40">
-          Allowed range: <span class="text-white/70">{{ service?.min }} – {{ service?.max }}</span> units
+        <p class="text-xs text-ink/40">
+          Allowed range: <span class="text-ink/70">{{ service?.min }} – {{ service?.max }}</span> units
         </p>
       </div>
 
@@ -485,8 +384,8 @@ const serviceTypeLabel = computed(() =>
       </p>
 
       <div class="flex items-center justify-between pt-2">
-        <p class="text-sm text-white/50">
-          Total: <span class="font-semibold text-white">{{ formatMoney(totalPrice) }}</span>
+        <p class="text-sm text-ink/50">
+          Total: <span class="font-semibold text-ink">{{ formatMoney(totalPrice) }}</span>
         </p>
         <BaseButton @click="goToSummary">Continue <ArrowRight class="h-4 w-4" /></BaseButton>
       </div>
@@ -494,41 +393,41 @@ const serviceTypeLabel = computed(() =>
 
     <!-- STEP 2: summary -->
     <div v-else class="space-y-4">
-      <div class="space-y-3 rounded-2xl bg-white/[0.03] p-5">
+      <div class="space-y-3 rounded-2xl bg-ink/[0.03] p-5">
         <div class="flex items-center justify-between gap-3 text-sm">
-          <span class="shrink-0 text-white/50">Service</span>
-          <span class="flex min-w-0 items-center gap-2 font-medium text-white">
+          <span class="shrink-0 text-ink/50">Service</span>
+          <span class="flex min-w-0 items-center gap-2 font-medium text-ink">
             <PlatformIcon v-if="servicePlatform !== 'other'" :platform="servicePlatform" size="xs" tile />
             <span class="truncate">{{ service?.name }}</span>
           </span>
         </div>
         <div v-if="link" class="flex items-center justify-between gap-3 text-sm">
-          <span class="shrink-0 text-white/50">Link</span>
-          <span class="inline-flex min-w-0 max-w-[60%] items-center gap-1 truncate text-white">
+          <span class="shrink-0 text-ink/50">Link</span>
+          <span class="inline-flex min-w-0 max-w-[60%] items-center gap-1 truncate text-ink">
             <PlatformIcon v-if="detectedPlatform !== 'other'" :platform="detectedPlatform" size="xs" tile />
             <Link2 v-else class="h-3.5 w-3.5 shrink-0 text-brand-300" />
             <span class="truncate">{{ link }}</span>
           </span>
         </div>
         <div v-if="quantity" class="flex items-center justify-between text-sm">
-          <span class="text-white/50">Quantity</span>
-          <span class="font-medium text-white">{{ quantity.toLocaleString() }}</span>
+          <span class="text-ink/50">Quantity</span>
+          <span class="font-medium text-ink">{{ quantity.toLocaleString() }}</span>
         </div>
         <div v-if="params && Object.keys(params).length" class="flex items-center justify-between text-sm">
-          <span class="text-white/50">Options</span>
-          <span class="max-w-[60%] truncate text-white/80">{{ Object.values(params).filter(Boolean).join(' · ') }}</span>
+          <span class="text-ink/50">Options</span>
+          <span class="max-w-[60%] truncate text-ink/80">{{ Object.values(params).filter(Boolean).join(' · ') }}</span>
         </div>
         <div class="flex items-center justify-between text-sm">
-          <span class="text-white/50">Rate / 1,000</span>
-          <span class="text-white">{{ formatUnitPrice(service?.pricePerUnit ?? 0) }}</span>
+          <span class="text-ink/50">Rate / 1,000</span>
+          <span class="text-ink">{{ formatUnitPrice(service?.pricePerUnit ?? 0) }}</span>
         </div>
-        <div class="flex items-center justify-between border-t border-white/10 pt-3">
-          <span class="text-sm font-medium text-white">Total</span>
-          <span class="font-display text-xl font-bold text-white">{{ formatMoney(totalPrice) }}</span>
+        <div class="flex items-center justify-between border-t border-ink/10 pt-3">
+          <span class="text-sm font-medium text-ink">Total</span>
+          <span class="font-display text-xl font-bold text-ink">{{ formatMoney(totalPrice) }}</span>
         </div>
       </div>
 
-      <p class="flex items-center gap-2 text-xs text-white/40">
+      <p class="flex items-center gap-2 text-xs text-ink/40">
         <QrCode class="h-4 w-4 text-secondary-400" />
         You'll pay securely with Bakong KHQR. Your order is reserved until the payment settles.
       </p>

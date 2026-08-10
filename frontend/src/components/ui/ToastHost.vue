@@ -39,9 +39,9 @@ const iconColors: Record<ToastType, string> = {
         :class="styles[toast.type]"
       >
         <component :is="icons[toast.type]" class="h-5 w-5 shrink-0" :class="iconColors[toast.type]" />
-        <span class="text-sm font-medium text-white">{{ toast.message }}</span>
+        <span class="text-sm font-medium text-ink">{{ toast.message }}</span>
         <button
-          class="ml-1 text-white/40 transition-colors hover:text-white"
+          class="ml-1 text-ink/40 transition-colors hover:text-ink"
           aria-label="Dismiss"
           @click="store.dismiss(toast.id)"
         >

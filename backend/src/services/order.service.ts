@@ -201,7 +201,6 @@ function buildProviderInput(service: ServiceDoc, draft: OrderDraft): CreateOrder
  * (wallet or KHQR payment record) and places the order at the provider.
  */
 export class OrderService {
-  private readonly provider = getSmmProvider()
 
   /** Creates an order funded by the user's wallet balance. */
   async createOrderFromWallet(userId: string, draft: OrderDraft) {
@@ -294,7 +293,7 @@ export class OrderService {
         await order.save()
         return order
       }
-      const result = await this.provider.createOrder(providerInput)
+       const result = await getSmmProvider(service.provider).createOrder(providerInput)
       order.providerOrderId = result.order
       order.status = 'Processing'
       order.error = ''
@@ -390,7 +389,7 @@ export class OrderService {
       })
     }
 
-    const result = await this.provider.createOrder(providerInput)
+    const result = await getSmmProvider(service.provider).createOrder(providerInput)
     const order = await orderRepository.create({
       orderNumber: await orderRepository.nextOrderNumber(),
       providerOrderId: result.order,
@@ -433,7 +432,7 @@ export class OrderService {
     if (order.providerOrderId) {
       // Already placed with the provider — it must support cancellation.
       if (!service?.cancel) throw new ApiError(400, 'This service does not support cancellation')
-      const results = await this.provider.cancelOrders([order.providerOrderId])
+      const results = await getSmmProvider(service?.provider ?? 'smmwiz').cancelOrders([order.providerOrderId])
       const result = results[0]
       if (result && typeof result.cancel === 'object' && 'error' in result.cancel) {
         throw new ApiError(400, (result.cancel as { error: string }).error)
@@ -484,7 +483,9 @@ export class OrderService {
   async requestRefill(userId: string, id: string) {
     const order = await this.getOrderForUser(userId, id)
     if (!order.providerOrderId) throw new ApiError(400, 'Refill is not available for this order')
-    const { refill } = await this.provider.createRefill(order.providerOrderId)
+    const service = await serviceRepository.findById(order.service.toString())
+    const provider = service?.provider ?? 'smmwiz'
+    const { refill } = await getSmmProvider(provider).createRefill(order.providerOrderId)
     return { refill }
   }
 

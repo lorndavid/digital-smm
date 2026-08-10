@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Menu, X } from '@lucide/vue'
 import {
-  Activity,
   BarChart3,
   FolderTree,
   LayoutDashboard,
@@ -67,10 +66,7 @@ const navGroups: NavGroup[] = [
   },
   {
     title: 'System',
-    items: [
-      { to: '/load-tests', label: 'Load Tests', icon: Activity, superOnly: true },
-      { to: '/settings', label: 'Settings', icon: Settings },
-    ],
+    items: [{ to: '/settings', label: 'Settings', icon: Settings }],
   },
 ]
 
@@ -90,6 +86,16 @@ function signOut(): void {
   authStore.logout()
   router.push('/login')
 }
+
+/** Current page title, derived from the active nav item. */
+const pageTitle = computed(() => {
+  for (const group of navGroups) {
+    for (const item of group.items) {
+      if (item.exact ? route.path === item.to : route.path.startsWith(item.to)) return item.label
+    }
+  }
+  return 'Admin Panel'
+})
 </script>
 
 <template>
@@ -191,7 +197,8 @@ function signOut(): void {
           <Menu class="h-5 w-5" />
         </button>
         <div class="hidden text-sm text-(--a-muted) lg:block">
-          VidSMM <span class="mx-1 text-(--a-muted-3)">/</span> Admin Panel
+          VidSMM <span class="mx-1 text-(--a-muted-3)">/</span>
+          <span class="font-medium text-(--a-text)">{{ pageTitle }}</span>
         </div>
         <div class="flex items-center gap-3">
           <button

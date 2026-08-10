@@ -6,7 +6,7 @@ export type ServiceSort = 'price_asc' | 'price_desc' | 'name_asc' | 'newest'
 export interface ListServicesParams {
   category?: string
   /** Platform keyword ('facebook', 'tiktok', …). Matches every category whose
-   *  name contains the keyword — one chip shows the whole platform. */
+    *  name contains the keyword — one chip shows the whole platform. */
   platform?: string
   search?: string
   featured?: boolean
@@ -18,6 +18,8 @@ export interface ListServicesParams {
   type?: string
   refill?: boolean
   cancel?: boolean
+  /** Filter by SMM provider ('smmwiz' or 'mock'). */
+  provider?: string
   page?: number
   limit?: number
   sort?: ServiceSort

@@ -95,8 +95,8 @@ onMounted(async () => {
           <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-500/15">
             <Loader2 class="h-8 w-8 animate-spin text-brand-300" />
           </div>
-          <h1 class="font-display mt-6 text-xl font-bold text-white">Completing sign-in…</h1>
-          <p class="mt-2 text-sm text-white/50">
+          <h1 class="font-display mt-6 text-xl font-bold text-ink">Completing sign-in…</h1>
+          <p class="mt-2 text-sm text-ink/50">
             Securely connecting your Google account.
           </p>
         </template>
@@ -106,8 +106,8 @@ onMounted(async () => {
           <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/15">
             <AlertCircle class="h-8 w-8 text-amber-300" />
           </div>
-          <h1 class="font-display mt-6 text-xl font-bold text-white">Sign-in cancelled</h1>
-          <p class="mt-2 text-sm text-white/50">No worries — nothing was changed.</p>
+          <h1 class="font-display mt-6 text-xl font-bold text-ink">Sign-in cancelled</h1>
+          <p class="mt-2 text-sm text-ink/50">No worries — nothing was changed.</p>
           <BaseButton class="mt-6" variant="secondary" @click="router.push({ name: 'sign-in' })">
             <ArrowLeft class="h-4 w-4" /> Back to sign in
           </BaseButton>
@@ -118,8 +118,8 @@ onMounted(async () => {
           <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-500/15">
             <AlertCircle class="h-8 w-8 text-rose-300" />
           </div>
-          <h1 class="font-display mt-6 text-xl font-bold text-white">Sign-in failed</h1>
-          <p class="mt-2 text-sm text-white/50">{{ error }}</p>
+          <h1 class="font-display mt-6 text-xl font-bold text-ink">Sign-in failed</h1>
+          <p class="mt-2 text-sm text-ink/50">{{ error }}</p>
           <div class="mt-6 flex justify-center gap-3">
             <BaseButton variant="outline" @click="router.push('/')">
               <ArrowLeft class="h-4 w-4" /> Home

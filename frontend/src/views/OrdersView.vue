@@ -11,20 +11,28 @@ import BaseBadge from '@/components/ui/BaseBadge.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BasePagination from '@/components/ui/BasePagination.vue'
 import BaseSkeleton from '@/components/ui/BaseSkeleton.vue'
+import BaseSpinner from '@/components/ui/BaseSpinner.vue'
 import BaseEmptyState from '@/components/ui/BaseEmptyState.vue'
 import PlatformIcon from '@/components/ui/PlatformIcon.vue'
-import OrderStatusTimeline from '@/components/dashboard/OrderStatusTimeline.vue'
-import { ORDER_STATUSES } from '@/types/models'
-import { STATUS_TONE } from '@/utils/constants'
-import { formatMoney, formatNumber, formatDate } from '@/utils/format'
+import { STATUS_SHORT_LABEL, STATUS_TONE } from '@/utils/constants'
+import { formatMoney, formatNumber } from '@/utils/format'
 import type { Order } from '@/types/models'
 
 const store = useOrdersStore()
 const router = useRouter()
 const toast = useToast()
 
-const filters = ['All', ...ORDER_STATUSES]
-const activeFilter = ref('All')
+/** Filter chips — the five main statuses, shown with short labels. */
+const STATUS_FILTERS = [
+  { value: '', label: 'All' },
+  { value: 'Pending Payment', label: 'Pending' },
+  { value: 'Processing', label: 'Processing' },
+  { value: 'Partial', label: 'Partial' },
+  { value: 'Completed', label: 'Completed' },
+  { value: 'Refunded', label: 'Refunded' },
+]
+
+const activeFilter = ref('')
 const page = ref(1)
 const pageSize = 10
 const actionId = ref<string | null>(null)
@@ -34,9 +42,7 @@ const refreshing = ref(false)
 const TERMINAL = new Set(['Completed', 'Cancelled', 'Refunded', 'Failed'])
 
 const visibleOrders = computed(() => store.orders)
-const liveActive = computed(() =>
-  store.orders.some((o) => !TERMINAL.has(o.status)),
-)
+const liveActive = computed(() => store.orders.some((o) => !TERMINAL.has(o.status)))
 
 function serviceName(order: Order): string {
   return typeof order.service === 'object' ? order.service.name : 'Service'
@@ -59,8 +65,36 @@ function serviceSupports(order: Order, flag: 'refill' | 'cancel'): boolean {
   return typeof order.service === 'object' ? Boolean(order.service[flag]) : false
 }
 
+function canCancelOrder(order: Order): boolean {
+  return (
+    serviceSupports(order, 'cancel') &&
+    ['Processing', 'In progress', 'Partial'].includes(order.status)
+  )
+}
+
+function canRefillOrder(order: Order): boolean {
+  return serviceSupports(order, 'refill') && order.status === 'Completed'
+}
+
+function isBusy(order: Order): boolean {
+  return actionId.value === order._id
+}
+
+/** Compact date for the table (e.g. "Aug 10, 09:21 AM"). */
+const compactDate = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+})
+
+function formatShortDate(value: string): string {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? '—' : compactDate.format(date)
+}
+
 const queryParams = computed(() => ({
-  status: activeFilter.value === 'All' ? undefined : activeFilter.value,
+  status: activeFilter.value || undefined,
   page: page.value,
   limit: pageSize,
 }))
@@ -144,14 +178,14 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="mx-auto max-w-5xl space-y-6">
+  <div class="w-full space-y-6">
+    <!-- Header -->
     <div class="flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 class="font-display text-2xl font-bold text-white">Orders</h1>
-        <p class="mt-1 text-sm text-white/50">Track, cancel or refill your orders in real time.</p>
+        <h1 class="font-display text-2xl font-bold text-ink">Orders</h1>
+        <p class="mt-1 text-sm text-ink/50">Track, cancel or refill your orders in real time.</p>
       </div>
       <div class="flex items-center gap-2">
-        <!-- Live badge -->
         <span
           class="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1.5 text-xs font-medium text-emerald-300"
           :class="{ 'animate-pulse': liveActive }"
@@ -163,7 +197,7 @@ onUnmounted(() => {
             />
             <span
               class="relative inline-flex h-2 w-2 rounded-full"
-              :class="liveActive ? 'bg-emerald-400' : 'bg-white/30'"
+              :class="liveActive ? 'bg-emerald-400' : 'bg-ink/30'"
             />
           </span>
           {{ liveActive ? 'Live' : 'Up to date' }}
@@ -174,114 +208,148 @@ onUnmounted(() => {
       </div>
     </div>
 
+    <!-- Status filters -->
     <div class="flex gap-2 overflow-x-auto pb-1">
       <button
-        v-for="filter in filters"
-        :key="filter"
+        v-for="filter in STATUS_FILTERS"
+        :key="filter.value"
         class="shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-all"
         :class="
-          activeFilter === filter
+          activeFilter === filter.value
             ? 'bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-glow'
-            : 'glass text-white/60 hover:text-white'
+            : 'glass text-ink/60 hover:text-ink'
         "
-        @click="selectFilter(filter)"
+        @click="selectFilter(filter.value)"
       >
-        {{ filter }}
+        {{ filter.label }}
       </button>
     </div>
 
+    <!-- Loading -->
     <div v-if="store.loading" class="space-y-3">
-      <BaseSkeleton v-for="n in 5" :key="n" class="h-24 w-full" />
+      <BaseSkeleton v-for="n in 5" :key="n" class="h-12 w-full" />
     </div>
 
+    <!-- Empty -->
     <BaseEmptyState
       v-else-if="visibleOrders.length === 0"
       title="No orders here"
       message="Orders you place will appear in this list."
     />
 
-    <div v-else class="space-y-3">
-      <div
-        v-for="order in visibleOrders"
-        :key="order._id"
-        class="glass group cursor-pointer rounded-2xl p-5 shadow-card transition-all duration-300 hover:border-brand-400/30 hover:shadow-glow"
-        @click="openDetail(order)"
-      >
-        <!-- Header row -->
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div class="flex min-w-0 items-start gap-3">
-            <PlatformIcon :platform="orderPlatform(order)" size="md" tile tile-class="mt-0.5 shrink-0" />
-            <div class="min-w-0">
-              <div class="flex flex-wrap items-center gap-2">
-                <p class="font-semibold text-white">{{ serviceName(order) }}</p>
+    <!-- Table -->
+    <div v-else class="glass overflow-hidden rounded-2xl shadow-card">
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[960px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-ink/10 text-[11px] uppercase tracking-wider text-ink/40">
+              <th class="px-5 py-3.5 font-medium">ID</th>
+              <th class="px-4 py-3.5 font-medium">Date</th>
+              <th class="px-4 py-3.5 font-medium">Link</th>
+              <th class="px-4 py-3.5 text-right font-medium">Charge</th>
+              <th class="px-4 py-3.5 text-right font-medium">Start count</th>
+              <th class="px-4 py-3.5 text-right font-medium">Quantity</th>
+              <th class="px-4 py-3.5 font-medium">Service</th>
+              <th class="px-4 py-3.5 font-medium">Status</th>
+              <th class="px-4 py-3.5 text-right font-medium">Remains</th>
+              <th class="px-5 py-3.5 text-right font-medium">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="order in visibleOrders"
+              :key="order._id"
+              class="group cursor-pointer border-b border-ink/[0.06] transition-colors last:border-b-0 hover:bg-ink/[0.03]"
+              @click="openDetail(order)"
+            >
+              <td class="px-5 py-3.5">
+                <span class="font-mono text-xs font-semibold text-ink/70">#{{ order.orderNumber }}</span>
+              </td>
+              <td class="whitespace-nowrap px-4 py-3.5 text-ink/60">
+                {{ formatShortDate(order.createdAt) }}
+              </td>
+              <td class="px-4 py-3.5">
+                <span class="flex max-w-[180px] items-center gap-1.5 text-xs text-ink/55">
+                  <ExternalLink class="h-3.5 w-3.5 shrink-0 text-ink/30" />
+                  <span class="truncate">{{ order.link || '—' }}</span>
+                </span>
+              </td>
+              <td class="px-4 py-3.5 text-right font-semibold tabular-nums text-ink">
+                {{ formatMoney(order.totalPrice) }}
+              </td>
+              <td class="px-4 py-3.5 text-right tabular-nums text-ink/60">
+                {{ order.startCount > 0 ? formatNumber(order.startCount) : '—' }}
+              </td>
+              <td class="px-4 py-3.5 text-right font-medium tabular-nums text-ink">
+                {{ formatNumber(order.quantity) }}
+              </td>
+              <td class="px-4 py-3.5">
+                <span class="flex max-w-[220px] items-center gap-2">
+                  <PlatformIcon :platform="orderPlatform(order)" size="xs" tile class="shrink-0" />
+                  <span class="truncate font-medium text-ink">{{ serviceName(order) }}</span>
+                </span>
+              </td>
+              <td class="px-4 py-3.5">
                 <BaseBadge :tone="STATUS_TONE[order.status] ?? 'neutral'" dot>
-                  {{ order.status }}
+                  {{ STATUS_SHORT_LABEL[order.status] ?? order.status }}
                 </BaseBadge>
-              </div>
-              <p class="mt-1 text-xs text-white/40">
-                #{{ order.orderNumber }} · {{ formatNumber(order.quantity) }} units ·
-                {{ formatDate(order.createdAt) }}
-              </p>
-              <p v-if="order.link" class="mt-1 flex items-center gap-1 text-xs text-brand-300">
-                <ExternalLink class="h-3 w-3 shrink-0" />
-                <span class="max-w-[260px] truncate">{{ order.link }}</span>
-              </p>
-            </div>
-          </div>
-
-          <div class="flex shrink-0 items-center gap-4 sm:flex-col sm:items-end">
-            <p class="font-bold text-white">{{ formatMoney(order.totalPrice) }}</p>
-            <p class="text-[11px] text-white/35">Provider #{{ order.providerOrderId ?? '—' }}</p>
-          </div>
-          <ChevronRight class="h-5 w-5 shrink-0 text-white/25 transition-all duration-300 group-hover:translate-x-0.5 group-hover:text-brand-300" />
-        </div>
-
-        <!-- Live status ladder + progress -->
-        <div class="mt-4 border-t border-white/10 pt-4">
-          <OrderStatusTimeline :order="order" />
-        </div>
-
-        <!-- Actions -->
-        <div class="mt-4 flex flex-wrap items-center gap-2" @click.stop>
-          <BaseButton
-            v-if="order.status === 'Pending Payment'"
-            size="sm"
-            :loading="actionId === order._id"
-            @click="payOrder(order)"
-          >
-            <CreditCard class="h-3.5 w-3.5" /> Pay now
-          </BaseButton>
-          <BaseButton
-            v-if="serviceSupports(order, 'cancel') && ['Processing', 'In progress', 'Partial'].includes(order.status)"
-            variant="outline"
-            size="sm"
-            :loading="actionId === order._id"
-            @click="cancelOrder(order)"
-          >
-            <XCircle class="h-3.5 w-3.5" /> Cancel
-          </BaseButton>
-          <BaseButton
-            v-if="serviceSupports(order, 'refill') && order.status === 'Completed'"
-            variant="outline"
-            size="sm"
-            :loading="actionId === order._id"
-            @click="requestRefill(order)"
-          >
-            <RefreshCcw class="h-3.5 w-3.5" /> Refill
-          </BaseButton>
-          <BaseButton variant="ghost" size="sm" @click="openDetail(order)">
-            Details <ChevronRight class="h-3.5 w-3.5" />
-          </BaseButton>
-          <p v-if="order.error" class="ml-auto text-xs text-rose-300">{{ order.error }}</p>
-        </div>
+              </td>
+              <td class="px-4 py-3.5 text-right tabular-nums text-ink/60">
+                {{ order.remains > 0 ? formatNumber(order.remains) : '—' }}
+              </td>
+              <td class="px-5 py-3.5 text-right" @click.stop>
+                <div class="flex items-center justify-end gap-0.5">
+                  <button
+                    v-if="order.status === 'Pending Payment'"
+                    class="flex h-8 w-8 items-center justify-center rounded-lg text-ink/45 transition-colors hover:bg-brand-500/10 hover:text-brand-600 dark:hover:text-brand-300"
+                    :title="`Pay order #${order.orderNumber}`"
+                    aria-label="Pay now"
+                    :disabled="isBusy(order)"
+                    @click="payOrder(order)"
+                  >
+                    <BaseSpinner v-if="isBusy(order)" class="h-4 w-4" />
+                    <CreditCard v-else class="h-4 w-4" />
+                  </button>
+                  <button
+                    v-if="canCancelOrder(order)"
+                    class="flex h-8 w-8 items-center justify-center rounded-lg text-ink/45 transition-colors hover:bg-rose-500/10 hover:text-rose-400 dark:hover:text-rose-300"
+                    :title="`Cancel order #${order.orderNumber}`"
+                    aria-label="Cancel order"
+                    :disabled="isBusy(order)"
+                    @click="cancelOrder(order)"
+                  >
+                    <BaseSpinner v-if="isBusy(order)" class="h-4 w-4" />
+                    <XCircle v-else class="h-4 w-4" />
+                  </button>
+                  <button
+                    v-if="canRefillOrder(order)"
+                    class="flex h-8 w-8 items-center justify-center rounded-lg text-ink/45 transition-colors hover:bg-emerald-500/10 hover:text-emerald-500 dark:hover:text-emerald-300"
+                    :title="`Request refill for order #${order.orderNumber}`"
+                    aria-label="Request refill"
+                    :disabled="isBusy(order)"
+                    @click="requestRefill(order)"
+                  >
+                    <BaseSpinner v-if="isBusy(order)" class="h-4 w-4" />
+                    <RefreshCcw v-else class="h-4 w-4" />
+                  </button>
+                  <ChevronRight
+                    class="h-4 w-4 text-ink/25 transition-all duration-300 group-hover:translate-x-0.5 group-hover:text-brand-300"
+                  />
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
-      <BasePagination
-        :page="page"
-        :total="store.total"
-        :limit="pageSize"
-        @change="(p) => { page = p; void load() }"
-      />
+      <div class="border-t border-ink/10 px-5 pb-4">
+        <BasePagination
+          :page="page"
+          :total="store.total"
+          :limit="pageSize"
+          @change="(p) => { page = p; void load() }"
+        />
+      </div>
     </div>
   </div>
 </template>

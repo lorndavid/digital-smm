@@ -104,12 +104,12 @@ const delivered = computed(() => {
         class="flex items-center justify-between"
         :class="size === 'lg' ? 'text-sm' : 'text-[11px]'"
       >
-        <span class="font-medium text-white/60">
+        <span class="font-medium text-ink/60">
           {{ delivered !== null ? `${formatNumber(delivered)} / ${formatNumber(order.quantity)} delivered` : 'Delivery in progress…' }}
         </span>
         <span class="font-semibold text-emerald-300">{{ deliveryPct }}%</span>
       </div>
-      <div :class="['mt-1.5 overflow-hidden rounded-full bg-white/10', BAR]">
+      <div :class="['mt-1.5 overflow-hidden rounded-full bg-ink/10', BAR]">
         <div
           class="h-full rounded-full bg-gradient-to-r from-brand-500 via-secondary-500 to-emerald-400 transition-all duration-1000 ease-out"
           :style="{ width: `${deliveryPct}%` }"
@@ -126,7 +126,7 @@ const delivered = computed(() => {
           :class="[
             'mx-1 hidden h-0.5 flex-1 rounded-full sm:block',
             CONNECTOR,
-            i <= currentIndex && !failed ? 'bg-gradient-to-r from-brand-500 to-emerald-400' : 'bg-white/10',
+            i <= currentIndex && !failed ? 'bg-gradient-to-r from-brand-500 to-emerald-400' : 'bg-ink/10',
           ]"
         />
         <li class="flex shrink-0 items-center gap-2 sm:flex-col sm:items-center sm:gap-1.5">
@@ -140,7 +140,7 @@ const delivered = computed(() => {
                   ? 'bg-emerald-400/15 text-emerald-300 ring-emerald-400/40'
                   : i === currentIndex
                     ? 'bg-brand-500/20 text-brand-300 ring-brand-400/60 shadow-glow'
-                    : 'bg-white/5 text-white/30 ring-white/10',
+                    : 'bg-ink/5 text-ink/30 ring-ink/10',
             ]"
           >
             <Loader2
@@ -156,8 +156,8 @@ const delivered = computed(() => {
               failed && i === currentIndex
                 ? 'text-rose-300'
                 : i <= currentIndex || done
-                  ? 'text-white/80'
-                  : 'text-white/30',
+                  ? 'text-ink/80'
+                  : 'text-ink/30',
             ]"
           >
             {{ step.label }}

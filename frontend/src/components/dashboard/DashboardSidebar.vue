@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   LayoutDashboard,
@@ -12,19 +11,12 @@ import {
   Wallet,
 } from '@lucide/vue'
 import { useAuthStore } from '@/stores/auth.store'
-import { useWalletStore } from '@/stores/wallet.store'
-import AvatarCircle from '@/components/layout/AvatarCircle.vue'
 import BrandLogo from '@/components/layout/BrandLogo.vue'
-import { formatMoney } from '@/utils/format'
+import ThemeToggle from '@/components/ui/ThemeToggle.vue'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
-const walletStore = useWalletStore()
-
-onMounted(() => {
-  void walletStore.fetchWallet().catch(() => undefined)
-})
 
 const nav = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, exact: true },
@@ -47,8 +39,8 @@ async function signOut(): Promise<void> {
 </script>
 
 <template>
-  <aside class="flex h-full w-64 flex-col border-r border-white/10 bg-night-soft/60 backdrop-blur-xl">
-    <div class="flex h-16 items-center border-b border-white/10 px-5">
+  <aside class="flex h-full w-64 flex-col border-r border-ink/10 bg-card/60 backdrop-blur-xl">
+    <div class="flex h-16 items-center border-b border-ink/10 px-5">
       <BrandLogo size="sm" />
     </div>
 
@@ -60,8 +52,8 @@ async function signOut(): Promise<void> {
         class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all"
         :class="
           isActive(item)
-            ? 'bg-gradient-to-r from-brand-500/20 to-transparent text-white shadow-[inset_2px_0_0_0_#6c3bff]'
-            : 'text-white/55 hover:bg-white/5 hover:text-white'
+            ? 'bg-gradient-to-r from-brand-500/20 to-transparent text-ink shadow-[inset_2px_0_0_0_#6c3bff]'
+            : 'text-ink/55 hover:bg-ink/5 hover:text-ink'
         "
       >
         <component :is="item.icon" class="h-[18px] w-[18px]" />
@@ -69,46 +61,19 @@ async function signOut(): Promise<void> {
       </router-link>
     </div>
 
-    <div class="border-t border-white/10 p-4">
-      <div class="glass mb-3 flex items-center justify-between rounded-xl px-4 py-3">
-        <div>
-          <p class="text-[11px] text-white/40">Wallet balance</p>
-          <p class="font-display text-sm font-bold text-white">
-            {{ formatMoney(walletStore.wallet?.balance ?? 0) }}
-          </p>
-        </div>
-        <button
-          class="text-xs font-semibold text-brand-300 transition-colors hover:text-brand-200"
-          @click="router.push('/dashboard/wallet')"
-        >
-          Top up
-        </button>
+    <div class="border-t border-ink/10 p-4">
+      <div
+        class="flex items-center justify-between rounded-xl border border-ink/10 bg-ink/[0.03] px-3 py-2.5"
+      >
+        <p class="text-xs font-medium text-ink/50">Appearance</p>
+        <ThemeToggle />
       </div>
-
-      <div class="flex items-center gap-3">
-        <AvatarCircle
-          :name="authStore.user?.name ?? ''"
-          :email="authStore.user?.email ?? ''"
-          :avatar-url="authStore.user?.avatarUrl ?? ''"
-          :size="36"
-        />
-        <div class="min-w-0 flex-1">
-          <p class="truncate text-sm font-semibold text-white">
-            {{ authStore.user?.name || 'VidSMM User' }}
-          </p>
-          <p class="truncate text-xs text-white/40">
-            {{ authStore.user?.email ?? '' }}
-          </p>
-        </div>
-        <button
-          class="flex h-8 w-8 items-center justify-center rounded-lg text-white/40 transition-colors hover:bg-white/10 hover:text-white"
-          aria-label="Sign out"
-          title="Sign out"
-          @click="signOut"
-        >
-          <LogOut class="h-4 w-4" />
-        </button>
-      </div>
+      <button
+        class="mt-3 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-ink/55 transition-colors hover:bg-ink/5 hover:text-rose-300"
+        @click="signOut"
+      >
+        <LogOut class="h-[18px] w-[18px]" /> Sign out
+      </button>
     </div>
   </aside>
 </template>

@@ -48,10 +48,10 @@ async function save(): Promise<void> {
 </script>
 
 <template>
-  <div class="mx-auto max-w-2xl space-y-6">
+  <div class="w-full space-y-6">
     <div>
-      <h1 class="font-display text-2xl font-bold text-white">Profile</h1>
-      <p class="mt-1 text-sm text-white/50">Manage how you appear on VidSMM.</p>
+      <h1 class="font-display text-2xl font-bold text-ink">Profile</h1>
+      <p class="mt-1 text-sm text-ink/50">Manage how you appear on VidSMM.</p>
     </div>
 
     <div v-if="loading" class="space-y-3">
@@ -66,7 +66,7 @@ async function save(): Promise<void> {
             v-if="avatarUrl"
             :src="avatarUrl"
             alt="Avatar"
-            class="h-20 w-20 rounded-2xl border border-white/10 object-cover shadow-glow"
+            class="h-20 w-20 rounded-2xl border border-ink/10 object-cover shadow-glow"
           />
           <div
             v-else
@@ -75,15 +75,15 @@ async function save(): Promise<void> {
             {{ (name || 'V').slice(0, 2).toUpperCase() }}
           </div>
           <div
-            class="absolute -bottom-2 -right-2 flex h-8 w-8 items-center justify-center rounded-full bg-brand-500 text-white shadow-glow"
+            class="absolute -bottom-2 -right-2 flex h-8 w-8 items-center justify-center rounded-full bg-brand-500 text-ink shadow-glow"
           >
             <Camera class="h-4 w-4" />
           </div>
         </div>
         <div>
-          <p class="font-display text-lg font-semibold text-white">{{ name || 'VidSMM User' }}</p>
-          <p class="text-sm text-white/45">{{ email }}</p>
-          <p class="mt-1 text-xs text-white/35">Email is managed by your Google account.</p>
+          <p class="font-display text-lg font-semibold text-ink">{{ name || 'VidSMM User' }}</p>
+          <p class="text-sm text-ink/45">{{ email }}</p>
+          <p class="mt-1 text-xs text-ink/35">Email is managed by your Google account.</p>
         </div>
       </div>
 

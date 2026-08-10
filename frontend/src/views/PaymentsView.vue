@@ -45,10 +45,10 @@ onMounted(() => void load())
 </script>
 
 <template>
-  <div class="mx-auto max-w-4xl space-y-6">
+  <div class="w-full space-y-6">
     <div>
-      <h1 class="font-display text-2xl font-bold text-white">Payments</h1>
-      <p class="mt-1 text-sm text-white/50">Every KHQR transaction, in order. ({{ total }})</p>
+      <h1 class="font-display text-2xl font-bold text-ink">Payments</h1>
+      <p class="mt-1 text-sm text-ink/50">Every KHQR transaction, in order. ({{ total }})</p>
     </div>
 
     <div v-if="loading" class="space-y-4">
@@ -63,7 +63,7 @@ onMounted(() => void load())
 
     <!-- Timeline -->
     <div v-else class="relative ml-2 space-y-0">
-      <div class="absolute bottom-4 left-[18px] top-4 w-px bg-gradient-to-b from-brand-400/50 via-white/10 to-transparent" />
+      <div class="absolute bottom-4 left-[18px] top-4 w-px bg-gradient-to-b from-brand-400/50 via-ink/10 to-transparent" />
 
       <div
         v-for="payment in items"
@@ -71,7 +71,7 @@ onMounted(() => void load())
         class="relative flex gap-4 pb-6 pl-1"
       >
         <!-- Node -->
-        <div class="z-10 mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-night-soft shadow-card">
+        <div class="z-10 mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-ink/10 bg-card shadow-card">
           <Wallet
             v-if="payment.purpose === 'topup'"
             class="h-4 w-4 text-secondary-300"
@@ -84,24 +84,24 @@ onMounted(() => void load())
           <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div class="min-w-0">
               <div class="flex flex-wrap items-center gap-2">
-                <p class="text-sm font-semibold text-white">
+                <p class="text-sm font-semibold text-ink">
                   {{ payment.purpose === 'topup' ? PAYMENT_PURPOSE_LABEL.topup : serviceName(payment) || 'Service order' }}
                 </p>
                 <BaseBadge :tone="PAYMENT_STATUS_META[payment.status]?.tone ?? 'neutral'" dot>
                   {{ PAYMENT_STATUS_META[payment.status]?.label ?? payment.status }}
                 </BaseBadge>
               </div>
-              <p class="mt-1 font-mono text-xs text-white/40">{{ payment.referenceId }}</p>
-              <p class="mt-0.5 text-xs text-white/40">
+              <p class="mt-1 font-mono text-xs text-ink/40">{{ payment.referenceId }}</p>
+              <p class="mt-0.5 text-xs text-ink/40">
                 {{ formatDate(payment.approvedAt ?? payment.createdAt) }}
                 <template v-if="orderNumber(payment)"> · Order #{{ orderNumber(payment) }}</template>
               </p>
             </div>
 
             <div class="flex shrink-0 items-center gap-4">
-              <p class="text-sm font-bold text-white">{{ formatMoney(payment.amount) }}</p>
+              <p class="text-sm font-bold text-ink">{{ formatMoney(payment.amount) }}</p>
               <button
-                class="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/60 transition-all hover:border-brand-400/50 hover:text-white"
+                class="flex h-9 w-9 items-center justify-center rounded-xl border border-ink/10 bg-ink/5 text-ink/60 transition-all hover:border-brand-400/50 hover:text-ink"
                 title="View receipt"
                 @click="receipt = payment"
               >
@@ -118,44 +118,44 @@ onMounted(() => void load())
       <div v-if="receipt" class="space-y-4">
         <div class="flex items-center justify-between rounded-2xl bg-gradient-to-r from-brand-600/30 to-secondary-600/20 p-4">
           <div>
-            <p class="text-xs text-white/50">Amount paid</p>
-            <p class="font-display text-3xl font-bold text-white">{{ formatMoney(receipt.amount) }}</p>
+            <p class="text-xs text-ink/50">Amount paid</p>
+            <p class="font-display text-3xl font-bold text-ink">{{ formatMoney(receipt.amount) }}</p>
           </div>
-          <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10">
-            <QrCode class="h-7 w-7 text-white/80" />
+          <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-ink/10">
+            <QrCode class="h-7 w-7 text-ink/80" />
           </div>
         </div>
 
         <dl class="space-y-2.5 text-sm">
           <div class="flex items-center justify-between">
-            <dt class="text-white/45">Reference</dt>
-            <dd class="font-mono text-xs text-white/80">{{ receipt.referenceId }}</dd>
+            <dt class="text-ink/45">Reference</dt>
+            <dd class="font-mono text-xs text-ink/80">{{ receipt.referenceId }}</dd>
           </div>
           <div class="flex items-center justify-between">
-            <dt class="text-white/45">Provider</dt>
-            <dd class="capitalize text-white/80">{{ receipt.provider }} · {{ receipt.method }}</dd>
+            <dt class="text-ink/45">Provider</dt>
+            <dd class="capitalize text-ink/80">{{ receipt.provider }} · {{ receipt.method }}</dd>
           </div>
           <div class="flex items-center justify-between">
-            <dt class="text-white/45">Purpose</dt>
-            <dd class="text-white/80">{{ PAYMENT_PURPOSE_LABEL[receipt.purpose] ?? receipt.purpose }}</dd>
+            <dt class="text-ink/45">Purpose</dt>
+            <dd class="text-ink/80">{{ PAYMENT_PURPOSE_LABEL[receipt.purpose] ?? receipt.purpose }}</dd>
           </div>
           <template v-if="receipt.purpose === 'order' && typeof receipt.order === 'object'">
             <div class="flex items-center justify-between">
-              <dt class="text-white/45">Service</dt>
-              <dd class="text-white/80">{{ serviceName(receipt) }}</dd>
+              <dt class="text-ink/45">Service</dt>
+              <dd class="text-ink/80">{{ serviceName(receipt) }}</dd>
             </div>
             <div class="flex items-center justify-between">
-              <dt class="text-white/45">Quantity</dt>
-              <dd class="text-white/80">{{ formatNumber((receipt.order as Order).quantity) }}</dd>
+              <dt class="text-ink/45">Quantity</dt>
+              <dd class="text-ink/80">{{ formatNumber((receipt.order as Order).quantity) }}</dd>
             </div>
           </template>
           <div class="flex items-center justify-between">
-            <dt class="text-white/45">Paid at</dt>
-            <dd class="text-white/80">{{ formatDate(receipt.approvedAt ?? receipt.createdAt) }}</dd>
+            <dt class="text-ink/45">Paid at</dt>
+            <dd class="text-ink/80">{{ formatDate(receipt.approvedAt ?? receipt.createdAt) }}</dd>
           </div>
         </dl>
 
-        <div class="flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-4 py-3 text-xs text-emerald-200/80">
+        <div class="flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-4 py-3 text-xs text-emerald-300">
           <Receipt class="h-4 w-4 shrink-0" />
           This receipt confirms your payment was settled securely via Bakong KHQR.
         </div>

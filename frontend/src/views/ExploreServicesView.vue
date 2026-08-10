@@ -1,871 +1,930 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
-  ArrowLeft,
-  ArrowUpDown,
+  ArrowUpRight,
   Check,
+  CheckCircle2,
   ChevronDown,
-  Layers,
+  Clock,
+  Link2,
+  Minus,
+  Plus,
   RotateCcw,
   Search,
   ShieldCheck,
-  SlidersHorizontal,
-  Sparkles,
-  TrendingUp,
-  X,
+  Wallet,
+  XCircle,
 } from '@lucide/vue'
 import { watchDebounced } from '@vueuse/core'
+import { servicesApi } from '@/api/services.api'
+import { ordersApi } from '@/api/orders.api'
+import { ApiRequestError } from '@/api/client'
 import { useServicesStore } from '@/stores/services.store'
-import ServiceCard from '@/components/dashboard/ServiceCard.vue'
-import BuyServiceModal from '@/components/dashboard/BuyServiceModal.vue'
+import { useWalletStore } from '@/stores/wallet.store'
+import { useToast } from '@/composables/useToast'
+import {
+  serviceFields,
+  QUANTITY_TYPES,
+  type FieldSpec,
+} from '@/composables/useServiceFields'
+import { validateLink, PLATFORM_LABEL, type DetectedPlatform } from '@/utils/linkValidation'
+import { formatMoney, formatNumber, formatUnitPrice } from '@/utils/format'
+import { SERVICE_TYPE_LABEL } from '@/utils/constants'
 import PlatformIcon from '@/components/ui/PlatformIcon.vue'
-import BasePagination from '@/components/ui/BasePagination.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
+import BaseInput from '@/components/ui/BaseInput.vue'
+import BaseSelect from '@/components/ui/BaseSelect.vue'
+import BaseTextarea from '@/components/ui/BaseTextarea.vue'
 import BaseSkeleton from '@/components/ui/BaseSkeleton.vue'
-import BaseEmptyState from '@/components/ui/BaseEmptyState.vue'
 import type { Category, Service } from '@/types/models'
-import type { ServiceSort } from '@/api/services.api'
-import { PLATFORM_META, SERVICE_TYPE_LABEL } from '@/utils/constants'
-import { formatMoney } from '@/utils/format'
-import { groupServices, type ServiceGroup } from '@/utils/serviceGroups'
 
 const store = useServicesStore()
+const walletStore = useWalletStore()
+const router = useRouter()
+const toast = useToast()
 
-const page = ref(1)
+// ---------------------------------------------------------------------------
+// Catalogue browsing (server-backed search + category filter)
+// ---------------------------------------------------------------------------
+
+/** Services currently loaded — driven by the search box + category dropdown. */
+const services = ref<Service[]>([])
+const loading = ref(false)
+const loadError = ref('')
 const search = ref('')
-const sort = ref<'recommended' | ServiceSort>('recommended')
+const categoryId = ref('')
 
-// ---- Filters ---------------------------------------------------------------
-const minPrice = ref('')
-const maxPrice = ref('')
-const serviceType = ref('')
-const onlyRefill = ref(false)
-const onlyCancel = ref(false)
-const onlyFeatured = ref(false)
-const showFilters = ref(false)
-const showMore = ref(false)
+/** Live mini-search inside the service dropdown (client-side, instant). */
+const panelQuery = ref('')
+const panelOpen = ref(false)
+/** Autocomplete dropdown under the main search box. */
+const searchOpen = ref(false)
+/** True while a freshly-typed query is still debouncing (no results yet). */
+const searchPending = ref(false)
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+/** Index of the keyboard-highlighted row in the search dropdown (-1 = none). */
+const highlightedIndex = ref(-1)
+/** Scrollable results container inside the search dropdown. */
+const searchListEl = ref<HTMLElement | null>(null)
 
-const buyingService = ref<Service | null>(null)
-const buyOpen = ref(false)
+const selected = ref<Service | null>(null)
 
-const PAGE_SIZE = 12
-/** Whole platforms are fetched in one request (backend caps at 1,000). */
-const PLATFORM_FETCH_LIMIT = 1000
-/** "All groups" view caps each group's cards; "Show more" expands a group. */
-const GROUP_CARD_CAP = 12
+const categoryOptions = computed(() => [
+  { value: '', label: 'All categories' },
+  ...store.categories.map((c) => ({ value: c._id, label: c.name })),
+])
 
-// ---------------------------------------------------------------------------
-// Curated platforms for the Cambodia market: the platforms Cambodian users
-// actually grow on are shown first. Each chip maps to a keyword that matches
-// EVERY category whose name contains it (SMMWiz splits platforms across many
-// category names), so clicking "Facebook" shows all Facebook services.
-// ---------------------------------------------------------------------------
-
-const MAIN_PLATFORMS = [
-  { keyword: 'facebook', label: 'Facebook' },
-  { keyword: 'tiktok', label: 'TikTok' },
-  { keyword: 'telegram', label: 'Telegram' },
-  { keyword: 'youtube', label: 'YouTube' },
-  { keyword: 'instagram', label: 'Instagram' },
-] as const
-
-const activePlatform = ref('')
-
-// ---- Platform mode state ---------------------------------------------------
-/** The full (unfiltered) service list of the active platform. */
-const platformAll = ref<Service[]>([])
-/** Selected subcategory chip; 'all' shows every group as sections. */
-const activeSubcategory = ref('all')
-/** Groups the user expanded past the per-group card cap. */
-const expandedGroups = ref<Set<string>>(new Set())
-
-const platformMode = computed(() => activePlatform.value !== '')
-
-const otherCategories = computed<Category[]>(() => {
-  const mainKeywords = MAIN_PLATFORMS.map((p) => p.keyword)
-  return store.categories.filter((c) => {
-    const name = c.name.trim().toLowerCase()
-    return !mainKeywords.some((kw) => name.includes(kw))
-  })
-})
-
-const sortOptions: Array<{ value: 'recommended' | ServiceSort; label: string }> = [
-  { value: 'recommended', label: 'Recommended' },
-  { value: 'price_asc', label: 'Price: low → high' },
-  { value: 'price_desc', label: 'Price: high → low' },
-  { value: 'name_asc', label: 'Name A → Z' },
-  { value: 'newest', label: 'Newest first' },
-]
-
-// Popular service types shown as quick chips in the filter panel.
-const TYPE_CHIPS = ['Default', 'Custom Comments', 'Mentions', 'Subscriptions', 'Web Traffic'] as const
-
-const activeFilterCount = computed(() => {
-  let n = 0
-  if (minPrice.value) n += 1
-  if (maxPrice.value) n += 1
-  if (serviceType.value) n += 1
-  if (onlyRefill.value) n += 1
-  if (onlyCancel.value) n += 1
-  if (onlyFeatured.value) n += 1
-  return n
-})
-
-const hasFilters = computed(
-  () =>
-    activeFilterCount.value > 0 ||
-    !!search.value.trim() ||
-    store.activeCategory !== 'all' ||
-    activePlatform.value !== '' ||
-    activeSubcategory.value !== 'all',
-)
-
-const activePlatformMeta = computed(() => {
-  const p = MAIN_PLATFORMS.find((m) => m.keyword === activePlatform.value)
-  if (!p) return null
-  return { ...p, ...PLATFORM_META[p.keyword as keyof typeof PLATFORM_META] }
-})
-
-function clearFilters(): void {
-  minPrice.value = ''
-  maxPrice.value = ''
-  serviceType.value = ''
-  onlyRefill.value = false
-  onlyCancel.value = false
-  onlyFeatured.value = false
-  search.value = ''
-  activePlatform.value = ''
-  activeSubcategory.value = 'all'
-  platformAll.value = []
-  store.selectCategory('all')
-  page.value = 1
-  void load()
-}
-
-/**
- * Filter-panel "Reset filters": clears only search/price/type/toggles and
- * KEEPS the active platform + subcategory (client-side filters recompute
- * instantly; server mode reloads).
- */
-function resetFilters(): void {
-  minPrice.value = ''
-  maxPrice.value = ''
-  serviceType.value = ''
-  onlyRefill.value = false
-  onlyCancel.value = false
-  onlyFeatured.value = false
-  search.value = ''
-  if (!platformMode.value) {
-    page.value = 1
-    void load()
+async function loadServices(): Promise<void> {
+  loading.value = true
+  loadError.value = ''
+  try {
+    // A typed query searches the WHOLE catalogue — the category filter only
+    // narrows when the user is browsing without a search text.
+    const query = search.value.trim()
+    const result = await servicesApi.list({
+      search: query || undefined,
+      category: query ? undefined : categoryId.value || undefined,
+      limit: 1000,
+    })
+    services.value = result.items
+  } catch (err) {
+    loadError.value = err instanceof ApiRequestError ? err.message : 'Failed to load services'
+  } finally {
+    loading.value = false
   }
 }
 
-// ---------------------------------------------------------------------------
-// Server-side mode (search, other categories, pagination)
-// ---------------------------------------------------------------------------
+watchDebounced([search], () => void loadServices(), { debounce: 350 })
 
-async function load(): Promise<void> {
-  const min = Number(minPrice.value)
-  const max = Number(maxPrice.value)
-  await store.fetchServices({
-    category:
-      !activePlatform.value && store.activeCategory !== 'all'
-        ? store.activeCategory
-        : undefined,
-    search: search.value.trim() || undefined,
-    sort: sort.value === 'recommended' ? undefined : sort.value,
-    // pricePerUnit is already the rate per 1,000 — the filter inputs are
-    // entered in the same unit, so pass them through unchanged.
-    minPrice: minPrice.value && Number.isFinite(min) ? min : undefined,
-    maxPrice: maxPrice.value && Number.isFinite(max) ? max : undefined,
-    type: serviceType.value || undefined,
-    refill: onlyRefill.value || undefined,
-    cancel: onlyCancel.value || undefined,
-    featured: onlyFeatured.value || undefined,
-    page: page.value,
-    limit: PAGE_SIZE,
-  })
+function changeCategory(): void {
+  clearOrder()
+  void loadServices()
 }
 
-// ---------------------------------------------------------------------------
-// Platform mode (grouped subcategories, filters applied client-side)
-// ---------------------------------------------------------------------------
-
-/** Fetches the whole platform once; filters/sort/grouping are client-side. */
-async function loadPlatform(): Promise<void> {
-  store.services = []
-  store.total = 0
-  expandedGroups.value = new Set()
-  await store.fetchServices({
-    platform: activePlatform.value,
-    limit: PLATFORM_FETCH_LIMIT,
-  })
-  platformAll.value = store.services
-}
-
-/** Client-side filter + sort over the full platform set. */
-const platformFiltered = computed<Service[]>(() => {
-  const q = search.value.trim().toLowerCase()
-  const min = Number(minPrice.value)
-  const max = Number(maxPrice.value)
-
-  let list = platformAll.value.filter((s) => {
-    if (q && !s.name.toLowerCase().includes(q)) return false
-    if (serviceType.value && s.type !== serviceType.value) return false
-    if (onlyRefill.value && !s.refill) return false
-    if (onlyCancel.value && !s.cancel) return false
-    if (onlyFeatured.value && !s.isFeatured) return false
-    if (minPrice.value && Number.isFinite(min) && s.pricePerUnit < min) return false
-    if (maxPrice.value && Number.isFinite(max) && s.pricePerUnit > max) return false
-    return true
-  })
-
-  // The server already returned the platform in "recommended" order — any
-  // other sort is applied here so switching never needs another request.
-  if (sort.value === 'price_asc') list = [...list].sort((a, b) => a.pricePerUnit - b.pricePerUnit)
-  else if (sort.value === 'price_desc') list = [...list].sort((a, b) => b.pricePerUnit - a.pricePerUnit)
-  else if (sort.value === 'name_asc') list = [...list].sort((a, b) => a.name.localeCompare(b.name))
-  else if (sort.value === 'newest') {
-    list = [...list].sort(
-      (a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime(),
-    )
+/** Services shown in the dropdown; the selected one is always pinned on top. */
+const dropdownServices = computed<Service[]>(() => {
+  const q = panelQuery.value.trim().toLowerCase()
+  let list = q
+    ? services.value.filter((s) => s.name.toLowerCase().includes(q))
+    : services.value
+  if (selected.value && !list.some((s) => s._id === selected.value?._id)) {
+    list = [selected.value, ...list]
   }
   return list
 })
 
-/** Subcategory buckets of the filtered platform services. */
-const groups = computed<ServiceGroup[]>(() =>
-  groupServices(platformFiltered.value, activePlatform.value),
-)
-
-const activeGroup = computed<ServiceGroup | null>(
-  () => groups.value.find((g) => g.key === activeSubcategory.value) ?? null,
-)
-
-function visibleServices(group: ServiceGroup): Service[] {
-  return expandedGroups.value.has(group.key)
-    ? group.services
-    : group.services.slice(0, GROUP_CARD_CAP)
+function categoryName(service: Service): string {
+  const cat = service.category
+  if (cat && typeof cat === 'object' && 'name' in cat) return cat.name
+  return ''
 }
 
-function toggleExpand(group: ServiceGroup): void {
-  const next = new Set(expandedGroups.value)
-  if (next.has(group.key)) next.delete(group.key)
-  else next.add(group.key)
-  expandedGroups.value = next
-}
-
-function selectSubcategory(key: string): void {
-  activeSubcategory.value = key
-  expandedGroups.value = new Set()
-}
-
-// ---------------------------------------------------------------------------
-// Chips / navigation
-// ---------------------------------------------------------------------------
-
-/** Clicking a main platform chip filters by keyword (all matching categories). */
-function selectPlatform(keyword: string): void {
-  activePlatform.value = activePlatform.value === keyword ? '' : keyword
-  store.selectCategory('all')
-  page.value = 1
-  activeSubcategory.value = 'all'
-  if (activePlatform.value) void loadPlatform()
-  else void load()
-}
-
-/** "All" chip: keep search/price/type filters, only clear the platform chip. */
-function selectAll(): void {
-  activePlatform.value = ''
-  activeSubcategory.value = 'all'
-  platformAll.value = []
-  store.selectCategory('all')
-  page.value = 1
-  void load()
-}
-
-function selectCategory(categoryId: string): void {
-  activePlatform.value = ''
-  activeSubcategory.value = 'all'
-  platformAll.value = []
-  store.selectCategory(categoryId)
-  page.value = 1
-  showMore.value = false
-  void load()
-}
-
-/** Curated view hides categories whose services were all disabled by admins. */
-async function onToggleCurated(): Promise<void> {
-  await store.setCuratedOnly(!store.curatedOnly)
-  page.value = 1
-  showMore.value = false
-  void load()
-}
-
-function changeSort(): void {
-  // In platform mode sorting is client-side — the computed handles it.
-  if (platformMode.value) return
-  page.value = 1
-  void load()
-}
-
-watchDebounced(
-  [search, minPrice, maxPrice, serviceType, onlyRefill, onlyCancel, onlyFeatured],
-  () => {
-    if (platformMode.value) return // client-side filtering
-    page.value = 1
-    void load()
-  },
-  { debounce: 350 },
-)
-
-// Reset per-group expansion whenever the underlying platform data changes.
-watch([platformAll, activeSubcategory], () => {
-  expandedGroups.value = new Set()
+/** Services listed under the search box while the user types (instant). */
+const searchDropdownServices = computed<Service[]>(() => {
+  const q = search.value.trim().toLowerCase()
+  if (!q) return []
+  return services.value.filter((s) => s.name.toLowerCase().includes(q))
 })
 
-function openBuy(service: Service): void {
-  buyingService.value = service
-  buyOpen.value = true
+/**
+ * Category id of a service, so picking it can auto-set the Category dropdown.
+ * Only returns ids that actually exist in the dropdown options (the curated
+ * active list), so the select never lands on an invisible/blank value.
+ */
+function serviceCategoryId(service: Service): string {
+  const cat = service.category
+  const id =
+    cat && typeof cat === 'object' && cat._id ? cat._id : typeof cat === 'string' ? cat : ''
+  return id && store.categories.some((c) => c._id === id) ? id : ''
+}
+
+/** Fired as the user types — keeps the search GLOBAL and hides "no results" while debouncing. */
+function onSearchInput(): void {
+  // A fresh query searches the whole catalogue: drop any auto-set or manual
+  // category so results are never silently scoped to one category.
+  if (selected.value && search.value !== selected.value.name) {
+    categoryId.value = ''
+  }
+  highlightedIndex.value = -1
+  searchPending.value = true
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    searchPending.value = false
+  }, 450)
+}
+
+/** Closes the search dropdown and clears its keyboard highlight. */
+function closeSearch(): void {
+  searchOpen.value = false
+  highlightedIndex.value = -1
+}
+
+/** Arrow up/down + Enter navigation for the search results dropdown. */
+function onSearchKeydown(event: KeyboardEvent): void {
+  const list = searchDropdownServices.value
+  if (list.length === 0) return
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault()
+    if (!searchOpen.value) searchOpen.value = true
+    highlightedIndex.value =
+      event.key === 'ArrowDown'
+        ? (highlightedIndex.value + 1) % list.length
+        : highlightedIndex.value < 0
+          ? list.length - 1
+          : (highlightedIndex.value - 1 + list.length) % list.length
+  } else if (event.key === 'Enter') {
+    const item = list[highlightedIndex.value]
+    if (item) {
+      event.preventDefault()
+      selectServiceFromSearch(item)
+    }
+  }
+}
+
+// Keep the highlighted row visible while navigating with the arrow keys.
+// Rows are the only <button> elements inside the list container, so their
+// DOM order always matches searchDropdownServices.
+watch(
+  highlightedIndex,
+  (index) => {
+    if (index < 0) return
+    searchListEl.value?.querySelectorAll('button')[index]?.scrollIntoView({ block: 'nearest' })
+  },
+  { flush: 'post' },
+)
+
+/** Applies a chosen service to the order form and syncs the Category dropdown. */
+function setService(service: Service): void {
+  selected.value = service
+  categoryId.value = serviceCategoryId(service)
+  clearOrder()
+}
+
+function selectService(service: Service): void {
+  setService(service)
+  panelOpen.value = false
+  panelQuery.value = ''
+}
+
+/** Picked from the search autocomplete — fills the box and auto-sets the category. */
+function selectServiceFromSearch(service: Service): void {
+  setService(service)
+  search.value = service.name
+  closeSearch()
+  panelOpen.value = false
+  panelQuery.value = ''
+}
+
+function clearOrder(): void {
+  link.value = ''
+  quantity.value = null
+  for (const key of Object.keys(params)) delete params[key]
+  error.value = ''
+}
+
+// ---------------------------------------------------------------------------
+// Order form
+// ---------------------------------------------------------------------------
+
+const link = ref('')
+const quantity = ref<number | null>(null)
+const params = reactive<Record<string, string>>({})
+const error = ref('')
+const submitting = ref(false)
+
+const fields = computed<FieldSpec[]>(() => serviceFields(selected.value))
+const visibleFields = computed(() =>
+  fields.value.filter((f) => !f.showWhenTraffic || params.typeOfTraffic === f.showWhenTraffic),
+)
+const linkRequired = computed(
+  () => !!selected.value && selected.value.type !== 'Subscriptions',
+)
+const quantityRequired = computed(
+  () => !!selected.value && QUANTITY_TYPES.includes(selected.value.type),
+)
+
+const serviceTypeLabel = computed(() =>
+  selected.value ? SERVICE_TYPE_LABEL[selected.value.type] ?? selected.value.type : '',
+)
+
+// Link validation & platform detection --------------------------------------
+
+const linkCheck = computed(() => validateLink(link.value))
+const detectedPlatform = computed<DetectedPlatform>(() => linkCheck.value.platform)
+
+/** Platform of the selected service (from its category) — drives the tile. */
+const servicePlatform = computed<DetectedPlatform>(() => {
+  const cat = selected.value?.category
+  if (cat && typeof cat === 'object' && 'platform' in cat) {
+    const p = (cat as Category).platform
+    if (p !== 'other') return p
+  }
+  return 'other'
+})
+
+/** Pasted link is from a different platform than the service targets. */
+const platformMismatch = computed(() => {
+  const s = servicePlatform.value
+  const d = detectedPlatform.value
+  return s !== 'other' && d !== 'other' && s !== d
+})
+
+// Pricing -------------------------------------------------------------------
+
+const round2 = (n: number) => Math.round(n * 100) / 100
+
+/**
+ * pricePerUnit is the provider's RATE PER 1,000 units (e.g. $0.84 per 1,000
+ * viewers). Total = rate × qty / 1000. Package types have no quantity — the
+ * rate IS the one-time price. Subscriptions price by their min tier.
+ */
+const totalPrice = computed(() => {
+  const s = selected.value
+  if (!s) return 0
+  if (s.min === 1 && s.max === 1) return s.pricePerUnit
+  if (s.type === 'Package' || s.type === 'Custom Comments Package') return s.pricePerUnit
+  if (s.type === 'Subscriptions') {
+    const min = Number(params.min) || 0
+    return round2((min * s.pricePerUnit) / 1000)
+  }
+  const q = quantity.value ?? 0
+  if (q > 0) return round2((q * s.pricePerUnit) / 1000)
+  return 0
+})
+
+// Wallet balance ------------------------------------------------------------
+
+const balance = computed(() => walletStore.wallet?.balance ?? 0)
+/** Live flag: the current charge exceeds the available balance. */
+const insufficient = computed(() => totalPrice.value > 0 && totalPrice.value > balance.value)
+const balanceAfter = computed(() => round2(Math.max(0, balance.value - totalPrice.value)))
+const shortfall = computed(() => round2(totalPrice.value - balance.value))
+
+/** Quantity stepper, clamped to the service's allowed range. */
+function adjustQuantity(delta: number): void {
+  const s = selected.value
+  const base = quantity.value ?? (s && s.min > 0 ? s.min : 1)
+  const next = base + delta
+  if (s) {
+    if (s.min > 0 && next < s.min) return
+    if (s.max > 0 && next > s.max) return
+  }
+  if (next >= 1) quantity.value = next
+}
+
+function validate(): boolean {
+  error.value = ''
+  const s = selected.value
+  if (!s) {
+    error.value = 'Please choose a service first'
+    return false
+  }
+  if (linkRequired.value) {
+    if (!link.value.trim()) {
+      error.value = 'Please enter the link to your page or post'
+      return false
+    }
+    if (!linkCheck.value.valid) {
+      error.value = linkCheck.value.message
+      return false
+    }
+  }
+  if (quantityRequired.value) {
+    const q = quantity.value
+    if (!q || q <= 0) {
+      error.value = 'Please enter a quantity'
+      return false
+    }
+    if (s.min > 0 && q < s.min) {
+      error.value = `Minimum quantity for this service is ${formatNumber(s.min)}`
+      return false
+    }
+    if (s.max > 0 && q > s.max) {
+      error.value = `Maximum quantity for this service is ${formatNumber(s.max)}`
+      return false
+    }
+  }
+  for (const field of visibleFields.value) {
+    const value = params[field.key]?.trim()
+    if (field.required && !value) {
+      error.value = `${field.label} is required`
+      return false
+    }
+    if (field.numeric && value && Number.isNaN(Number(value))) {
+      error.value = `${field.label} must be a number`
+      return false
+    }
+  }
+  if (totalPrice.value > 0 && totalPrice.value < 0.01) {
+    error.value = 'Order total is below the $0.01 USD minimum — increase the quantity'
+    return false
+  }
+  return true
+}
+
+/** Places the order using the wallet balance (fails with a top-up prompt when short). */
+async function submit(): Promise<void> {
+  if (!validate()) return
+  if (insufficient.value) {
+    error.value = 'Your wallet balance is not enough for this order — top up to continue.'
+    return
+  }
+  const s = selected.value
+  if (!s) return
+  submitting.value = true
+  error.value = ''
+  try {
+    const order = await ordersApi.create({
+      serviceId: s._id,
+      link: link.value.trim() || undefined,
+      quantity: quantity.value ?? undefined,
+      params: { ...params },
+    })
+    toast.success('Order placed — track it from your orders')
+    await walletStore.refreshWallet().catch(() => undefined)
+    await router.push(`/dashboard/orders/${order._id}`)
+  } catch (err) {
+    const message = err instanceof ApiRequestError ? err.message : 'Failed to place order'
+    const isBalanceError =
+      err instanceof ApiRequestError &&
+      (message.toLowerCase().includes('insufficient') ||
+        (typeof err.details === 'object' &&
+          err.details !== null &&
+          'balance' in err.details))
+    error.value = isBalanceError
+      ? 'Your wallet balance is not enough — top up to continue.'
+      : message
+    // Balance may have changed (another tab, admin adjustment) — re-read it.
+    await walletStore.fetchWallet().catch(() => undefined)
+  } finally {
+    submitting.value = false
+  }
 }
 
 onMounted(async () => {
-  await store.fetchCategories()
-  await load()
+  await Promise.allSettled([store.fetchCategories(), walletStore.fetchWallet(), loadServices()])
 })
 </script>
 
 <template>
-  <div class="mx-auto max-w-6xl space-y-6">
+  <div class="w-full space-y-6">
     <!-- Header -->
     <div class="flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h1 class="font-display text-2xl font-bold text-white">Explore Services</h1>
-        <p class="mt-1 text-sm text-white/50">
-          Choose a platform, pick a service and grow in minutes.
+        <h1 class="font-display text-2xl font-bold text-ink">Explore Services</h1>
+        <p class="mt-1 text-sm text-ink/50">
+          Pick a service, enter your link and pay instantly with your wallet balance.
         </p>
-        <!-- No-markup promise: prices are the exact SMMWiz provider rates. -->
-        <p class="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-400/10 px-2.5 py-1 text-xs font-medium text-emerald-300">
+        <p
+          class="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-400/10 px-2.5 py-1 text-xs font-medium text-emerald-300"
+        >
           <ShieldCheck class="h-3.5 w-3.5" />
-          Prices are SMMWiz's exact rates — no markup.
+          Prices are the provider's exact rates — no markup.
         </p>
       </div>
 
-      <div class="flex flex-wrap items-center gap-2">
-        <!-- Sort -->
-        <label class="relative flex items-center">
-          <ArrowUpDown class="pointer-events-none absolute left-3 h-4 w-4 text-white/35" />
-          <select
-            v-model="sort"
-            class="h-11 appearance-none rounded-xl border border-white/10 bg-white/5 pl-10 pr-9 text-sm text-white [&>option]:bg-night focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
-            @change="changeSort"
-          >
-            <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
-              {{ opt.label }}
-            </option>
-          </select>
-          <ChevronDown class="pointer-events-none absolute right-3 h-4 w-4 text-white/40" />
-        </label>
-
-        <!-- Filters toggle -->
-        <button
-          class="relative flex h-11 items-center gap-2 rounded-xl border px-4 text-sm font-medium transition-all"
-          :class="
-            showFilters || activeFilterCount > 0
-              ? 'border-brand-400/60 bg-brand-500/15 text-white'
-              : 'border-white/10 bg-white/5 text-white/70 hover:border-brand-400/40 hover:text-white'
-          "
-          @click="showFilters = !showFilters"
+      <!-- Balance -->
+      <div
+        class="flex items-center gap-3 rounded-2xl border border-ink/10 bg-ink/5 px-4 py-3"
+      >
+        <div
+          class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400/25 to-emerald-500/15 text-emerald-300"
         >
-          <SlidersHorizontal class="h-4 w-4" />
-          Filters
-          <span
-            v-if="activeFilterCount > 0"
-            class="flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1.5 text-xs font-bold text-white"
-          >
-            {{ activeFilterCount }}
-          </span>
-        </button>
-
-        <!-- Clear all -->
-        <button
-          v-if="hasFilters"
-          class="flex h-11 items-center gap-1.5 rounded-xl px-3 text-sm font-medium text-white/50 transition-colors hover:bg-white/5 hover:text-white"
-          @click="clearFilters"
-        >
-          <RotateCcw class="h-3.5 w-3.5" /> Clear
-        </button>
+          <Wallet class="h-5 w-5" />
+        </div>
+        <div>
+          <p class="text-[11px] uppercase tracking-wider text-ink/40">Wallet balance</p>
+          <p class="font-display text-lg font-bold text-ink">{{ formatMoney(balance) }}</p>
+        </div>
+        <BaseButton variant="ghost" size="sm" @click="router.push('/dashboard/wallet')">
+          Top up <ArrowUpRight class="h-3.5 w-3.5" />
+        </BaseButton>
       </div>
     </div>
 
-    <!-- Search + categories -->
-    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-      <div class="relative w-full lg:max-w-xs">
-        <Search class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
-        <input
-          v-model="search"
-          type="search"
-          placeholder="Search services…"
-          class="h-11 w-full rounded-xl border border-white/10 bg-white/5 pl-10 pr-4 text-sm text-white placeholder:text-white/30 transition-colors focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
-        />
-      </div>
-
-      <div class="flex flex-wrap items-center gap-2">
-        <button
-          class="shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-all"
-          :class="
-            store.activeCategory === 'all' && activePlatform === ''
-              ? 'bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-glow'
-              : 'glass text-white/60 hover:text-white'
-          "
-          @click="selectAll"
-        >
-          All
-        </button>
-
-        <!-- Main Cambodia platforms first: each chip = whole platform -->
-        <button
-          v-for="platform in MAIN_PLATFORMS"
-          :key="platform.keyword"
-          class="flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-all"
-          :class="
-            activePlatform === platform.keyword
-              ? 'bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-glow'
-              : 'glass text-white/60 hover:text-white'
-          "
-          @click="selectPlatform(platform.keyword)"
-        >
-          <PlatformIcon :platform="platform.keyword" size="xs" tile />
-          {{ platform.label }}
-        </button>
-
-        <!-- Curated toggle: hide categories with no active services -->
-        <button
-          class="ml-auto flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors"
-          role="switch"
-          :aria-checked="store.curatedOnly"
-          :title="store.curatedOnly ? 'Only categories with active services' : 'Show all categories'"
-          @click="onToggleCurated"
-        >
+    <div class="glass space-y-6 rounded-2xl p-5 shadow-card sm:p-7">
+      <!-- ==============================================================
+           Step 1 — Find your service
+           ============================================================== -->
+      <section class="space-y-4">
+        <div class="flex items-center gap-2.5">
           <span
-            class="relative h-5 w-9 rounded-full transition-colors duration-200"
-            :class="store.curatedOnly ? 'bg-gradient-to-r from-brand-500 to-brand-600 shadow-glow' : 'bg-white/10'"
+            class="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-secondary-500 text-[11px] font-bold text-white shadow-glow"
           >
-            <span
-              class="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200"
-              :class="store.curatedOnly ? 'translate-x-[18px]' : 'translate-x-0.5'"
-            />
+            1
           </span>
-          <span class="text-xs" :class="store.curatedOnly ? 'text-white' : 'text-white/50'">
-            Curated only
-          </span>
-        </button>
+          <h2 class="font-display text-base font-semibold text-ink">Find your service</h2>
+        </div>
 
-        <!-- The rest -->
-        <div v-if="otherCategories.length" class="relative">
-          <button
-            class="flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-all"
-            :class="
-              store.activeCategory !== 'all' && activePlatform === ''
-                ? 'bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-glow'
-                : 'glass text-white/60 hover:text-white'
-            "
-            @click="showMore = !showMore"
-          >
-            More
-            <ChevronDown class="h-3.5 w-3.5" :class="showMore ? 'rotate-180' : ''" />
-          </button>
+        <div class="relative">
+          <Search
+            class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/35"
+          />
+          <input
+            v-model="search"
+            type="search"
+            placeholder="Search all services… e.g. Facebook Live"
+            class="h-12 w-full rounded-xl border border-ink/10 bg-ink/5 pl-10 pr-4 text-sm text-ink placeholder:text-ink/30 transition-colors focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
+            @focus="searchOpen = true; panelOpen = false; highlightedIndex = -1"
+            @input="onSearchInput"
+            @keydown="onSearchKeydown"
+            @keydown.esc="closeSearch"
+          />
 
+          <!-- Click-away overlay for the search dropdown -->
+          <div v-if="searchOpen" class="fixed inset-0 z-10" @click="closeSearch" />
+
+          <!-- Live results dropdown: click a result to auto-pick it + its category -->
           <Transition name="fade">
-          <div
-            v-if="showMore"
-            class="absolute right-0 z-30 mt-2 max-h-72 w-72 overflow-y-auto rounded-2xl border border-white/10 bg-night-soft/95 p-3 shadow-glow backdrop-blur-xl"
-          >
-            <button
-              v-for="category in otherCategories"
-              :key="category._id"
-              class="block w-full rounded-lg px-3 py-2 text-left text-sm transition-colors"
-              :class="
-                store.activeCategory === category._id
-                  ? 'bg-brand-500/20 text-white'
-                  : 'text-white/60 hover:bg-white/5 hover:text-white'
-              "
-              @click="selectCategory(category._id)"
+            <div
+              v-if="searchOpen && search.trim()"
+              class="absolute z-30 mt-2 w-full overflow-hidden rounded-2xl border border-ink/10 bg-card/95 shadow-glow backdrop-blur-xl"
             >
-              {{ category.name }}
-            </button>
-          </div>
+              <div ref="searchListEl" class="max-h-80 overflow-y-auto p-1.5">
+                <button
+                  v-for="(s, index) in searchDropdownServices"
+                  :key="s._id"
+                  type="button"
+                  class="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-ink/5"
+                  :class="index === highlightedIndex ? 'bg-ink/10 ring-1 ring-brand-400/40' : ''"
+                  @click="selectServiceFromSearch(s)"
+                >
+                  <span class="min-w-0">
+                    <span class="block truncate text-sm font-medium text-ink">{{ s.name }}</span>
+                    <span class="mt-0.5 block truncate text-xs text-ink/40">
+                      {{ categoryName(s) || 'General' }} · {{ SERVICE_TYPE_LABEL[s.type] ?? s.type }}
+                    </span>
+                  </span>
+                  <span class="shrink-0 text-right">
+                    <span class="block text-xs font-semibold text-emerald-300">
+                      {{ formatUnitPrice(s.pricePerUnit, s.currency) }}
+                    </span>
+                    <span class="block text-[10px] text-ink/35">
+                      {{ formatNumber(s.min) }}–{{ formatNumber(s.max) }}
+                    </span>
+                  </span>
+                </button>
+
+                <p
+                  v-if="!loading && !searchPending && searchDropdownServices.length === 0"
+                  class="px-3 py-6 text-center text-sm text-ink/40"
+                >
+                  No services found for “{{ search.trim() }}”.
+                </p>
+                <p
+                  v-else-if="(loading || searchPending) && searchDropdownServices.length === 0"
+                  class="space-y-2 px-3 py-4"
+                >
+                  <BaseSkeleton v-for="n in 3" :key="n" class="h-10 w-full" />
+                </p>
+              </div>
+            </div>
           </Transition>
         </div>
-      </div>
-    </div>
 
-    <!-- Platform banner (trending) -->
-    <Transition name="fade">
-      <div
-        v-if="activePlatformMeta"
-        class="relative overflow-hidden rounded-2xl p-5 shadow-glow"
-        :class="activePlatformMeta.color"
-      >
-        <div class="bg-grid pointer-events-none absolute inset-0 opacity-15" />
-        <div class="relative flex flex-wrap items-center justify-between gap-3">
-          <div class="flex items-center gap-3">
-            <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 text-white backdrop-blur">
-              <PlatformIcon :platform="activePlatformMeta.keyword" size="sm" />
-            </div>
-            <div>
-              <p class="font-display text-lg font-bold text-white">
-                {{ activePlatformMeta.label }} services
-              </p>
-              <p class="flex items-center gap-1 text-xs text-white/70">
-                <TrendingUp class="h-3 w-3" /> Trending picks for Cambodia — featured first, newest after
-              </p>
-            </div>
-          </div>
-          <div class="flex items-center gap-2">
-            <span
-              v-if="store.total > platformAll.length"
-              class="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white backdrop-blur"
-            >
-              Top {{ platformAll.length.toLocaleString() }} of {{ store.total.toLocaleString() }}
-            </span>
-            <span
-              v-else
-              class="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white backdrop-blur"
-            >
-              {{ store.total.toLocaleString() }} services
-            </span>
-          </div>
-        </div>
-      </div>
-    </Transition>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <!-- Category -->
+          <BaseSelect
+            :model-value="categoryId"
+            label="Category"
+            :options="categoryOptions"
+            @update:model-value="categoryId = $event; changeCategory()"
+          />
 
-    <!-- Filter panel -->
-    <Transition name="fade">
-      <div
-        v-if="showFilters || activeFilterCount > 0"
-        class="glass rounded-2xl border border-white/10 p-5 shadow-card"
-      >
-        <div class="flex items-center justify-between gap-3">
-          <p class="text-sm font-semibold text-white">Filter services</p>
-          <button
-            v-if="activeFilterCount > 0"
-            class="inline-flex items-center gap-1 text-xs font-medium text-brand-300 hover:text-brand-200"
-            @click="resetFilters"
-          >
-            <X class="h-3 w-3" /> Reset filters
-          </button>
-        </div>
+          <!-- Service combobox -->
+          <div class="block">
+            <span class="mb-1.5 block text-sm font-medium text-ink/80">Service</span>
+            <div class="relative">
+              <button
+                type="button"
+                class="relative z-20 flex h-11 w-full items-center justify-between gap-2 rounded-xl border border-ink/10 bg-ink/5 px-4 text-left text-sm transition-colors hover:border-brand-400/50 focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
+                @click="panelOpen = !panelOpen; closeSearch()"
+              >
+                <span v-if="selected" class="flex min-w-0 items-center gap-2">
+                  <PlatformIcon v-if="servicePlatform !== 'other'" :platform="servicePlatform" size="xs" tile />
+                  <span class="truncate text-ink">{{ selected.name }}</span>
+                </span>
+                <span v-else-if="loading" class="flex items-center gap-2 text-ink/40">
+                  <BaseSkeleton class="h-3 w-28" /> Loading…
+                </span>
+                <span v-else class="text-ink/40">Search or select a service</span>
+                <ChevronDown
+                  class="h-4 w-4 shrink-0 text-ink/40 transition-transform"
+                  :class="panelOpen ? 'rotate-180' : ''"
+                />
+              </button>
 
-        <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <!-- Price range (per 1,000) -->
-          <div class="space-y-1.5">
-            <label class="text-xs font-medium text-white/50">Rate / 1,000 ($)</label>
-            <div class="flex items-center gap-2">
-              <input
-                v-model="minPrice"
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="Min"
-                class="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-white/30 focus:border-brand-400/60 focus:outline-none"
-              />
-              <span class="text-white/30">–</span>
-              <input
-                v-model="maxPrice"
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="Max"
-                class="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-white/30 focus:border-brand-400/60 focus:outline-none"
-              />
-            </div>
-          </div>
+              <!-- Click-away overlay -->
+              <div v-if="panelOpen" class="fixed inset-0 z-20" @click="panelOpen = false" />
 
-          <!-- Service type -->
-          <div class="space-y-1.5">
-            <label class="text-xs font-medium text-white/50">Service type</label>
-            <select
-              v-model="serviceType"
-              class="h-10 w-full appearance-none rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white [&>option]:bg-night focus:border-brand-400/60 focus:outline-none"
-            >
-              <option value="">All types</option>
-              <option v-for="t in TYPE_CHIPS" :key="t" :value="t">
-                {{ SERVICE_TYPE_LABEL[t] ?? t }}
-              </option>
-            </select>
-          </div>
-
-          <!-- Toggles -->
-          <div class="flex flex-wrap items-end gap-2">
-            <button
-              class="flex h-10 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-all"
-              :class="
-                onlyRefill
-                  ? 'border-emerald-400/60 bg-emerald-400/15 text-emerald-200'
-                  : 'border-white/10 bg-white/5 text-white/60 hover:text-white'
-              "
-              @click="onlyRefill = !onlyRefill"
-            >
-              <Check v-if="onlyRefill" class="h-3.5 w-3.5" /> Refill
-            </button>
-            <button
-              class="flex h-10 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-all"
-              :class="
-                onlyCancel
-                  ? 'border-sky-400/60 bg-sky-400/15 text-sky-200'
-                  : 'border-white/10 bg-white/5 text-white/60 hover:text-white'
-              "
-              @click="onlyCancel = !onlyCancel"
-            >
-              <Check v-if="onlyCancel" class="h-3.5 w-3.5" /> Cancellable
-            </button>
-          </div>
-
-          <!-- Featured only -->
-          <button
-            class="flex h-10 items-center justify-center gap-1.5 rounded-lg border text-xs font-medium transition-all"
-            :class="
-              onlyFeatured
-                ? 'border-amber-400/60 bg-amber-400/15 text-amber-200'
-                : 'border-white/10 bg-white/5 text-white/60 hover:text-white'
-            "
-            @click="onlyFeatured = !onlyFeatured"
-          >
-            <Sparkles class="h-3.5 w-3.5" />
-            {{ onlyFeatured ? 'Featured only' : 'Featured' }}
-          </button>
-        </div>
-      </div>
-    </Transition>
-
-    <!-- ====================================================================
-         PLATFORM MODE — subcategory chips + grouped sections
-         ==================================================================== -->
-    <template v-if="platformMode">
-      <!-- Result summary -->
-      <p v-if="!store.loading" class="text-xs text-white/40">
-        {{ platformFiltered.length.toLocaleString() }} service{{ platformFiltered.length === 1 ? '' : 's' }}
-        · {{ groups.length }} {{ groups.length === 1 ? 'group' : 'groups' }}
-        <template v-if="hasFilters"> matching your filters</template>
-      </p>
-
-      <div v-if="store.loading" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        <BaseSkeleton v-for="n in 8" :key="n" class="h-64 w-full" />
-      </div>
-
-      <BaseEmptyState
-        v-else-if="store.error"
-        :title="store.error"
-        message="Try adjusting your filters or try again later."
-      >
-        <button class="mt-2 text-sm font-semibold text-brand-300 hover:text-brand-200" @click="loadPlatform">
-          Retry
-        </button>
-      </BaseEmptyState>
-
-      <BaseEmptyState
-        v-else-if="groups.length === 0"
-        title="No services found"
-        message="We couldn't find any services matching your filters for this platform."
-      >
-        <button
-          v-if="hasFilters"
-          class="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-brand-300 hover:text-brand-200"
-          @click="clearFilters"
-        >
-          <RotateCcw class="h-3.5 w-3.5" /> Clear all filters
-        </button>
-      </BaseEmptyState>
-
-      <template v-else>
-        <!-- Subcategory chips -->
-        <div class="-mb-1 flex items-center gap-2 overflow-x-auto pb-1">
-          <button
-            class="flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-medium transition-all"
-            :class="
-              activeSubcategory === 'all'
-                ? 'bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-glow'
-                : 'glass text-white/60 hover:text-white'
-            "
-            @click="selectSubcategory('all')"
-          >
-            <Layers class="h-4 w-4" />
-            All
-            <span
-              class="rounded-full px-1.5 py-0.5 text-[10px] font-bold"
-              :class="activeSubcategory === 'all' ? 'bg-white/20' : 'bg-white/10'"
-            >
-              {{ platformFiltered.length }}
-            </span>
-          </button>
-
-          <button
-            v-for="group in groups"
-            :key="group.key"
-            class="flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-medium transition-all"
-            :class="
-              activeSubcategory === group.key
-                ? 'bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-glow'
-                : 'glass text-white/60 hover:text-white'
-            "
-            @click="selectSubcategory(group.key)"
-          >
-            {{ group.label }}
-            <span
-              class="rounded-full px-1.5 py-0.5 text-[10px] font-bold"
-              :class="activeSubcategory === group.key ? 'bg-white/20' : 'bg-white/10'"
-            >
-              {{ group.count }}
-            </span>
-          </button>
-        </div>
-
-        <!-- All groups → stacked sections -->
-        <div v-if="activeSubcategory === 'all'" class="space-y-8">
-          <section
-            v-for="group in groups"
-            :key="group.key"
-            class="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 transition-colors hover:border-white/10"
-          >
-            <div class="flex flex-wrap items-end justify-between gap-2">
-              <div class="flex items-center gap-2.5">
+              <Transition name="fade">
                 <div
-                  class="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br text-white"
-                  :class="activePlatformMeta?.color"
+                  v-if="panelOpen"
+                  class="absolute z-30 mt-2 w-full overflow-hidden rounded-2xl border border-ink/10 bg-card/95 shadow-glow backdrop-blur-xl"
                 >
-                  <PlatformIcon :platform="activePlatformMeta?.keyword ?? 'other'" size="xs" />
+                  <div class="border-b border-ink/10 p-2.5">
+                    <div class="relative">
+                      <Search class="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink/35" />
+                      <input
+                        v-model="panelQuery"
+                        type="search"
+                        placeholder="Filter services…"
+                        class="h-9 w-full rounded-lg border border-ink/10 bg-ink/5 pl-9 pr-3 text-sm text-ink placeholder:text-ink/30 focus:border-brand-400/60 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="max-h-72 overflow-y-auto p-1.5">
+                    <button
+                      v-for="s in dropdownServices"
+                      :key="s._id"
+                      type="button"
+                      class="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-ink/5"
+                      :class="selected?._id === s._id ? 'bg-brand-500/15' : ''"
+                      @click="selectService(s)"
+                    >
+                      <span class="min-w-0">
+                        <span class="block truncate text-sm font-medium text-ink">
+                          <Check
+                            v-if="selected?._id === s._id"
+                            class="mr-1 inline h-3.5 w-3.5 text-brand-300"
+                          />
+                          {{ s.name }}
+                        </span>
+                        <span class="mt-0.5 block truncate text-xs text-ink/40">
+                          {{ categoryName(s) || 'General' }} · {{ SERVICE_TYPE_LABEL[s.type] ?? s.type }}
+                        </span>
+                      </span>
+                      <span class="shrink-0 text-right">
+                        <span class="block text-xs font-semibold text-emerald-300">
+                          {{ formatUnitPrice(s.pricePerUnit, s.currency) }}
+                        </span>
+                        <span class="block text-[10px] text-ink/35">
+                          {{ formatNumber(s.min) }}–{{ formatNumber(s.max) }}
+                        </span>
+                      </span>
+                    </button>
+
+                    <p
+                      v-if="!loading && dropdownServices.length === 0"
+                      class="px-3 py-6 text-center text-sm text-ink/40"
+                    >
+                      No services match — try a different search or category.
+                    </p>
+                    <p
+                      v-else-if="loading && dropdownServices.length === 0"
+                      class="space-y-2 px-3 py-4"
+                    >
+                      <BaseSkeleton v-for="n in 4" :key="n" class="h-10 w-full" />
+                    </p>
+                  </div>
                 </div>
-                <h2 class="font-display text-lg font-semibold text-white">{{ group.label }}</h2>
-                <span class="rounded-full bg-white/10 px-2 py-0.5 text-xs font-medium text-white/60">
-                  {{ group.count }}
+              </Transition>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 text-xs text-ink/40">
+          <span v-if="search.trim()" class="rounded-full bg-ink/5 px-2.5 py-1">
+            “{{ search.trim() }}” · {{ services.length.toLocaleString() }} result{{
+              services.length === 1 ? '' : 's'
+            }}
+          </span>
+          <button
+            v-if="loadError"
+            class="inline-flex items-center gap-1 font-medium text-brand-300 hover:text-brand-200"
+            @click="loadServices"
+          >
+            <RotateCcw class="h-3 w-3" /> {{ loadError }} — retry
+          </button>
+          <button
+            v-else-if="search || categoryId"
+            class="rounded-full bg-ink/5 px-2.5 py-1 transition-colors hover:bg-ink/10 hover:text-ink"
+            @click="search = ''; categoryId = ''; changeCategory()"
+          >
+            Clear search &amp; category
+          </button>
+        </div>
+      </section>
+
+      <!-- ==============================================================
+           Step 2 — Selected service details
+           ============================================================== -->
+      <section v-if="selected" class="space-y-4">
+        <div class="flex items-center gap-2.5">
+          <span
+            class="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-secondary-500 text-[11px] font-bold text-white shadow-glow"
+          >
+            2
+          </span>
+          <h2 class="font-display text-base font-semibold text-ink">Service details</h2>
+        </div>
+
+        <div
+          class="relative overflow-hidden rounded-2xl border border-ink/10 bg-ink/[0.03] p-5"
+        >
+          <div
+            class="pointer-events-none absolute -right-14 -top-14 h-40 w-40 rounded-full bg-gradient-to-br opacity-10 blur-2xl"
+            :class="servicePlatform !== 'other' ? 'from-brand-500 to-secondary-500' : 'from-slate-500 to-slate-400'"
+          />
+          <div class="relative">
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex min-w-0 items-center gap-3">
+                <PlatformIcon :platform="servicePlatform" size="md" tile />
+                <div class="min-w-0">
+                  <h3 class="font-display truncate text-base font-semibold text-ink">
+                    {{ selected.name }}
+                  </h3>
+                  <p class="mt-0.5 text-xs text-ink/45">{{ serviceTypeLabel }}</p>
+                </div>
+              </div>
+              <div class="flex shrink-0 flex-col items-end gap-1.5">
+                <span class="rounded-full bg-emerald-400/10 px-2.5 py-1 text-xs font-semibold text-emerald-300">
+                  {{ formatUnitPrice(selected.pricePerUnit, selected.currency) }} / 1,000
                 </span>
               </div>
-              <span class="text-xs text-white/45">
-                from
-                <span class="font-semibold text-emerald-300">{{ formatMoney(group.minPricePerThousand) }}</span>
-                / 1,000
-              </span>
             </div>
 
-            <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              <ServiceCard
-                v-for="service in visibleServices(group)"
-                :key="service._id"
-                :service="service"
-                @buy="openBuy"
-              />
-            </div>
+            <p v-if="selected.description" class="mt-3 text-sm leading-relaxed text-ink/55">
+              {{ selected.description }}
+            </p>
 
-            <button
-              v-if="group.services.length > GROUP_CARD_CAP"
-              class="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-300 transition-colors hover:text-brand-200"
-              @click="toggleExpand(group)"
-            >
-              {{ expandedGroups.has(group.key) ? 'Show less' : `Show all ${group.services.length} services` }}
-              <ChevronDown class="h-3.5 w-3.5" :class="expandedGroups.has(group.key) ? 'rotate-180' : ''" />
-            </button>
-          </section>
+            <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div class="rounded-xl bg-ink/[0.04] px-3 py-2.5">
+                <p class="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-ink/35">
+                  <Clock class="h-3 w-3" /> Average time
+                </p>
+                <p class="mt-0.5 text-sm font-semibold text-ink">
+                  {{ selected.deliveryTime || '—' }}
+                </p>
+              </div>
+              <div class="rounded-xl bg-ink/[0.04] px-3 py-2.5">
+                <p class="text-[11px] uppercase tracking-wider text-ink/35">Quantity range</p>
+                <p class="mt-0.5 text-sm font-semibold text-ink">
+                  {{ formatNumber(selected.min) }} – {{ formatNumber(selected.max) }}
+                </p>
+              </div>
+              <div class="rounded-xl bg-ink/[0.04] px-3 py-2.5">
+                <p class="text-[11px] uppercase tracking-wider text-ink/35">Refill</p>
+                <p class="mt-0.5 text-sm font-semibold" :class="selected.refill ? 'text-emerald-300' : 'text-ink/40'">
+                  {{ selected.refill ? 'Yes' : 'No' }}
+                </p>
+              </div>
+              <div class="rounded-xl bg-ink/[0.04] px-3 py-2.5">
+                <p class="text-[11px] uppercase tracking-wider text-ink/35">Cancel</p>
+                <p class="mt-0.5 text-sm font-semibold" :class="selected.cancel ? 'text-emerald-300' : 'text-ink/40'">
+                  {{ selected.cancel ? 'Yes' : 'No' }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==============================================================
+           Step 3 — Order details
+           ============================================================== -->
+      <section v-if="selected" class="space-y-4">
+        <div class="flex items-center gap-2.5">
+          <span
+            class="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-secondary-500 text-[11px] font-bold text-white shadow-glow"
+          >
+            3
+          </span>
+          <h2 class="font-display text-base font-semibold text-ink">Order details</h2>
         </div>
 
-        <!-- Single subcategory → flat grid -->
-        <div v-else-if="activeGroup" class="space-y-4">
-          <div class="flex flex-wrap items-center gap-3">
-            <button
-              class="inline-flex items-center gap-1.5 text-sm font-medium text-white/50 transition-colors hover:text-white"
-              @click="selectSubcategory('all')"
-            >
-              <ArrowLeft class="h-4 w-4" /> All groups
-            </button>
-            <h2 class="font-display text-lg font-semibold text-white">{{ activeGroup.label }}</h2>
-            <span class="rounded-full bg-white/10 px-2 py-0.5 text-xs font-medium text-white/60">
-              {{ activeGroup.count }} services
+        <div class="space-y-4">
+          <BaseInput
+            v-if="linkRequired"
+            v-model="link"
+            label="Link to your page or post"
+            placeholder="https://www.tiktok.com/@username"
+            hint="Paste the exact URL you want to grow — we detect the platform automatically."
+            :error="error && !link ? error : ''"
+          />
+
+          <div
+            v-if="link"
+            class="flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium"
+            :class="
+              linkCheck.valid
+                ? linkCheck.platform !== 'other'
+                  ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200'
+                  : 'border-amber-400/30 bg-amber-400/10 text-amber-200'
+                : 'border-rose-400/30 bg-rose-400/10 text-rose-200'
+            "
+          >
+            <PlatformIcon
+              v-if="linkCheck.valid && linkCheck.platform !== 'other'"
+              :platform="linkCheck.platform"
+              size="xs"
+              tile
+            />
+            <CheckCircle2 v-else-if="linkCheck.valid" class="h-4 w-4 shrink-0" />
+            <XCircle v-else class="h-4 w-4 shrink-0" />
+            <span>{{ linkCheck.message }}</span>
+          </div>
+
+          <div
+            v-if="platformMismatch"
+            class="flex items-start gap-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs font-medium text-amber-200"
+          >
+            <XCircle class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>
+              This service is for {{ PLATFORM_LABEL[servicePlatform] }}, but the link looks like
+              {{ PLATFORM_LABEL[detectedPlatform] }} — make sure you paste the right URL.
             </span>
           </div>
 
-          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            <ServiceCard
-              v-for="service in activeGroup.services"
-              :key="service._id"
-              :service="service"
-              @buy="openBuy"
+          <div v-if="quantityRequired" class="space-y-1.5">
+            <label class="text-xs font-medium text-ink/60">Quantity</label>
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-ink/10 bg-ink/5 text-ink/70 transition-all hover:border-brand-400/50 hover:text-ink active:scale-95 disabled:opacity-30"
+                :disabled="(quantity ?? (selected?.min ?? 0)) <= (selected?.min ?? 0)"
+                aria-label="Decrease quantity"
+                @click="adjustQuantity(-1)"
+              >
+                <Minus class="h-4 w-4" />
+              </button>
+              <BaseInput
+                :model-value="quantity"
+                class="flex-1"
+                type="number"
+                :min="selected?.min"
+                :max="selected?.max"
+                :placeholder="selected ? formatNumber(selected.min) + ' – ' + formatNumber(selected.max) : ''"
+                :error="error && !quantity ? error : ''"
+                @update:model-value="
+                  quantity = $event === '' || $event === null ? null : Number($event)
+                "
+              />
+              <button
+                type="button"
+                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-ink/10 bg-ink/5 text-ink/70 transition-all hover:border-brand-400/50 hover:text-ink active:scale-95 disabled:opacity-30"
+                :disabled="(quantity ?? 0) >= (selected?.max ?? 0)"
+                aria-label="Increase quantity"
+                @click="adjustQuantity(1)"
+              >
+                <Plus class="h-4 w-4" />
+              </button>
+            </div>
+            <p class="text-xs text-ink/40">
+              Allowed range:
+              <span class="text-ink/70">{{ formatNumber(selected?.min ?? 0) }} – {{ formatNumber(selected?.max ?? 0) }}</span>
+              units
+            </p>
+          </div>
+
+          <div v-for="field in visibleFields" :key="field.key" class="space-y-1">
+            <BaseInput
+              v-if="field.type === 'input'"
+              v-model="params[field.key]"
+              :label="field.label"
+              :placeholder="field.placeholder"
+              type="text"
+              :error="error && !params[field.key] ? error : ''"
+            />
+            <BaseTextarea
+              v-else-if="field.type === 'textarea'"
+              v-model="params[field.key]"
+              :label="field.label"
+              :placeholder="'One item per line'"
+              rows="4"
+              :error="error && !params[field.key] ? error : ''"
+            />
+            <BaseSelect
+              v-else
+              v-model="params[field.key]"
+              :label="field.label"
+              :options="field.options as Array<{ value: string; label: string }>"
+              :error="error && !params[field.key] ? error : ''"
             />
           </div>
         </div>
-      </template>
-    </template>
+      </section>
 
-    <!-- ====================================================================
-         SERVER MODE — search / other categories / pagination
-         ==================================================================== -->
-    <template v-else>
-      <!-- Result count -->
-      <p v-if="!store.loading && store.services.length" class="text-xs text-white/40">
-        {{ store.total.toLocaleString() }} service{{ store.total === 1 ? '' : 's' }}
-        <template v-if="hasFilters"> matching your filters</template>
-      </p>
-
-      <!-- Grid -->
-      <div v-if="store.loading" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        <BaseSkeleton v-for="n in 8" :key="n" class="h-64 w-full" />
-      </div>
-
+      <!-- Insufficient balance alert -->
       <div
-        v-else-if="store.services.length"
-        class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+        v-if="selected && insufficient"
+        class="flex flex-wrap items-center gap-3 rounded-2xl border border-amber-400/40 bg-amber-400/10 p-4"
       >
-        <ServiceCard
-          v-for="service in store.services"
-          :key="service._id"
-          :service="service"
-          @buy="openBuy"
-        />
+        <div class="flex min-w-0 flex-1 items-center gap-3">
+          <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-400/15 text-amber-300">
+            <Wallet class="h-4 w-4" />
+          </div>
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-amber-200">
+              Not enough balance for this order
+            </p>
+            <p class="mt-0.5 text-xs text-amber-300">
+              This order costs <b>{{ formatMoney(totalPrice) }}</b> but your balance is
+              <b>{{ formatMoney(balance) }}</b> — top up <b>{{ formatMoney(shortfall) }}</b> more
+              to buy this service.
+            </p>
+          </div>
+        </div>
+        <BaseButton variant="secondary" size="sm" @click="router.push('/dashboard/wallet')">
+          Top up wallet <ArrowUpRight class="h-3.5 w-3.5" />
+        </BaseButton>
       </div>
 
-      <BaseEmptyState
-        v-else-if="store.error"
-        :title="store.error"
-        message="Try adjusting your filters or try again later."
+      <!-- Footer: charge + submit -->
+      <footer
+        v-if="selected"
+        class="flex flex-col gap-4 border-t border-ink/10 pt-5 sm:flex-row sm:items-center sm:justify-between"
       >
-        <button class="mt-2 text-sm font-semibold text-brand-300 hover:text-brand-200" @click="load">
-          Retry
-        </button>
-      </BaseEmptyState>
+        <div>
+          <p class="text-sm text-ink/50">
+            Charge
+            <span class="ml-1 text-xs text-ink/30">
+              {{ formatUnitPrice(selected.pricePerUnit, selected.currency) }} × quantity / 1,000
+            </span>
+          </p>
+          <p class="font-display text-3xl font-bold text-ink">
+            {{ formatMoney(totalPrice) }}
+          </p>
+          <p v-if="totalPrice > 0 && !insufficient" class="mt-1 text-xs text-emerald-300">
+            Balance after order: {{ formatMoney(balanceAfter) }}
+          </p>
+        </div>
 
-      <BaseEmptyState
+        <div class="flex flex-col items-stretch gap-2 sm:items-end">
+          <p v-if="error" class="max-w-xs text-sm text-rose-300">{{ error }}</p>
+          <BaseButton size="lg" :loading="submitting" @click="submit">
+            Place order <ArrowUpRight class="h-4 w-4" />
+          </BaseButton>
+          <p class="flex items-center gap-1.5 text-[11px] text-ink/35">
+            <Link2 class="h-3 w-3" /> Paid from your wallet — no QR needed
+          </p>
+        </div>
+      </footer>
+
+      <!-- Empty state before any service is picked -->
+      <div
         v-else
-        title="No services found"
-        message="We couldn't find any services matching your filters."
+        class="rounded-2xl border border-dashed border-ink/10 px-6 py-10 text-center"
       >
-        <button
-          v-if="hasFilters"
-          class="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-brand-300 hover:text-brand-200"
-          @click="clearFilters"
-        >
-          <RotateCcw class="h-3.5 w-3.5" /> Clear all filters
-        </button>
-      </BaseEmptyState>
-
-      <BasePagination
-        :page="page"
-        :total="store.total"
-        :limit="PAGE_SIZE"
-        @change="(p) => { page = p; void load() }"
-      />
-    </template>
-
-    <BuyServiceModal :open="buyOpen" :service="buyingService" @close="buyOpen = false" />
+        <p class="text-sm text-ink/40">
+          Search above or pick a category, then choose a service to see its details, price and
+          order form.
+        </p>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition: opacity 0.15s ease, transform 0.15s ease;
 }
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
-  transform: translateY(-6px);
+  transform: translateY(-4px);
 }
 </style>

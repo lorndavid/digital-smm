@@ -361,7 +361,7 @@ const waitingCopy = 'Waiting for payment…'
 </script>
 
 <template>
-  <div class="relative min-h-screen overflow-hidden bg-night text-white font-sans">
+  <div class="relative min-h-screen overflow-hidden bg-surface text-ink font-sans">
     <!-- Ambient background -->
     <div class="pointer-events-none absolute inset-0 overflow-hidden">
       <div class="absolute -top-40 left-1/4 h-[480px] w-[480px] rounded-full bg-brand-600/20 blur-[120px]" />
@@ -375,7 +375,7 @@ const waitingCopy = 'Waiting for payment…'
         <RouterLink to="/dashboard" class="transition-opacity hover:opacity-80">
           <BrandLogo size="sm" />
         </RouterLink>
-        <div class="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium text-white/70 backdrop-blur">
+        <div class="flex items-center gap-2 rounded-full border border-ink/10 bg-ink/5 px-4 py-1.5 text-xs font-medium text-ink/70 backdrop-blur">
           <Lock class="h-3.5 w-3.5 text-emerald-400" />
           Secure checkout
         </div>
@@ -395,8 +395,8 @@ const waitingCopy = 'Waiting for payment…'
         <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-500/15 text-rose-300">
           <X class="h-8 w-8" />
         </div>
-        <h2 class="mt-5 text-xl font-bold text-white">Could not load this payment</h2>
-        <p class="mt-2 text-sm text-white/50">{{ error }}</p>
+        <h2 class="mt-5 text-xl font-bold text-ink">Could not load this payment</h2>
+        <p class="mt-2 text-sm text-ink/50">{{ error }}</p>
         <div class="mt-6 flex justify-center gap-3">
           <BaseButton variant="outline" @click="router.push('/dashboard')">
             <ArrowLeft class="h-4 w-4" /> Dashboard
@@ -420,33 +420,33 @@ const waitingCopy = 'Waiting for payment…'
             />
           </svg>
         </div>
-        <h1 class="font-display mt-6 text-3xl font-bold text-white">
+        <h1 class="font-display mt-6 text-3xl font-bold text-ink">
           Payment Successful 🎉
         </h1>
-        <p class="mt-3 text-white/60">
+        <p class="mt-3 text-ink/60">
           {{ isOrder ? `Order #${order?.orderNumber ?? ''} is now processing.` : 'Your balance has been topped up.' }}
           <span class="font-semibold text-emerald-400">{{ formatMoney(payment?.amount ?? 0) }}</span> paid.
         </p>
 
-        <div v-if="isOrder && order" class="glass mx-auto mt-6 max-w-sm space-y-3 rounded-2xl p-6 text-left text-sm border border-white/5 bg-white/5 backdrop-blur-md">
+        <div v-if="isOrder && order" class="glass mx-auto mt-6 max-w-sm space-y-3 rounded-2xl p-6 text-left text-sm border border-ink/5 bg-ink/5 backdrop-blur-md">
           <div class="flex items-center justify-between gap-3">
-            <span class="shrink-0 text-white/50">Service</span>
-            <span class="flex min-w-0 items-center gap-2 font-medium text-white">
+            <span class="shrink-0 text-ink/50">Service</span>
+            <span class="flex min-w-0 items-center gap-2 font-medium text-ink">
               <PlatformIcon v-if="orderPlatform !== 'other'" :platform="orderPlatform" size="xs" tile />
               <span class="truncate">{{ serviceName() }}</span>
             </span>
           </div>
           <div class="flex items-center justify-between">
-            <span class="text-white/50">Quantity</span>
-            <span class="font-medium text-white">{{ formatNumber(order.quantity) }}</span>
+            <span class="text-ink/50">Quantity</span>
+            <span class="font-medium text-ink">{{ formatNumber(order.quantity) }}</span>
           </div>
-          <div class="flex items-center justify-between border-t border-white/10 pt-3">
-            <span class="text-white/50">Reference</span>
-            <span class="font-mono text-xs text-white/80">{{ payment?.referenceId }}</span>
+          <div class="flex items-center justify-between border-t border-ink/10 pt-3">
+            <span class="text-ink/50">Reference</span>
+            <span class="font-mono text-xs text-ink/80">{{ payment?.referenceId }}</span>
           </div>
         </div>
 
-        <p v-if="redirectIn !== null && redirectIn > 0" class="mt-6 flex items-center justify-center gap-2 text-sm text-white/50">
+        <p v-if="redirectIn !== null && redirectIn > 0" class="mt-6 flex items-center justify-center gap-2 text-sm text-ink/50">
           <Loader2 class="h-4 w-4 animate-spin" />
           Redirecting in {{ redirectIn }}s…
         </p>
@@ -471,43 +471,43 @@ const waitingCopy = 'Waiting for payment…'
           <!-- Left: Order Summary & Actions -->
           <div class="space-y-6 lg:py-4">
             <div>
-              <h2 class="text-2xl font-bold tracking-tight text-white mb-2">Complete Payment</h2>
-              <p class="text-white/50 text-sm">Scan the KHQR code using any supported Cambodian banking app.</p>
+              <h2 class="text-2xl font-bold tracking-tight text-ink mb-2">Complete Payment</h2>
+              <p class="text-ink/50 text-sm">Scan the KHQR code using any supported Cambodian banking app.</p>
             </div>
 
-            <div class="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-md">
-              <h3 class="text-sm font-semibold text-white/40 uppercase tracking-wider mb-4">Summary</h3>
+            <div class="rounded-3xl border border-ink/10 bg-ink/5 p-6 backdrop-blur-md">
+              <h3 class="text-sm font-semibold text-ink/40 uppercase tracking-wider mb-4">Summary</h3>
               
               <div v-if="isOrder && order" class="space-y-4 text-sm">
                 <div class="flex items-center justify-between gap-3">
-                  <span class="shrink-0 text-white/60">Service</span>
-                  <span class="flex min-w-0 items-center justify-end gap-2 font-medium text-white">
+                  <span class="shrink-0 text-ink/60">Service</span>
+                  <span class="flex min-w-0 items-center justify-end gap-2 font-medium text-ink">
                     <PlatformIcon v-if="orderPlatform !== 'other'" :platform="orderPlatform" size="xs" tile />
                     <span class="truncate">{{ serviceName() }}</span>
                   </span>
                 </div>
                 <div v-if="order.link" class="flex items-center justify-between">
-                  <span class="text-white/60">Target</span>
-                  <span class="truncate text-white/80 max-w-[60%]">{{ order.link }}</span>
+                  <span class="text-ink/60">Target</span>
+                  <span class="truncate text-ink/80 max-w-[60%]">{{ order.link }}</span>
                 </div>
                 <div class="flex items-center justify-between">
-                  <span class="text-white/60">Quantity</span>
-                  <span class="font-medium text-white">{{ formatNumber(order.quantity) }}</span>
+                  <span class="text-ink/60">Quantity</span>
+                  <span class="font-medium text-ink">{{ formatNumber(order.quantity) }}</span>
                 </div>
                 <div class="flex items-center justify-between">
-                  <span class="text-white/60">Rate / 1,000</span>
-                  <span class="text-white/80">{{ formatMoney(order.pricePerUnit) }}</span>
+                  <span class="text-ink/60">Rate / 1,000</span>
+                  <span class="text-ink/80">{{ formatMoney(order.pricePerUnit) }}</span>
                 </div>
               </div>
               
-              <div v-else class="flex items-center gap-3 text-sm font-medium text-white/80">
+              <div v-else class="flex items-center gap-3 text-sm font-medium text-ink/80">
                 <Wallet class="h-5 w-5 text-brand-400" />
                 Wallet Balance Top-up
               </div>
 
-              <div class="mt-6 flex items-end justify-between border-t border-white/10 pt-6">
-                <span class="text-white/60">Total to pay</span>
-                <span class="font-display text-4xl font-black text-white tracking-tight">
+              <div class="mt-6 flex items-end justify-between border-t border-ink/10 pt-6">
+                <span class="text-ink/60">Total to pay</span>
+                <span class="font-display text-4xl font-black text-ink tracking-tight">
                   {{ formatMoney(payment?.amount ?? 0) }}
                 </span>
               </div>
@@ -518,7 +518,7 @@ const waitingCopy = 'Waiting for payment…'
               <p class="font-semibold text-rose-300">
                 {{ status === 'expired' ? 'QR Code Expired' : 'Payment Failed' }}
               </p>
-              <p class="mt-1 text-sm text-white/60">
+              <p class="mt-1 text-sm text-ink/60">
                 No money was charged. Generate a new QR to try again.
               </p>
               <BaseButton v-if="isOrder && order" class="mt-4 w-full" :loading="actionBusy" @click="retryPayment">
@@ -532,7 +532,7 @@ const waitingCopy = 'Waiting for payment…'
             <!-- Cancel -->
             <button
               v-if="status === 'pending' || status === 'scanned'"
-              class="text-sm font-medium text-white/40 transition-colors hover:text-white"
+              class="text-sm font-medium text-ink/40 transition-colors hover:text-ink"
               :disabled="actionBusy"
               @click="confirmCancelOpen = true"
             >
@@ -543,7 +543,7 @@ const waitingCopy = 'Waiting for payment…'
           <!-- Cancel confirmation -->
           <BaseModal :open="confirmCancelOpen" title="Cancel this payment?" max-width="max-w-sm" @close="confirmCancelOpen = false">
             <div class="space-y-4">
-              <p class="text-sm leading-relaxed text-white/60">
+              <p class="text-sm leading-relaxed text-ink/60">
                 No money has been charged. {{ isOrder ? 'The order will be cancelled and you will be returned to your orders.' : 'You will be returned to your wallet.' }}
               </p>
               <div class="flex justify-end gap-2">
@@ -556,7 +556,7 @@ const waitingCopy = 'Waiting for payment…'
           <!-- Right: Authentic KHQR Terminal Card -->
           <div class="relative w-full max-w-[400px] mx-auto">
             <!-- The Card -->
-            <div class="bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-white/10 ring-1 ring-black/5">
+            <div class="bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-ink/10 ring-1 ring-black/5">
               
               <!-- Standard KHQR Red Header -->
               <div class="bg-[#E41A2B] px-6 py-4 flex items-center justify-between relative overflow-hidden">
@@ -564,7 +564,7 @@ const waitingCopy = 'Waiting for payment…'
                 <div class="relative flex items-center gap-2">
                   <span class="font-black text-2xl italic tracking-widest text-white drop-shadow-sm">KHQR</span>
                 </div>
-                <div class="relative flex items-center gap-1.5 bg-white/20 px-3 py-1 rounded-full">
+                <div class="relative flex items-center gap-1.5 bg-black/25 px-3 py-1 rounded-full">
                   <QrCode class="h-3.5 w-3.5 text-white" />
                   <span class="text-[10px] font-bold text-white tracking-wider">SCAN TO PAY</span>
                 </div>
@@ -590,8 +590,8 @@ const waitingCopy = 'Waiting for payment…'
                 <!-- The QR Code Image Container -->
                 <div class="relative w-full aspect-square max-w-[240px] bg-white rounded-2xl border-2 border-gray-100 p-3 shadow-sm mb-6 flex items-center justify-center">
                   <!-- Expiration blur overlay -->
-                  <div v-if="status === 'expired'" class="absolute inset-0 z-10 backdrop-blur-sm bg-white/70 rounded-2xl flex items-center justify-center">
-                    <span class="bg-gray-900 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">EXPIRED</span>
+                  <div v-if="status === 'expired'" class="absolute inset-0 z-10 backdrop-blur-sm bg-ink/70 rounded-2xl flex items-center justify-center">
+                    <span class="bg-gray-900 px-4 py-2 rounded-full text-sm font-bold text-white shadow-lg">EXPIRED</span>
                   </div>
 
                   <img
@@ -648,12 +648,12 @@ const waitingCopy = 'Waiting for payment…'
 
             <!-- Deep Link Bank Chips (Moved out of the white card to fit app theme) -->
             <div class="mt-6">
-              <p class="text-xs font-medium text-white/50 text-center mb-3 uppercase tracking-wider">Or open app directly</p>
+              <p class="text-xs font-medium text-ink/50 text-center mb-3 uppercase tracking-wider">Or open app directly</p>
               <div class="grid grid-cols-4 gap-2">
                 <button
                   v-for="bank in banks"
                   :key="bank.id"
-                  class="group flex flex-col items-center justify-center gap-2 rounded-2xl bg-white/5 border border-white/10 py-3 transition-all hover:bg-white/10 active:scale-95"
+                  class="group flex flex-col items-center justify-center gap-2 rounded-2xl bg-ink/5 border border-ink/10 py-3 transition-all hover:bg-ink/10 active:scale-95"
                   :disabled="!canOpenBank(bank)"
                   @click="openBankApp(bank)"
                 >
@@ -663,12 +663,12 @@ const waitingCopy = 'Waiting for payment…'
                   >
                     {{ bank.short }}
                   </span>
-                  <span class="text-[10px] font-medium text-white/60 group-hover:text-white">
+                  <span class="text-[10px] font-medium text-ink/60 group-hover:text-ink">
                     {{ bank.name }}
                   </span>
                 </button>
               </div>
-              <p class="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-white/40">
+              <p class="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-ink/40">
                 <Smartphone class="h-3.5 w-3.5" />
                 Mobile apps open with amount pre-filled
               </p>
@@ -677,13 +677,13 @@ const waitingCopy = 'Waiting for payment…'
             <!-- Utility Actions -->
             <div class="mt-5 grid grid-cols-2 gap-3">
               <button
-                class="flex items-center justify-center gap-2 rounded-xl bg-white/5 py-3 text-xs font-semibold text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+                class="flex items-center justify-center gap-2 rounded-xl bg-ink/5 py-3 text-xs font-semibold text-ink/70 transition-colors hover:bg-ink/10 hover:text-ink"
                 @click="copyText(formatMoney(payment?.amount ?? 0), 'Amount')"
               >
                 <Copy class="h-4 w-4" /> Copy Amount
               </button>
               <button
-                class="flex items-center justify-center gap-2 rounded-xl bg-white/5 py-3 text-xs font-semibold text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+                class="flex items-center justify-center gap-2 rounded-xl bg-ink/5 py-3 text-xs font-semibold text-ink/70 transition-colors hover:bg-ink/10 hover:text-ink"
                 @click="copyText(payment?.referenceId ?? '', 'Reference')"
               >
                 <Copy class="h-4 w-4" /> Copy Ref

@@ -107,7 +107,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="mx-auto max-w-6xl space-y-5">
+  <div class="w-full space-y-5">
     <!-- Back -->
     <button
       class="flex items-center gap-2 text-sm font-medium text-(--a-muted) transition-colors hover:text-brand-300"

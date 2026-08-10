@@ -215,25 +215,3 @@ export interface SyncResult {
   total: number
 }
 
-// ---------------------------------------------------------------------------
-// Load tests (admin diagnostics)
-// ---------------------------------------------------------------------------
-
-export type LoadTestType = 'single' | 'multi'
-
-export interface LoadTestRunState {
-  status: 'idle' | 'running' | 'done'
-  type: LoadTestType | null
-  /** Full captured stdout — the phase verdicts + summary tables. */
-  output: string
-  startedAt: string | null
-  finishedAt: string | null
-  exitCode: number | null
-  durationMs: number | null
-  ok: boolean | null
-}
-
-export interface LoadTestStatusResponse {
-  current: LoadTestRunState
-  lastResults: Partial<Record<LoadTestType, LoadTestRunState>>
-}

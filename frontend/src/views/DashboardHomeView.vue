@@ -64,19 +64,19 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="mx-auto max-w-6xl space-y-8">
+  <div class="w-full space-y-8">
     <!-- Welcome card -->
     <div
-      class="animate-gradient relative overflow-hidden rounded-3xl bg-gradient-to-r from-brand-700/80 via-brand-600/70 to-secondary-600/50 p-8 shadow-glow sm:p-10"
+      class="animate-gradient relative overflow-hidden rounded-3xl bg-gradient-to-r from-brand-500/10 via-brand-400/5 to-secondary-500/10 p-8 shadow-card sm:p-10 dark:from-brand-700/80 dark:via-brand-600/70 dark:to-secondary-600/50 dark:shadow-glow"
     >
       <div class="bg-grid pointer-events-none absolute inset-0 opacity-20" />
       <div class="relative flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
         <div>
-          <p class="text-sm text-white/70">Welcome back,</p>
-          <h1 class="font-display mt-1 text-2xl font-bold text-white sm:text-3xl">
+          <p class="text-sm text-ink/70">Welcome back,</p>
+          <h1 class="font-display mt-1 text-2xl font-bold text-ink sm:text-3xl">
             {{ firstName }} 👋
           </h1>
-          <p class="mt-2 max-w-md text-sm text-white/75">
+          <p class="mt-2 max-w-md text-sm text-ink/75">
             Ready to grow today? Pick a service, pay with KHQR and watch the numbers climb.
           </p>
         </div>
@@ -123,7 +123,7 @@ onMounted(async () => {
       <!-- Recent orders -->
       <div class="lg:col-span-2">
         <div class="mb-4 flex items-center justify-between">
-          <h2 class="font-display text-lg font-semibold text-white">Recent orders</h2>
+          <h2 class="font-display text-lg font-semibold text-ink">Recent orders</h2>
           <button
             class="inline-flex items-center gap-1 text-sm font-medium text-brand-300 transition-colors hover:text-brand-200"
             @click="router.push('/dashboard/orders')"
@@ -147,20 +147,20 @@ onMounted(async () => {
             </BaseButton>
           </BaseEmptyState>
 
-          <ul v-else class="divide-y divide-white/[0.06]">
+          <ul v-else class="divide-y divide-ink/[0.06]">
             <li
               v-for="order in ordersStore.orders"
               :key="order._id"
-              class="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-white/[0.03]"
+              class="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-ink/[0.03]"
             >
               <div class="min-w-0">
-                <p class="truncate text-sm font-medium text-white">{{ serviceName(order) }}</p>
-                <p class="mt-0.5 text-xs text-white/40">
+                <p class="truncate text-sm font-medium text-ink">{{ serviceName(order) }}</p>
+                <p class="mt-0.5 text-xs text-ink/40">
                   #{{ order.orderNumber }} · {{ formatNumber(order.quantity) }} · {{ formatRelative(order.createdAt) }}
                 </p>
               </div>
               <div class="flex shrink-0 items-center gap-3">
-                <span class="text-sm font-semibold text-white">{{ formatMoney(order.totalPrice) }}</span>
+                <span class="text-sm font-semibold text-ink">{{ formatMoney(order.totalPrice) }}</span>
                 <BaseBadge :tone="STATUS_TONE[order.status] ?? 'neutral'" dot>
                   {{ order.status }}
                 </BaseBadge>
@@ -177,7 +177,7 @@ onMounted(async () => {
     <!-- Featured services -->
     <div>
       <div class="mb-4 flex items-center justify-between">
-        <h2 class="font-display text-lg font-semibold text-white">Featured services</h2>
+        <h2 class="font-display text-lg font-semibold text-ink">Featured services</h2>
         <button
           class="inline-flex items-center gap-1 text-sm font-medium text-brand-300 transition-colors hover:text-brand-200"
           @click="router.push('/dashboard/services')"

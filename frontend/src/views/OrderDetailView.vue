@@ -408,12 +408,12 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="mx-auto max-w-5xl space-y-6">
+  <div class="w-full space-y-6">
     <!-- Header -->
     <div class="flex flex-wrap items-end justify-between gap-3">
       <div class="flex items-center gap-3">
         <button
-          class="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/60 transition-all hover:border-brand-400/40 hover:text-white"
+          class="flex h-10 w-10 items-center justify-center rounded-xl border border-ink/10 bg-ink/5 text-ink/60 transition-all hover:border-brand-400/40 hover:text-ink"
           aria-label="Back to orders"
           @click="router.push('/dashboard/orders')"
         >
@@ -421,25 +421,25 @@ onUnmounted(() => {
         </button>
         <div>
           <div class="flex flex-wrap items-center gap-2">
-            <h1 class="font-display text-2xl font-bold text-white">
+            <h1 class="font-display text-2xl font-bold text-ink">
               Order #{{ order?.orderNumber ?? '…' }}
             </h1>
             <BaseBadge v-if="statusMeta" :tone="order?.status === 'Completed' ? 'success' : order?.status === 'Cancelled' || order?.status === 'Refunded' || order?.status === 'Failed' ? 'danger' : 'info'" dot>
               {{ order?.status }}
             </BaseBadge>
           </div>
-          <p class="mt-1 text-sm text-white/50">Track delivery and manage payment.</p>
+          <p class="mt-1 text-sm text-ink/50">Track delivery and manage payment.</p>
         </div>
       </div>
 
       <div class="flex items-center gap-2">
         <span
           class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium"
-          :class="isTerminal ? 'border-white/10 bg-white/5 text-white/40' : 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300'"
+          :class="isTerminal ? 'border-ink/10 bg-ink/5 text-ink/40' : 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300'"
         >
           <span class="relative flex h-2 w-2">
             <span v-if="!isTerminal" class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-            <span class="relative inline-flex h-2 w-2 rounded-full" :class="isTerminal ? 'bg-white/30' : 'bg-emerald-400'" />
+            <span class="relative inline-flex h-2 w-2 rounded-full" :class="isTerminal ? 'bg-ink/30' : 'bg-emerald-400'" />
           </span>
           {{ isTerminal ? 'Final' : 'Live' }}
         </span>
@@ -481,7 +481,7 @@ onUnmounted(() => {
             <PlatformIcon :platform="orderPlatform" size="lg" tile class="shrink-0" />
             <div class="min-w-0">
               <div class="flex flex-wrap items-center gap-2">
-                <h2 class="font-display truncate text-lg font-semibold text-white">{{ serviceInfo?.name ?? 'Service' }}</h2>
+                <h2 class="font-display truncate text-lg font-semibold text-ink">{{ serviceInfo?.name ?? 'Service' }}</h2>
                 <BaseBadge tone="brand">{{ serviceTypeLabel }}</BaseBadge>
               </div>
               <p class="mt-1 flex items-center gap-1 text-xs text-brand-300">
@@ -490,7 +490,7 @@ onUnmounted(() => {
                   {{ order.link || '—' }}
                 </button>
               </p>
-              <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-white/50">
+              <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink/50">
                 <span>Min {{ serviceInfo?.min.toLocaleString() ?? '—' }}</span>
                 <span>Max {{ serviceInfo?.max.toLocaleString() ?? '—' }}</span>
                 <span v-if="serviceInfo?.deliveryTime" class="inline-flex items-center gap-1">
@@ -499,7 +499,7 @@ onUnmounted(() => {
                 <span v-if="serviceInfo?.refill" class="inline-flex items-center gap-1 text-emerald-300">
                   <RefreshCcw class="h-3 w-3" /> Refill supported
                 </span>
-                <span v-if="order.params && Object.keys(order.params).length" class="truncate text-white/40">
+                <span v-if="order.params && Object.keys(order.params).length" class="truncate text-ink/40">
                   Options: {{ Object.values(order.params).filter(Boolean).join(' · ') }}
                 </span>
               </div>
@@ -507,8 +507,8 @@ onUnmounted(() => {
           </div>
 
           <div class="flex shrink-0 flex-col items-start gap-2 sm:items-end">
-            <p class="font-display text-3xl font-bold text-white">{{ formatMoney(order.totalPrice) }}</p>
-            <p class="text-xs text-white/40">Provider #{{ order.providerOrderId ?? '—' }}</p>
+            <p class="font-display text-3xl font-bold text-ink">{{ formatMoney(order.totalPrice) }}</p>
+            <p class="text-xs text-ink/40">Provider #{{ order.providerOrderId ?? '—' }}</p>
           </div>
         </div>
       </div>
@@ -516,7 +516,7 @@ onUnmounted(() => {
       <!-- Full-screen timeline -->
       <div class="glass rounded-2xl p-6 shadow-card sm:p-8">
         <div class="mb-6 flex items-center justify-between gap-3">
-          <h3 class="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-white/40">
+          <h3 class="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-ink/40">
             <TrendingUp class="h-4 w-4" /> Order timeline
           </h3>
           <span v-if="delivered !== null" class="text-sm font-semibold text-emerald-300">{{ deliveryPct }}% delivered</span>
@@ -531,8 +531,8 @@ onUnmounted(() => {
           :key="item.label"
           class="glass rounded-2xl px-5 py-4 shadow-card"
         >
-          <p class="text-xs font-medium uppercase tracking-wider text-white/40">{{ item.label }}</p>
-          <p class="font-display mt-1.5 text-lg font-bold" :class="item.accent ? 'text-emerald-300' : 'text-white'">
+          <p class="text-xs font-medium uppercase tracking-wider text-ink/40">{{ item.label }}</p>
+          <p class="font-display mt-1.5 text-lg font-bold" :class="item.accent ? 'text-emerald-300' : 'text-ink'">
             {{ item.value }}
           </p>
         </div>
@@ -541,7 +541,7 @@ onUnmounted(() => {
       <!-- Payment (inline KHQR re-pay) -->
       <div v-if="canPay" class="glass rounded-2xl p-6 shadow-card sm:p-8">
         <div class="flex flex-wrap items-center justify-between gap-3">
-          <h3 class="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-white/40">
+          <h3 class="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-ink/40">
             <QrCode class="h-4 w-4" /> Pay with KHQR
           </h3>
           <BaseButton v-if="payment" variant="ghost" size="sm" @click="router.push(`/pay/${payment.referenceId}`)">
@@ -555,8 +555,8 @@ onUnmounted(() => {
             <QrCode class="h-8 w-8" />
           </div>
           <div>
-            <p class="font-semibold text-white">This order is waiting for payment</p>
-            <p class="mt-1 text-sm text-white/50">
+            <p class="font-semibold text-ink">This order is waiting for payment</p>
+            <p class="mt-1 text-sm text-ink/50">
               {{ formatMoney(order.totalPrice) }} — generate a QR and scan it with Bakong or any KHQR banking app.
             </p>
           </div>
@@ -564,7 +564,7 @@ onUnmounted(() => {
             <CreditCard class="h-4 w-4" /> Generate QR
           </BaseButton>
           <button
-            class="text-xs font-medium text-white/40 transition-colors hover:text-white"
+            class="text-xs font-medium text-ink/40 transition-colors hover:text-ink"
             :disabled="actionId === order._id"
             @click="pendingCancel = 'order'"
           >
@@ -580,7 +580,7 @@ onUnmounted(() => {
               <div class="absolute inset-0 bg-black/10" />
               <div class="relative flex items-center justify-between">
                 <span class="text-xl font-black italic tracking-widest text-white drop-shadow-sm">KHQR</span>
-                <span class="flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-0.5 text-[9px] font-bold tracking-wider text-white">
+                <span class="flex items-center gap-1 rounded-full bg-black/25 px-2.5 py-0.5 text-[9px] font-bold tracking-wider text-white">
                   <QrCode class="h-3 w-3" /> SCAN TO PAY
                 </span>
               </div>
@@ -592,7 +592,7 @@ onUnmounted(() => {
               </p>
 
               <div class="relative mt-4 w-full max-w-[180px] bg-white">
-                <div v-if="payStatus === 'expired'" class="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/80 backdrop-blur-sm">
+                <div v-if="payStatus === 'expired'" class="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-ink/80 backdrop-blur-sm">
                   <span class="rounded-full bg-gray-900 px-3 py-1.5 text-xs font-bold text-white">EXPIRED</span>
                 </div>
                 <img v-if="payment.qrCodeDataUrl" :src="payment.qrCodeDataUrl" alt="KHQR" class="w-full rounded-lg border border-gray-100 object-contain" />
@@ -617,13 +617,13 @@ onUnmounted(() => {
 
           <!-- Pay panel -->
           <div class="space-y-4">
-            <div v-if="!isPaid" class="space-y-3 text-sm text-white/60">
+            <div v-if="!isPaid" class="space-y-3 text-sm text-ink/60">
               <p class="flex items-center gap-2">
                 <Zap class="h-4 w-4 text-brand-300" />
                 Open Bakong or any KHQR bank app, scan the code and confirm {{ formatMoney(payment.amount) }}.
               </p>
               <p class="flex items-center gap-2">
-                <Timer class="h-4 w-4 text-white/40" />
+                <Timer class="h-4 w-4 text-ink/40" />
                 The page updates automatically the moment payment settles — no refresh needed.
               </p>
 
@@ -646,7 +646,7 @@ onUnmounted(() => {
                 </BaseButton>
                 <button
                   v-if="!isPayTerminal"
-                  class="ml-auto text-xs font-medium text-white/40 transition-colors hover:text-white"
+                  class="ml-auto text-xs font-medium text-ink/40 transition-colors hover:text-ink"
                   :disabled="paymentLoading"
                   @click="pendingCancel = 'payment'"
                 >
@@ -674,7 +674,7 @@ onUnmounted(() => {
         class="rounded-2xl border border-amber-400/30 bg-amber-400/10 px-5 py-4 text-sm text-amber-200"
       >
         Payment received, but the order could not be placed yet. We retry automatically — if this persists, contact support.
-        <p class="mt-1 text-xs text-amber-200/60">{{ order.error }}</p>
+        <p class="mt-1 text-xs text-amber-300">{{ order.error }}</p>
       </div>
 
       <!-- Error from provider -->
@@ -711,7 +711,7 @@ onUnmounted(() => {
         @close="pendingCancel = null"
       >
         <div class="space-y-4">
-          <p class="text-sm leading-relaxed text-white/60">
+          <p class="text-sm leading-relaxed text-ink/60">
             {{
               pendingCancel === 'payment'
                 ? 'The QR code will be voided and this order will be cancelled. No money has been charged — you can place a new order anytime.'

@@ -68,11 +68,12 @@ export class OrderRepository extends BaseRepository<Order> {
   }
 
   /** Orders still being delivered that are eligible for provider sync. */
-  findSyncable(limit = 100): Promise<OrderDoc[]> {
+  async findSyncable(limit = 100) {
     return OrderModel.find({
       providerOrderId: { $ne: null },
       status: { $in: ['Processing', 'In progress', 'Partial'] },
     })
+      .populate<{ service: ServiceDoc }>('service')
       .sort({ createdAt: -1 })
       .limit(limit)
       .exec()

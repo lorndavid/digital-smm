@@ -323,7 +323,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="mx-auto max-w-6xl space-y-5">
+  <div class="w-full space-y-5">
     <div class="flex flex-wrap items-center justify-between gap-4">
       <div>
         <h1 class="font-display text-2xl font-bold text-(--a-text)">Services</h1>
@@ -585,7 +585,14 @@ onMounted(async () => {
             label="Category"
             :options="categories.map((c) => ({ value: c._id, label: c.name }))"
           />
-          <BaseInput v-model="form.provider" label="Provider" placeholder="smmwiz | manual" />
+          <BaseSelect
+            v-model="form.provider"
+            label="Provider"
+            :options="[
+              { value: 'smmwiz', label: 'SmmWiz' },
+              { value: 'manual', label: 'Manual' },
+            ]"
+          />
         </div>
         <div class="grid gap-4 sm:grid-cols-3">
           <BaseInput v-model="form.pricePerUnit" label="Rate / 1,000 ($)" type="number" min="0" step="0.01" />

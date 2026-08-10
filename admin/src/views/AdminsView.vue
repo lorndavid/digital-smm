@@ -141,7 +141,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="mx-auto max-w-6xl space-y-5">
+  <div class="w-full space-y-5">
     <div class="flex flex-wrap items-end justify-between gap-4">
       <div>
         <h1 class="font-display text-2xl font-bold text-(--a-text)">Admins &amp; Roles</h1>

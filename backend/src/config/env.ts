@@ -71,7 +71,7 @@ const envSchema = z.object({
   // CORS
   CORS_ORIGINS: z.string().default('http://localhost:5173,http://localhost:5174'),
 
-  // SMM provider
+  // SMM provider: 'smmwiz' (real API) or 'mock' (local, no key)
   SMM_PROVIDER: z.enum(['smmwiz', 'mock']).default('smmwiz'),
   SMMWIZ_API_URL: z.url().default('https://smmwiz.com/api/v2'),
   SMMWIZ_API_KEY: z.string().optional(),

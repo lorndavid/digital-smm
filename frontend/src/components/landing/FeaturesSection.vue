@@ -42,7 +42,7 @@ const features = [
       <h2 class="font-display mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
         Everything you need to <span class="text-gradient">grow</span>
       </h2>
-      <p class="mt-4 text-white/60">
+      <p class="mt-4 text-ink/60">
         A complete growth toolkit built for creators, brands and agencies in Cambodia.
       </p>
     </div>
@@ -61,8 +61,8 @@ const features = [
         >
           <component :is="feature.icon" class="h-6 w-6" />
         </div>
-        <h3 class="font-display mt-5 text-lg font-semibold text-white">{{ feature.title }}</h3>
-        <p class="mt-2 text-sm leading-relaxed text-white/55">{{ feature.description }}</p>
+        <h3 class="font-display mt-5 text-lg font-semibold text-ink">{{ feature.title }}</h3>
+        <p class="mt-2 text-sm leading-relaxed text-ink/55">{{ feature.description }}</p>
       </div>
     </div>
   </section>

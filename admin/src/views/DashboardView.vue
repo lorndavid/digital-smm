@@ -58,7 +58,7 @@ onMounted(() => void load())
 </script>
 
 <template>
-  <div class="mx-auto max-w-6xl space-y-6">
+  <div class="w-full space-y-6">
     <div class="flex flex-wrap items-center justify-between gap-4">
       <div>
         <h1 class="font-display text-2xl font-bold text-(--a-text)">Dashboard</h1>

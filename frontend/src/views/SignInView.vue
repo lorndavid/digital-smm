@@ -43,16 +43,16 @@ async function continueWithGoogle(): Promise<void> {
 
     <div class="relative grid w-full max-w-4xl overflow-hidden rounded-3xl glass-strong shadow-glow lg:grid-cols-2">
       <!-- Brand panel -->
-      <div class="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-brand-600/40 to-night-soft/40 p-10 lg:flex">
+      <div class="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-brand-500/10 to-secondary-500/10 p-10 lg:flex dark:from-brand-600/40 dark:to-night-soft/40">
         <div class="bg-grid pointer-events-none absolute inset-0 opacity-30" />
         <div class="relative">
           <BrandLogo />
         </div>
         <div class="relative">
-          <h2 class="font-display text-2xl font-bold text-white">
+          <h2 class="font-display text-2xl font-bold text-ink">
             The smartest way to <span class="text-gradient">grow in Cambodia</span>
           </h2>
-          <ul class="mt-6 space-y-3 text-sm text-white/70">
+          <ul class="mt-6 space-y-3 text-sm text-ink/70">
             <li class="flex items-center gap-2.5">
               <Zap class="h-4 w-4 text-secondary-400" /> Instant delivery on 500+ services
             </li>
@@ -72,8 +72,8 @@ async function continueWithGoogle(): Promise<void> {
           <BrandLogo size="lg" />
         </div>
 
-        <h1 class="font-display mt-8 text-2xl font-bold text-white lg:mt-0">Welcome back</h1>
-        <p class="mt-2 text-center text-sm text-white/50">
+        <h1 class="font-display mt-8 text-2xl font-bold text-ink lg:mt-0">Welcome back</h1>
+        <p class="mt-2 text-center text-sm text-ink/50">
           Sign in with Google to access your dashboard, orders and wallet.
         </p>
 
@@ -82,7 +82,7 @@ async function continueWithGoogle(): Promise<void> {
             <Globe class="h-5 w-5 text-secondary-400" />
             Continue with Google
           </BaseButton>
-          <p class="text-center text-xs text-white/35">
+          <p class="text-center text-xs text-ink/35">
             By continuing you agree to our Terms of Service and Privacy Policy.
           </p>
         </div>

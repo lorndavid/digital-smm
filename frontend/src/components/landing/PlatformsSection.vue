@@ -53,7 +53,7 @@ const platforms = [
         <h2 class="font-display mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
           One platform. <span class="text-gradient">Every network.</span>
         </h2>
-        <p class="mt-4 text-white/60">
+        <p class="mt-4 text-ink/60">
           Premium engagement services for the networks your audience lives on.
         </p>
       </div>
@@ -65,7 +65,7 @@ const platforms = [
           v-motion
           :initial="{ opacity: 0, y: 28 }"
           :visible="{ opacity: 1, y: 0, transition: { duration: 0.5, delay: index * 0.07 } }"
-          class="group glass relative overflow-hidden rounded-3xl p-7 shadow-card transition-all duration-300 hover:-translate-y-1.5 hover:border-white/20"
+          class="group glass relative overflow-hidden rounded-3xl p-7 shadow-card transition-all duration-300 hover:-translate-y-1.5 hover:border-ink/20"
           :class="platform.glow"
         >
           <div
@@ -73,19 +73,19 @@ const platforms = [
             :class="platform.gradient"
           />
           <div
-            class="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3"
+            class="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br text-ink shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3"
             :class="platform.gradient"
           >
             <component :is="platform.icon" class="h-7 w-7" />
           </div>
-          <h3 class="font-display mt-5 text-xl font-bold text-white">{{ platform.name }}</h3>
+          <h3 class="font-display mt-5 text-xl font-bold text-ink">{{ platform.name }}</h3>
           <ul class="mt-4 space-y-2">
             <li
               v-for="service in platform.services"
               :key="service"
-              class="flex items-center gap-2 text-sm text-white/55"
+              class="flex items-center gap-2 text-sm text-ink/55"
             >
-              <span class="h-1.5 w-1.5 rounded-full bg-white/30" />
+              <span class="h-1.5 w-1.5 rounded-full bg-ink/30" />
               {{ service }}
             </li>
           </ul>
@@ -109,7 +109,7 @@ const platforms = [
             Subscriptions, web traffic, comment replies and more.
           </p>
           <button
-            class="mt-6 inline-flex items-center gap-2 rounded-xl bg-white/95 px-6 py-3 text-sm font-semibold text-night transition-transform hover:scale-105 active:scale-95"
+            class="mt-6 inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-semibold text-brand-600 transition-transform hover:scale-105 hover:bg-white/90 active:scale-95"
             @click="router.push('/sign-in')"
           >
             Browse the full catalog <ArrowRight class="h-4 w-4" />

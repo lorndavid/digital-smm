@@ -27,6 +27,7 @@ export const listServicesQuerySchema = paginationQuerySchema.extend({
   type: z.string().optional(),
   refill: z.enum(['true', 'false']).optional(),
   cancel: z.enum(['true', 'false']).optional(),
+  provider: z.string().optional(),
 })
 
 // ---------------------------------------------------------------------------
@@ -234,10 +235,3 @@ export const serviceBulkBodySchema = z.object({
   }),
 })
 
-// ---------------------------------------------------------------------------
-// Admin: load tests (dev/ops diagnostics)
-// ---------------------------------------------------------------------------
-
-export const loadTestRunBodySchema = z.object({
-  type: z.enum(['single', 'multi']),
-})

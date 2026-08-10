@@ -54,6 +54,9 @@ export const PAYMENT_PROVIDERS = [
 ] as const
 export type PaymentProvider = (typeof PAYMENT_PROVIDERS)[number]
 
+export const SMM_PROVIDERS = ['smmwiz', 'mock'] as const
+export type SmmProvider = (typeof SMM_PROVIDERS)[number]
+
 export const PAYMENT_PURPOSES = ['topup', 'order'] as const
 export type PaymentPurpose = (typeof PAYMENT_PURPOSES)[number]
 

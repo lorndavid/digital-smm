@@ -17,8 +17,8 @@ export type ServiceSort = 'price_asc' | 'price_desc' | 'name_asc' | 'newest'
 export interface ListServicesParams {
   category?: string
   /** Platform keyword (e.g. 'facebook', 'tiktok'). Matches ALL categories whose
-   *  name contains the keyword, so one chip shows every service of that
-   *  platform (SMMWiz splits platforms across many category names). */
+    *  name contains the keyword, so one chip shows every service of that
+    *  platform (SMMWiz splits platforms across many category names). */
   platform?: string
   search?: string
   featured?: boolean
@@ -32,6 +32,8 @@ export interface ListServicesParams {
   refill?: boolean
   /** Only services that support cancel. */
   cancel?: boolean
+  /** Filter by SMM provider ('smmwiz', 'mock'). */
+  provider?: string
   includeInactive?: boolean
   page?: number
   limit?: number
@@ -71,6 +73,7 @@ export class ServiceRepository extends BaseRepository<Service> {
     if (params.type) filter.type = params.type
     if (params.refill) filter.refill = true
     if (params.cancel) filter.cancel = true
+    if (params.provider) filter.provider = params.provider
     if (params.minPrice !== undefined || params.maxPrice !== undefined) {
       filter.pricePerUnit = {
         ...(params.minPrice !== undefined ? { $gte: params.minPrice } : {}),

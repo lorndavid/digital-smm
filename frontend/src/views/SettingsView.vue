@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import { useLocalStorage } from '@vueuse/core'
-import { LogOut } from '@lucide/vue'
+import { LogOut, Moon, Sun } from '@lucide/vue'
 import { useAuthStore } from '@/stores/auth.store'
+import { useThemeStore } from '@/stores/theme.store'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const themeStore = useThemeStore()
 
 // Preferences persisted locally (these are client-side preferences).
 const emailNotifications = useLocalStorage('vidsmm:email-notifications', true)
@@ -46,15 +48,15 @@ async function signOut(): Promise<void> {
 </script>
 
 <template>
-  <div class="mx-auto max-w-2xl space-y-6">
+  <div class="w-full space-y-6">
     <div>
-      <h1 class="font-display text-2xl font-bold text-white">Settings</h1>
-      <p class="mt-1 text-sm text-white/50">Personalize your VidSMM experience.</p>
+      <h1 class="font-display text-2xl font-bold text-ink">Settings</h1>
+      <p class="mt-1 text-sm text-ink/50">Personalize your VidSMM experience.</p>
     </div>
 
     <!-- Notifications -->
     <div class="glass rounded-3xl p-6 shadow-card sm:p-8">
-      <h2 class="font-display text-base font-semibold text-white">Notifications</h2>
+      <h2 class="font-display text-base font-semibold text-ink">Notifications</h2>
       <div class="mt-5 space-y-4">
         <div
           v-for="toggle in toggles"
@@ -62,14 +64,14 @@ async function signOut(): Promise<void> {
           class="flex items-center justify-between gap-4"
         >
           <div>
-            <p class="text-sm font-medium text-white">{{ toggle.label }}</p>
-            <p class="mt-0.5 text-xs text-white/45">{{ toggle.description }}</p>
+            <p class="text-sm font-medium text-ink">{{ toggle.label }}</p>
+            <p class="mt-0.5 text-xs text-ink/45">{{ toggle.description }}</p>
           </div>
           <button
             role="switch"
             :aria-checked="toggle.model.value"
             class="relative h-6 w-11 shrink-0 rounded-full transition-colors"
-            :class="toggle.model.value ? 'bg-gradient-to-r from-brand-500 to-secondary-500' : 'bg-white/10'"
+            :class="toggle.model.value ? 'bg-gradient-to-r from-brand-500 to-secondary-500' : 'bg-ink/10'"
             @click="toggle.model.value = !toggle.model.value"
           >
             <span
@@ -83,7 +85,7 @@ async function signOut(): Promise<void> {
 
     <!-- Preferences -->
     <div class="glass rounded-3xl p-6 shadow-card sm:p-8">
-      <h2 class="font-display text-base font-semibold text-white">Preferences</h2>
+      <h2 class="font-display text-base font-semibold text-ink">Preferences</h2>
       <div class="mt-5 space-y-4">
         <BaseSelect
           v-model="language"
@@ -95,10 +97,35 @@ async function signOut(): Promise<void> {
         />
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm font-medium text-white">Theme</p>
-            <p class="mt-0.5 text-xs text-white/45">VidSMM is designed dark by default.</p>
+            <p class="text-sm font-medium text-ink">Theme</p>
+            <p class="mt-0.5 text-xs text-ink/45">
+              Light is the default — switch to Dark for low-light sessions.
+            </p>
           </div>
-          <span class="rounded-full bg-white/5 px-3 py-1 text-xs text-white/50">Dark 🌙</span>
+          <div class="flex rounded-xl bg-soft p-1">
+            <button
+              class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all"
+              :class="
+                themeStore.theme === 'light'
+                  ? 'bg-card text-brand-600 shadow-sm dark:text-brand-300'
+                  : 'text-ink/50 hover:text-ink'
+              "
+              @click="themeStore.setTheme('light')"
+            >
+              <Sun class="h-3.5 w-3.5" /> Light
+            </button>
+            <button
+              class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all"
+              :class="
+                themeStore.theme === 'dark'
+                  ? 'bg-card text-brand-600 shadow-sm dark:text-brand-300'
+                  : 'text-ink/50 hover:text-ink'
+              "
+              @click="themeStore.setTheme('dark')"
+            >
+              <Moon class="h-3.5 w-3.5" /> Dark
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -106,7 +133,7 @@ async function signOut(): Promise<void> {
     <!-- Danger zone -->
     <div class="glass rounded-3xl border-rose-400/20 p-6 shadow-card sm:p-8">
       <h2 class="font-display text-base font-semibold text-rose-200">Danger zone</h2>
-      <p class="mt-1 text-xs text-white/45">
+      <p class="mt-1 text-xs text-ink/45">
         Signing out ends your current session on this device.
       </p>
       <BaseButton class="mt-4" variant="danger" @click="signOut">
