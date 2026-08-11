@@ -59,15 +59,8 @@ const loadError = ref('')
 const search = ref('')
 const categoryId = ref('')
 
-/** Search text inside the service combobox trigger (client-side, instant). */
+/** Selected service name shown in the (read-only) Service trigger. */
 const trigger = ref('')
-/**
- * True while the user is actively typing in the combobox. A plain click or
- * focus on the field — even with the selected service's name still in it —
- * opens the FULL grouped catalogue instead of filtering by the stale text.
- * Typing flips this on and filters live; selecting/clearing flips it off.
- */
-const triggerDirty = ref(false)
 const panelOpen = ref(false)
 /** Category group labels currently collapsed in the dropdown (rows hidden). */
 const collapsedGroups = ref<Set<string>>(new Set())
@@ -77,13 +70,29 @@ const panelIndex = ref(-1)
 const panelListEl = ref<HTMLElement | null>(null)
 /** Autocomplete dropdown under the main search box. */
 const searchOpen = ref(false)
-/** True while a freshly-typed query is still debouncing (no results yet). */
-const searchPending = ref(false)
-let searchTimer: ReturnType<typeof setTimeout> | null = null
 /** Index of the keyboard-highlighted row in the search dropdown (-1 = none). */
 const highlightedIndex = ref(-1)
 /** Scrollable results container inside the search dropdown. */
 const searchListEl = ref<HTMLElement | null>(null)
+
+/** Category combobox trigger input — focused when the chevron opens it. */
+const categoryTriggerEl = ref<HTMLInputElement | null>(null)
+/** Service combobox trigger input — focused when the chevron opens it. */
+const serviceTriggerEl = ref<HTMLInputElement | null>(null)
+
+/** Search text inside the Category combobox (client-side, instant). */
+const categorySearch = ref('')
+/**
+ * True while the user is actively typing in the category field. A plain
+ * click/focus (even with the selected category's name still in the field)
+ * opens the FULL category list; typing filters it live; picking resets it.
+ */
+const categoryDirty = ref(false)
+const categoryOpen = ref(false)
+/** Index of the keyboard-highlighted row in the category dropdown (-1 = none). */
+const categoryIndex = ref(-1)
+/** Scrollable results container inside the category dropdown. */
+const categoryListEl = ref<HTMLElement | null>(null)
 
 const selected = ref<Service | null>(null)
 
@@ -124,7 +133,10 @@ function platformLabel(p: string): string {
   return PLATFORM_META[p as Platform]?.label ?? p
 }
 
-async function loadServices(): Promise<void> {
+/** Monotonic request id — only the newest search response may apply. */
+let searchSeq = 0
+
+async function loadServices(seq?: number): Promise<void> {
   loading.value = true
   loadError.value = ''
   try {
@@ -137,15 +149,24 @@ async function loadServices(): Promise<void> {
       platform: query ? undefined : platform.value || undefined,
       limit: 1000,
     })
+    // Fast typing must never let a stale response overwrite newer results.
+    if (seq !== undefined && seq !== searchSeq) {
+      loading.value = false
+      return
+    }
     services.value = result.items
+    loading.value = false
   } catch (err) {
+    if (seq !== undefined && seq !== searchSeq) {
+      loading.value = false
+      return
+    }
     loadError.value = err instanceof ApiRequestError ? err.message : 'Failed to load services'
-  } finally {
     loading.value = false
   }
 }
 
-watchDebounced([search], () => void loadServices(), { debounce: 350 })
+watchDebounced([search], () => void loadServices(++searchSeq), { debounce: 120 })
 
 /**
  * A browse-filter switch is a fresh start: drop any active search, deselect
@@ -158,10 +179,9 @@ function resetOrderFlow(): void {
   clearOrder()
   selected.value = null
   trigger.value = ''
-  triggerDirty.value = false
-  panelServices.value = []
   collapsedGroups.value = new Set()
   closeSearch()
+  closeCategory()
 }
 
 function changeCategory(): void {
@@ -177,10 +197,6 @@ function selectPlatform(p: string): void {
   resetOrderFlow()
   void loadServices()
 }
-
-/** Server results for the trigger's typed query (whole catalogue, debounced). */
-const panelServices = ref<Service[]>([])
-let panelSearchTimer: ReturnType<typeof setTimeout> | null = null
 
 /** Whole catalogue (no category/platform/search filters) — the fallback list
  *  shown when the combobox is opened, so changing the service is never
@@ -214,32 +230,17 @@ function categoryLabel(service: Service): string {
 }
 
 /**
- * Rows shown in the service dropdown, sectioned like a real SMM panel:
- *  - While typing: one flat list (whole-catalogue server search + instant
- *    client filter).
- *  - Opened with no query: the WHOLE catalogue grouped by category — each
- *    category is its own section, so browsing by group is one scroll away.
- *    The active category (or the active platform's categories) leads the
- *    order; the rest follow the curated category order. Services inside a
- *    group are sorted by price, cheapest first, like a real SMM panel.
+ * Rows shown in the service dropdown, sectioned like a real SMM panel. The
+ * Service field is a read-only trigger — no typing search here; search lives
+ * in the Find-your-service box and the Category combobox. Opening the field
+ * always shows the WHOLE catalogue grouped by category, so browsing by group
+ * is one scroll away. The active category (or the active platform's
+ * categories) leads the order; the rest follow the curated category order.
+ * Services inside a group are sorted by price, cheapest first.
  */
 const panelGroups = computed<PanelGroup[]>(() => {
-  // A typed query filters; a plain open (click/focus, even with the old
-  // service's name still in the field) shows the full grouped catalogue.
-  const q = triggerDirty.value ? trigger.value.trim().toLowerCase() : ''
-
-  // Typing → flat results (server search over the whole catalogue).
-  if (q) {
-    const source =
-      q.length >= 2 && panelServices.value.length > 0
-        ? panelServices.value
-        : services.value
-    const items = source.filter((s) => s.name.toLowerCase().includes(q))
-    return [{ label: '', items }]
-  }
-
-  // No query → merge the filtered services with the rest of the catalogue,
-  // then bucket every service under its category name.
+  // Merge the filtered services with the rest of the catalogue, then bucket
+  // every service under its category name.
   const preferred = services.value
   const preferredIds = new Set(preferred.map((s) => s._id))
   const merged = [
@@ -310,35 +311,33 @@ const panelEmpty = computed(
 /** Row id → flat index, so the keyboard highlight works across sections. */
 const panelIndexById = computed(() => new Map(dropdownServices.value.map((s, i) => [s._id, i])))
 
-/** Debounced whole-catalogue search backing the Service combobox. */
-function searchPanelServices(q: string): void {
-  if (panelSearchTimer) clearTimeout(panelSearchTimer)
-  if (q.trim().length < 2) {
-    panelServices.value = []
-    return
-  }
-  panelSearchTimer = setTimeout(async () => {
-    try {
-      // Respect the active platform chip so a filtered view never leaks
-      // services from other platforms into the combobox.
-      const res = await servicesApi.list({
-        search: q.trim(),
-        platform: platform.value || undefined,
-        limit: 500,
-      })
-      // Only apply if the query hasn't changed while the request was in flight.
-      if (trigger.value.trim() === q.trim()) panelServices.value = res.items
-    } catch {
-      // Keep whatever we have — the client-side filter still shows matches.
-    }
-  }, 350)
+/** Splits a query into lowercased terms (space-separated words). */
+function searchTerms(q: string): string[] {
+  return q.trim().toLowerCase().split(/\s+/).filter(Boolean)
 }
 
-/** Services listed under the search box while the user types (instant). */
+/** True when EVERY term appears somewhere in the given text (AND search). */
+function matchesAllTerms(text: string, terms: string[]): boolean {
+  const t = text.toLowerCase()
+  return terms.every((term) => t.includes(term))
+}
+
+/**
+ * Services listed under the search box while the user types (instant,
+ * client-side). Multi-word queries AND-match every word against the service
+ * name, its category and its description — "facebook live stream" finds
+ * Facebook live-stream services without quoting. No platform icons, no
+ * category rows — a clean flat list of matching services.
+ */
 const searchDropdownServices = computed<Service[]>(() => {
-  const q = search.value.trim().toLowerCase()
-  if (!q) return []
-  return services.value.filter((s) => s.name.toLowerCase().includes(q))
+  const terms = searchTerms(search.value)
+  if (!terms.length) return []
+  const source = allServices.value.length ? allServices.value : services.value
+  return source.filter((s) => {
+    const cat = categoryLabel(s)
+    const desc = s.description ?? ''
+    return matchesAllTerms(`${s.name} ${cat} ${desc}`, terms)
+  })
 })
 
 /**
@@ -353,7 +352,7 @@ function serviceCategoryId(service: Service): string {
   return id && store.categories.some((c) => c._id === id) ? id : ''
 }
 
-/** Fired as the user types — keeps the search GLOBAL and hides "no results" while debouncing. */
+/** Fired as the user types — keeps the search GLOBAL (client-side, instant). */
 function onSearchInput(): void {
   // A fresh query searches the whole catalogue: drop any auto-set or manual
   // category so results are never silently scoped to one category.
@@ -361,11 +360,6 @@ function onSearchInput(): void {
     categoryId.value = ''
   }
   highlightedIndex.value = -1
-  searchPending.value = true
-  if (searchTimer) clearTimeout(searchTimer)
-  searchTimer = setTimeout(() => {
-    searchPending.value = false
-  }, 450)
 }
 
 /** Closes the search dropdown and clears its keyboard highlight. */
@@ -373,6 +367,106 @@ function closeSearch(): void {
   searchOpen.value = false
   highlightedIndex.value = -1
 }
+
+/**
+ * Category rows for the searchable Category combobox. Typing filters the
+ * curated options instantly on the client — no server round-trip, so fast
+ * typing never leaks requests. 'All categories' always leads the list.
+ */
+const categoryRows = computed<Array<{ value: string; label: string }>>(() => {
+  // A plain open (click/focus) shows the FULL list even when the selected
+  // category's name is still in the field — only typing narrows it, so the
+  // panel never traps the user inside the current selection's filter.
+  const q = categoryDirty.value ? categorySearch.value.trim().toLowerCase() : ''
+  const matches = categoryOptions.value.filter(
+    (o) => o.value !== '' && (!q || o.label.toLowerCase().includes(q)),
+  )
+  return [{ value: '', label: 'All categories' }, ...matches]
+})
+
+/** Opens the category dropdown (trigger's focus/click event). */
+function openCategoryPanel(): void {
+  categoryDirty.value = false
+  categoryOpen.value = true
+  categoryIndex.value = -1
+  closePanel()
+  closeSearch()
+}
+
+/** Toggles the category dropdown from its chevron button — click again to hide.
+ *  Opening also focuses the trigger so arrow-key/Enter navigation works
+ *  immediately (the chevron's mousedown.prevent leaves focus where it was). */
+function toggleCategoryPanel(): void {
+  if (categoryOpen.value) closeCategory()
+  else {
+    openCategoryPanel()
+    categoryTriggerEl.value?.focus()
+  }
+}
+
+/** Closes the category dropdown, restoring the selected label in the field. */
+function closeCategory(): void {
+  categoryDirty.value = false
+  categoryOpen.value = false
+  categoryIndex.value = -1
+  const cat = store.categories.find((c) => c._id === categoryId.value)
+  categorySearch.value = cat?.name ?? ''
+}
+
+/** Typing in the category field filters instantly (client-side, no requests). */
+function onCategoryInput(): void {
+  categoryDirty.value = true
+  categoryOpen.value = true
+  categoryIndex.value = -1
+}
+
+/** Applies a picked category to the browse filter. */
+function selectCategoryRow(row: { value: string; label: string }): void {
+  categoryDirty.value = false
+  categoryId.value = row.value
+  categorySearch.value = row.label === 'All categories' ? '' : row.label
+  // If the picked category is not part of the active platform chip, the
+  // Category dropdown would land on an invisible value — deactivate the chip
+  // so the browse filter always matches the category the user just chose.
+  if (platform.value && row.value && !categoryOptions.value.some((o) => o.value === row.value)) {
+    platform.value = ''
+  }
+  changeCategory()
+  categoryOpen.value = false
+  categoryIndex.value = -1
+}
+
+/** Arrow up/down + Enter navigation inside the category dropdown. */
+function onCategoryKeydown(event: KeyboardEvent): void {
+  const list = categoryRows.value
+  if (list.length === 0) return
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault()
+    if (!categoryOpen.value) categoryOpen.value = true
+    categoryIndex.value =
+      event.key === 'ArrowDown'
+        ? (categoryIndex.value + 1) % list.length
+        : categoryIndex.value < 0
+          ? list.length - 1
+          : (categoryIndex.value - 1 + list.length) % list.length
+  } else if (event.key === 'Enter') {
+    const row = list[categoryIndex.value]
+    if (row) {
+      event.preventDefault()
+      selectCategoryRow(row)
+    }
+  }
+}
+
+// Keep the highlighted category visible while navigating with arrow keys.
+watch(
+  categoryIndex,
+  (index) => {
+    if (index < 0) return
+    categoryListEl.value?.querySelectorAll('button')[index]?.scrollIntoView({ block: 'nearest' })
+  },
+  { flush: 'post' },
+)
 
 /** Arrow up/down + Enter navigation for the search results dropdown. */
 function onSearchKeydown(event: KeyboardEvent): void {
@@ -396,14 +490,16 @@ function onSearchKeydown(event: KeyboardEvent): void {
   }
 }
 
-// Keep the highlighted row visible while navigating with the arrow keys.
-// Rows are the only <button> elements inside the list container, so their
-// DOM order always matches searchDropdownServices.
+// Keep the highlighted service row visible while navigating with arrow keys.
+// Only rows tagged [data-search-service] exist in the search dropdown, so the
+// highlight index stays perfectly aligned with the on-screen rows.
 watch(
   highlightedIndex,
   (index) => {
     if (index < 0) return
-    searchListEl.value?.querySelectorAll('button')[index]?.scrollIntoView({ block: 'nearest' })
+    searchListEl.value
+      ?.querySelectorAll('button[data-search-service]')
+      [index]?.scrollIntoView({ block: 'nearest' })
   },
   { flush: 'post' },
 )
@@ -412,9 +508,11 @@ watch(
 function setService(service: Service): void {
   selected.value = service
   categoryId.value = serviceCategoryId(service)
+  // Keep the Category field label in sync with the picked service.
+  categorySearch.value = store.categories.find((c) => c._id === categoryId.value)?.name ?? ''
   // If the picked service's category is not part of the active platform chip,
-  // the Category select would land on an invisible value — deactivate the chip
-  // so the selection always stays consistent with the filtered dropdown.
+  // the Category dropdown would land on an invisible value — deactivate the
+  // chip so the selection always stays consistent with the filtered list.
   // (Only evaluated when the service actually resolves to a real category id.)
   if (
     platform.value &&
@@ -426,22 +524,27 @@ function setService(service: Service): void {
   clearOrder()
 }
 
+/** Clears the chosen service from the read-only Service field (the × button). */
+function clearService(): void {
+  selected.value = null
+  trigger.value = ''
+  clearOrder()
+  panelOpen.value = false
+  panelIndex.value = -1
+}
+
 function selectService(service: Service): void {
   setService(service)
-  triggerDirty.value = false
   panelOpen.value = false
   panelIndex.value = -1
   trigger.value = service.name
-  panelServices.value = []
 }
 
 /** Picked from the search autocomplete — fills the box and auto-sets the category. */
 function selectServiceFromSearch(service: Service): void {
   setService(service)
-  triggerDirty.value = false
   search.value = service.name
   trigger.value = service.name
-  panelServices.value = []
   closeSearch()
   panelOpen.value = false
   panelIndex.value = -1
@@ -460,12 +563,12 @@ function toggleGroup(label: string): void {
   collapsedGroups.value = next
 }
 
-/** Opens the service dropdown (trigger's focus event). */
+/** Opens the service dropdown (trigger's focus/click event). */
 function openServicePanel(): void {
-  triggerDirty.value = false
   panelOpen.value = true
   panelIndex.value = -1
   closeSearch()
+  closeCategory()
   void loadAllServices()
   // Keep the chosen service visible: expand its group if it was collapsed.
   if (selected.value) {
@@ -478,21 +581,22 @@ function openServicePanel(): void {
   }
 }
 
-/** Closes the dropdown, restoring the selected service's name in the trigger. */
-function closePanel(): void {
-  triggerDirty.value = false
-  panelOpen.value = false
-  panelIndex.value = -1
-  panelServices.value = []
-  trigger.value = selected.value?.name ?? ''
+/** Toggles the service dropdown from its chevron button — click again to hide.
+ *  Opening also focuses the trigger so arrow-key/Enter navigation works
+ *  immediately (the chevron's mousedown.prevent leaves focus where it was). */
+function toggleServicePanel(): void {
+  if (panelOpen.value) closePanel()
+  else {
+    openServicePanel()
+    serviceTriggerEl.value?.focus()
+  }
 }
 
-/** Typing in the trigger filters instantly and searches the whole catalogue. */
-function onPanelInput(): void {
-  triggerDirty.value = true
-  panelOpen.value = true
+/** Closes the dropdown, restoring the selected service's name in the trigger. */
+function closePanel(): void {
+  panelOpen.value = false
   panelIndex.value = -1
-  searchPanelServices(trigger.value)
+  trigger.value = selected.value?.name ?? ''
 }
 
 /** Arrow up/down + Enter navigation inside the service dropdown. */
@@ -827,6 +931,7 @@ onMounted(async () => {
           v-for="p in platformChips"
           :key="p"
           type="button"
+          :data-platform-chip="p"
           class="flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition-all active:scale-95"
           :class="
             platform === p
@@ -848,7 +953,7 @@ onMounted(async () => {
          form that follows it in the DOM. -->
     <div
       class="glass rounded-2xl p-5 shadow-card sm:p-7 transition-shadow"
-      :class="panelOpen || searchOpen ? 'relative z-50 shadow-glow' : ''"
+      :class="panelOpen || searchOpen || categoryOpen ? 'relative z-50 shadow-glow' : ''"
     >
       <section class="space-y-4">
         <div class="flex items-center gap-2.5">
@@ -867,9 +972,9 @@ onMounted(async () => {
           <input
             v-model="search"
             type="search"
-            placeholder="Search all services… e.g. Facebook Live"
+            placeholder="Search all services… e.g. Facebook Live Stream"
             class="relative z-20 h-12 w-full rounded-xl border border-ink/10 bg-ink/5 pl-10 pr-4 text-sm text-ink placeholder:text-ink/30 transition-colors focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
-            @focus="searchOpen = true; closePanel(); highlightedIndex = -1"
+            @focus="searchOpen = true; closePanel(); closeCategory(); highlightedIndex = -1"
             @input="onSearchInput"
             @keydown="onSearchKeydown"
             @keydown.esc="closeSearch"
@@ -879,47 +984,50 @@ onMounted(async () => {
           <div v-if="searchOpen" class="fixed inset-0 z-10" @click="closeSearch" />
 
           <!-- Live results dropdown: click a result to auto-pick it + its category -->
-          <Transition name="fade">
+          <Transition name="drop">
             <div
               v-if="searchOpen && search.trim()"
               class="absolute z-40 mt-2 w-full overflow-hidden rounded-2xl border border-ink/10 bg-card/95 shadow-glow backdrop-blur-xl"
             >
               <div ref="searchListEl" class="max-h-80 overflow-y-auto p-1.5">
-                <button
-                  v-for="(s, index) in searchDropdownServices"
-                  :key="s._id"
-                  type="button"
-                  class="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-ink/5"
-                  :class="index === highlightedIndex ? 'bg-ink/10 ring-1 ring-brand-400/40' : ''"
-                  @click="selectServiceFromSearch(s)"
-                >
-                  <span class="min-w-0">
-                    <span class="block truncate text-sm font-medium text-ink">{{ s.name }}</span>
-                    <span class="mt-0.5 block truncate text-xs text-ink/40">
-                      {{ categoryLabel(s) }} · {{ SERVICE_TYPE_LABEL[s.type] ?? s.type }}
+                <!-- Matching services (click to auto-pick + auto-set category) —
+                     a clean flat list, no platform icons and no category rows. -->
+                <template v-if="searchDropdownServices.length">
+                  <button
+                    v-for="(s, index) in searchDropdownServices"
+                    :key="s._id"
+                    type="button"
+                    data-search-service
+                    class="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-ink/5"
+                    :class="index === highlightedIndex ? 'bg-ink/10 ring-1 ring-brand-400/40' : ''"
+                    @mousedown.prevent
+                    @click="selectServiceFromSearch(s)"
+                  >
+                    <span class="min-w-0">
+                      <span class="block truncate text-sm font-medium text-ink">{{ s.name }}</span>
+                      <span class="mt-0.5 block truncate text-xs text-ink/40">
+                        {{ categoryLabel(s) }} · {{ SERVICE_TYPE_LABEL[s.type] ?? s.type }}
+                      </span>
                     </span>
-                  </span>
-                  <span class="shrink-0 text-right">
-                    <span class="block text-xs font-semibold text-emerald-300">
-                      {{ formatUnitPrice(s.pricePerUnit, s.currency) }}
+                    <span class="shrink-0 text-right">
+                      <span class="block text-xs font-semibold text-emerald-300">
+                        {{ formatUnitPrice(s.pricePerUnit, s.currency) }}
+                      </span>
+                      <span class="block text-[10px] text-ink/35">
+                        {{ formatNumber(s.min) }}–{{ formatNumber(s.max) }}
+                      </span>
                     </span>
-                    <span class="block text-[10px] text-ink/35">
-                      {{ formatNumber(s.min) }}–{{ formatNumber(s.max) }}
-                    </span>
-                  </span>
-                </button>
+                  </button>
+                </template>
 
                 <p
-                  v-if="!loading && !searchPending && searchDropdownServices.length === 0"
+                  v-if="
+                    searchDropdownServices.length === 0 &&
+                    (allServices.length > 0 || services.length > 0)
+                  "
                   class="px-3 py-6 text-center text-sm text-ink/40"
                 >
-                  No services found for “{{ search.trim() }}”.
-                </p>
-                <p
-                  v-else-if="(loading || searchPending) && searchDropdownServices.length === 0"
-                  class="space-y-2 px-3 py-4"
-                >
-                  <BaseSkeleton v-for="n in 3" :key="n" class="h-10 w-full" />
+                  No results found for “{{ search.trim() }}”.
                 </p>
               </div>
             </div>
@@ -927,15 +1035,89 @@ onMounted(async () => {
         </div>
 
         <div class="grid gap-4 sm:grid-cols-2">
-          <!-- Category -->
-          <BaseSelect
-            :model-value="categoryId"
-            label="Category"
-            :options="categoryOptions"
-            @update:model-value="categoryId = $event; changeCategory()"
-          />
+          <!-- Category — searchable combobox: type to filter, click or Enter to select -->
+          <div class="block">
+            <span class="mb-1.5 block text-sm font-medium text-ink/80">Category</span>
+            <div class="relative">
+              <Search
+                class="pointer-events-none absolute left-3.5 top-1/2 z-30 h-4 w-4 -translate-y-1/2 text-ink/35"
+              />
+              <input
+                ref="categoryTriggerEl"
+                v-model="categorySearch"
+                type="text"
+                role="combobox"
+                :aria-expanded="categoryOpen"
+                placeholder="Search or select a category…"
+                autocomplete="off"
+                spellcheck="false"
+                class="relative z-30 h-11 w-full rounded-xl border border-ink/10 bg-ink/5 pl-10 pr-10 text-sm text-ink placeholder:text-ink/30 transition-colors focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
+                @focus="openCategoryPanel"
+                @input="onCategoryInput"
+                @keydown="onCategoryKeydown"
+                @keydown.esc="closeCategory"
+                @blur="closeCategory"
+              />
+              <button
+                type="button"
+                aria-label="Toggle category list"
+                class="absolute right-2.5 top-1/2 z-30 -translate-y-1/2 rounded-lg p-1.5 text-ink/40 transition-colors hover:bg-ink/5 hover:text-ink"
+                @mousedown.prevent
+                @click="toggleCategoryPanel"
+              >
+                <ChevronDown
+                  class="h-4 w-4 transition-transform duration-150"
+                  :class="categoryOpen ? 'rotate-180' : ''"
+                />
+              </button>
 
-          <!-- Service combobox — type to search, click or Enter to select -->
+              <!-- Click-away overlay -->
+              <div v-if="categoryOpen" class="fixed inset-0 z-20" @click="closeCategory" />
+
+              <Transition name="drop">
+                <div
+                  v-if="categoryOpen"
+                  class="absolute z-40 mt-2 w-full overflow-hidden rounded-2xl border border-ink/10 bg-card/95 shadow-glow backdrop-blur-xl"
+                >
+                  <div ref="categoryListEl" class="max-h-64 overflow-y-auto p-1.5">
+                    <button
+                      v-for="(row, index) in categoryRows"
+                      :key="row.value"
+                      type="button"
+                      :data-category-option="row.label"
+                      class="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-ink/5"
+                      :class="
+                        categoryId === row.value
+                          ? 'bg-brand-500/15'
+                          : index === categoryIndex
+                            ? 'bg-ink/10 ring-1 ring-brand-400/40'
+                            : ''
+                      "
+                      @mousedown.prevent
+                      @click="selectCategoryRow(row)"
+                    >
+                      <Check
+                        v-if="categoryId === row.value"
+                        class="h-3.5 w-3.5 shrink-0 text-brand-300"
+                      />
+                      <span class="min-w-0">
+                        <span class="block truncate text-sm font-medium text-ink">{{ row.label }}</span>
+                      </span>
+                    </button>
+
+                    <p
+                      v-if="categoryRows.length === 1"
+                      class="px-3 py-6 text-center text-sm text-ink/40"
+                    >
+                      No categories match “{{ categorySearch.trim() }}”.
+                    </p>
+                  </div>
+                </div>
+              </Transition>
+            </div>
+          </div>
+
+          <!-- Service — read-only trigger: click opens the grouped catalogue -->
           <div class="block">
             <span class="mb-1.5 block text-sm font-medium text-ink/80">Service</span>
             <div class="relative">
@@ -943,29 +1125,47 @@ onMounted(async () => {
                 class="pointer-events-none absolute left-3.5 top-1/2 z-30 h-4 w-4 -translate-y-1/2 text-ink/35"
               />
               <input
+                ref="serviceTriggerEl"
                 v-model="trigger"
                 type="text"
                 role="combobox"
+                readonly
                 :aria-expanded="panelOpen"
-                placeholder="Search or select a service…"
-                autocomplete="off"
-                spellcheck="false"
-                class="relative z-30 h-11 w-full rounded-xl border border-ink/10 bg-ink/5 pl-10 pr-10 text-sm text-ink placeholder:text-ink/30 transition-colors focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
+                placeholder="Select a service…"
+                class="relative z-30 h-11 w-full cursor-pointer rounded-xl border border-ink/10 bg-ink/5 pl-10 pr-10 text-sm text-ink placeholder:text-ink/30 transition-colors focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
                 @focus="openServicePanel"
-                @input="onPanelInput"
+                @click="openServicePanel"
                 @keydown="onPanelKeydown"
                 @keydown.esc="closePanel"
                 @blur="closePanel"
               />
-              <ChevronDown
-                class="pointer-events-none absolute right-3.5 top-1/2 z-30 h-4 w-4 -translate-y-1/2 text-ink/40 transition-transform"
-                :class="panelOpen ? 'rotate-180' : ''"
-              />
+              <button
+                v-if="selected"
+                type="button"
+                aria-label="Clear service"
+                class="absolute right-9 top-1/2 z-30 -translate-y-1/2 rounded-full p-1 text-ink/40 transition-colors hover:bg-ink/10 hover:text-ink"
+                @mousedown.prevent
+                @click="clearService"
+              >
+                <XCircle class="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                aria-label="Toggle service list"
+                class="absolute right-2.5 top-1/2 z-30 -translate-y-1/2 rounded-lg p-1 text-ink/40 transition-colors hover:bg-ink/5 hover:text-ink"
+                @mousedown.prevent
+                @click="toggleServicePanel"
+              >
+                <ChevronDown
+                  class="h-4 w-4 transition-transform duration-150"
+                  :class="panelOpen ? 'rotate-180' : ''"
+                />
+              </button>
 
               <!-- Click-away overlay -->
               <div v-if="panelOpen" class="fixed inset-0 z-20" @click="closePanel" />
 
-              <Transition name="fade">                <div v-if="panelOpen"
+              <Transition name="drop">                <div v-if="panelOpen"
                   class="absolute z-40 mt-2 w-full overflow-hidden rounded-2xl border border-ink/10 bg-card/95 shadow-glow backdrop-blur-xl"
                 >
                   <div ref="panelListEl" class="max-h-96 overflow-y-auto p-1.5">
@@ -1064,7 +1264,7 @@ onMounted(async () => {
           <button
             v-if="loadError"
             class="inline-flex items-center gap-1 font-medium text-brand-300 hover:text-brand-200"
-            @click="loadServices"
+            @click="loadServices()"
           >
             <RotateCcw class="h-3 w-3" /> {{ loadError }} — retry
           </button>
@@ -1355,13 +1555,14 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+/* Ultra-fast, smooth dropdown open/close — instant feel, zero lag. */
+.drop-enter-active,
+.drop-leave-active {
+  transition: opacity 0.07s ease-out, transform 0.07s ease-out;
 }
-.fade-enter-from,
-.fade-leave-to {
+.drop-enter-from,
+.drop-leave-to {
   opacity: 0;
-  transform: translateY(-4px);
+  transform: translateY(-3px);
 }
 </style>
