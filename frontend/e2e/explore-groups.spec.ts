@@ -106,10 +106,13 @@ test('search-all finds a service; selecting it shows details and the order form'
   page,
 }) => {
   // The search box searches the WHOLE catalogue (not a per-category grid)
-  // and shows a LIVE dropdown of matching services as you type.
+  // and shows a LIVE ranked dropdown of matching services as you type.
   await page.getByPlaceholder(/Search all services/).fill('Facebook Page Likes')
-  await expect(page.getByText(/1 result/)).toBeVisible()
-  await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toBeVisible()
+  await expect(page.getByText(/results/)).toBeVisible()
+  // The best match (all three words) leads the ranked list.
+  await expect(page.locator('[data-search-service]').first()).toContainText(
+    'Facebook Page Likes',
+  )
 
   // Clicking a result in the search dropdown picks it for ordering AND
   // auto-sets the Category dropdown to the service's category.
@@ -147,14 +150,16 @@ test('live search shows a flat services-only list with no platform icons', async
   await expect(page.getByPlaceholder(/Search or select a category/)).toHaveValue('Facebook')
 })
 
-test('multi-word search: every word must match (AND across name + category)', async ({
+test('multi-word search ranks best matches first across name + category', async ({
   page,
 }) => {
-  // "facebook post" → term 'facebook' matches the category, 'post' matches
-  // the name — only Facebook Post Likes survives.
+  // "facebook post" → Facebook Post Likes matches BOTH words, Facebook Page
+  // Likes only 'facebook' — so Post Likes leads and Page Likes trails behind
+  // (ranked search: partial matches are included, best first).
   await page.getByPlaceholder(/Search all services/).fill('facebook post')
   await expect(page.getByRole('button', { name: /Facebook Post Likes/ })).toBeVisible()
-  await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toBeVisible()
+  await expect(page.locator('[data-search-service]').first()).toContainText('Facebook Post Likes')
 
   // Clicking the result still auto-picks the service and its category.
   await page.getByRole('button', { name: /Facebook Post Likes/ }).click()
@@ -165,13 +170,17 @@ test('multi-word search: every word must match (AND across name + category)', as
 test('multi-word search matches across service name and category words', async ({
   page,
 }) => {
-  // "tiktok views" → the name 'TikTok Views (High Retention)' matches both
-  // words; plain 'TikTok Followers' fails the 'views' term.
+  // "tiktok views" → 'TikTok Views (High Retention)' matches both words and
+  // leads; 'TikTok Followers' only matches 'tiktok' (its category) so it
+  // trails in the ranked list instead of disappearing.
   await page.getByPlaceholder(/Search all services/).fill('tiktok views')
   await expect(
     page.getByRole('button', { name: /TikTok Views \(High Retention\)/ }),
   ).toBeVisible()
-  await expect(page.getByRole('button', { name: /TikTok Followers/ })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /TikTok Followers/ })).toBeVisible()
+  await expect(page.locator('[data-search-service]').first()).toContainText(
+    'TikTok Views (High Retention)',
+  )
 })
 
 test('chevron buttons toggle their dropdowns open and closed', async ({ page }) => {

@@ -316,28 +316,33 @@ function searchTerms(q: string): string[] {
   return q.trim().toLowerCase().split(/\s+/).filter(Boolean)
 }
 
-/** True when EVERY term appears somewhere in the given text (AND search). */
-function matchesAllTerms(text: string, terms: string[]): boolean {
-  const t = text.toLowerCase()
-  return terms.every((term) => t.includes(term))
-}
-
 /**
  * Services listed under the search box while the user types (instant,
- * client-side). Multi-word queries AND-match every word against the service
- * name, its category and its description — "facebook live stream" finds
- * Facebook live-stream services without quoting. No platform icons, no
- * category rows — a clean flat list of matching services.
+ * client-side). This is a RANKED search across the WHOLE catalogue: every
+ * service whose name, category or description contains ANY word of the query
+ * is included, ordered by how many words it matches (a full "facebook live
+ * stream" match leads; a partial "facebook"-only match trails). So a query
+ * like "facebook live stream" always surfaces the right services — even when
+ * no single service contains every word literally — instead of returning an
+ * empty list. No platform icons, no category rows — a clean flat list.
  */
 const searchDropdownServices = computed<Service[]>(() => {
   const terms = searchTerms(search.value)
   if (!terms.length) return []
   const source = allServices.value.length ? allServices.value : services.value
-  return source.filter((s) => {
-    const cat = categoryLabel(s)
-    const desc = s.description ?? ''
-    return matchesAllTerms(`${s.name} ${cat} ${desc}`, terms)
-  })
+  const scored: Array<{ service: Service; score: number }> = []
+  for (const s of source) {
+    const haystack = `${s.name} ${categoryLabel(s)} ${s.description ?? ''}`.toLowerCase()
+    let score = 0
+    for (const term of terms) {
+      if (haystack.includes(term)) score++
+    }
+    if (score > 0) scored.push({ service: s, score })
+  }
+  // Best matches first, then cheapest — a real SMM-panel-style search.
+  return scored
+    .sort((a, b) => b.score - a.score || a.service.pricePerUnit - b.service.pricePerUnit)
+    .map((s) => s.service)
 })
 
 /**
@@ -1257,8 +1262,8 @@ onMounted(async () => {
             <template v-else-if="platform">
               {{ platformLabel(platform) }} ·
             </template>
-            {{ services.length.toLocaleString() }} result{{
-              services.length === 1 ? '' : 's'
+            {{ (search.trim() ? searchDropdownServices.length : services.length).toLocaleString() }} result{{
+              (search.trim() ? searchDropdownServices.length : services.length) === 1 ? '' : 's'
             }}
           </span>
           <button

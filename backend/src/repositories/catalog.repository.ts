@@ -69,7 +69,32 @@ export class ServiceRepository extends BaseRepository<Service> {
       filter.category = { $in: platformIds }
     }
     if (params.featured) filter.isFeatured = true
-    if (params.search) filter.name = { $regex: params.search, $options: 'i' }
+    if (params.search) {
+      // Multi-word queries: split into words and require EVERY word to match
+      // the service name, description or category name — so "facebook live
+      // stream" finds Facebook live-stream services without needing the whole
+      // phrase in a single field.
+      const terms = params.search.trim().toLowerCase().split(/\s+/).filter(Boolean)
+      const termFilters = await Promise.all(
+        terms.map(async (term) => {
+          const esc = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+          const catIds = await CategoryModel.find({ name: { $regex: esc, $options: 'i' } })
+            .select('_id')
+            .lean()
+            .exec()
+          const ors: FilterQuery<Service>[] = [
+            { name: { $regex: esc, $options: 'i' } },
+            { description: { $regex: esc, $options: 'i' } },
+          ]
+          if (catIds.length) ors.push({ category: { $in: catIds.map((c) => String(c._id)) } })
+          return { $or: ors }
+        }),
+      )
+      // A whitespace-only search yields no terms — guard so an empty $and
+      // never silently matches every service.
+      if (termFilters.length === 1) Object.assign(filter, termFilters[0])
+      else if (termFilters.length > 1) filter.$and = termFilters
+    }
     if (params.type) filter.type = params.type
     if (params.refill) filter.refill = true
     if (params.cancel) filter.cancel = true
