@@ -166,13 +166,26 @@ async function loadServices(seq?: number): Promise<void> {
   }
 }
 
-watchDebounced([search], () => void loadServices(++searchSeq), { debounce: 120 })
+watchDebounced(
+  [search],
+  () => {
+    // Typing is served 100% client-side by the ranked search over the cached
+    // full catalogue — never hit the server per keystroke (fast, no rate-limit
+    // spikes, no request leak). While a query is active we only (re)trigger the
+    // idempotent full-catalogue load — it retries a failed mount-time load and
+    // shares one in-flight promise, so no duplicate requests. The search
+    // endpoint is only re-queried when browsing with an EMPTY box.
+    if (!search.value.trim()) void loadServices(++searchSeq)
+    else void loadAllServices()
+  },
+  { debounce: 120 },
+)
 
 /**
  * A browse-filter switch is a fresh start: drop any active search, deselect
  * the service and clear the order form so the user picks a service for the
- * new category/platform. (Opening the dropdown afterwards still reveals the
- * whole catalogue — changing their mind stays one click away.)
+ * new category/platform. (The service dropdown afterwards shows ONLY the new
+ * filter's services — grouped, with no other categories leaking in.)
  */
 function resetOrderFlow(): void {
   search.value = ''
@@ -209,6 +222,12 @@ let allServicesLoaded = false
 /** Highest page already merged into allServices (1-based) — a retry after a
  *  partial failure resumes from the next page instead of restarting. */
 let allServicesPage = 0
+/**
+ * In-flight guard: fast typing must never spawn a SECOND full pagination
+ * loop while the first is still running (each loop is N × 1,000-row
+ * requests). Concurrent callers share the same promise.
+ */
+let allServicesPromise: Promise<void> | null = null
 
 /** Dedupe-append services into the cached full catalogue. */
 function mergeAllServices(items: Service[]): void {
@@ -220,25 +239,58 @@ function mergeAllServices(items: Service[]): void {
   }
 }
 
-async function loadAllServices(): Promise<void> {
-  if (allServicesLoaded) return
-  try {
-    const first = await servicesApi.list({ limit: 1000 })
-    // Commit page 1 immediately so a later failure never discards it.
-    mergeAllServices(first.items)
-    allServicesPage = Math.max(allServicesPage, 1)
-    const pages = Math.ceil(first.total / 1000)
-    for (let page = allServicesPage + 1; page <= pages; page++) {
-      const res = await servicesApi.list({ limit: 1000, page })
-      mergeAllServices(res.items)
-      allServicesPage = page
-    }
-    allServicesLoaded = true
-  } catch {
-    /* Keep whatever pages merged so far — a failed page never discards the
-       rest, and the union with the server list still fills the dropdown. */
+/** Loads the FULL catalogue (every page). Idempotent + re-entrant: concurrent
+ *  callers share one in-flight promise instead of firing duplicate loops. */
+function loadAllServices(): Promise<void> {
+  if (allServicesLoaded) return Promise.resolve()
+  if (!allServicesPromise) {
+    allServicesPromise = (async () => {
+      try {
+        const first = await servicesApi.list({ limit: 1000 })
+        // Commit page 1 immediately so a later failure never discards it.
+        mergeAllServices(first.items)
+        allServicesPage = Math.max(allServicesPage, 1)
+        const pages = Math.ceil(first.total / 1000)
+        for (let page = allServicesPage + 1; page <= pages; page++) {
+          const res = await servicesApi.list({ limit: 1000, page })
+          mergeAllServices(res.items)
+          allServicesPage = page
+        }
+        allServicesLoaded = true
+      } catch {
+        /* Keep whatever pages merged so far — a failed page never discards the
+           rest, and the union with the server list still fills the dropdown. */
+      }
+    })().finally(() => {
+      allServicesPromise = null
+    })
   }
+  return allServicesPromise
 }
+
+/**
+ * Prebuilt lowercased search haystacks (name + category + description) —
+ * built once per service and reused across keystrokes, so typing only runs
+ * cheap substring checks instead of re-concatenating + re-lowercasing every
+ * service on every input event.
+ */
+const searchHaystackById = new Map<string, string>()
+function searchHaystack(s: Service): string {
+  let haystack = searchHaystackById.get(s._id)
+  if (haystack === undefined) {
+    haystack = `${s.name} ${categoryLabel(s)} ${s.description ?? ''}`.toLowerCase()
+    searchHaystackById.set(s._id, haystack)
+  }
+  return haystack
+}
+
+// Categories load asynchronously and their names feed the haystack — rebuild
+// once they arrive (and whenever the browse list is replaced) so search never
+// scores against a stale 'General' label.
+watch(
+  [() => store.categories, () => services.value],
+  () => searchHaystackById.clear(),
+)
 
 interface PanelGroup {
   label: string
@@ -257,20 +309,51 @@ function categoryLabel(service: Service): string {
 /**
  * Rows shown in the service dropdown, sectioned like a real SMM panel. The
  * Service field is a read-only trigger — no typing search here; search lives
- * in the Find-your-service box and the Category combobox. Opening the field
- * always shows the WHOLE catalogue grouped by category, so browsing by group
- * is one scroll away. The active category (or the active platform's
- * categories) leads the order; the rest follow the curated category order.
+ * in the Find-your-service box and the Category combobox.
+ *
+ * SCOPED to the active filter, like a real SMM panel:
+ *   - a selected category shows ONLY that category's services (one group),
+ *   - an active platform chip shows only that platform's categories,
+ *   - with no filter the WHOLE catalogue appears grouped by category.
+ * No other categories' services ever leak in while a filter is active.
  * Services inside a group are sorted by price, cheapest first.
  */
 const panelGroups = computed<PanelGroup[]>(() => {
-  // Merge the filtered services with the rest of the catalogue, then bucket
-  // every service under its category name.
-  const preferred = services.value
+  const activeCatId = categoryId.value
+  const activeName = activeCatId
+    ? (store.categories.find((c) => c._id === activeCatId)?.name ?? '')
+    : ''
+  const keyword = platform.value ? platform.value.toLowerCase() : ''
+
+  // A service belongs in the dropdown only when it matches the active
+  // category id AND (if a platform chip is on) the platform keyword. The
+  // platform check matches by CATEGORY NAME containing the keyword — the same
+  // rule categoryOptions and the backend use — so the dropdown never
+  // contradicts the server-filtered browse list (a real provider catalogue
+  // names categories "Facebook Video", "TikTok Views", … regardless of the
+  // category's platform field).
+  const inScope = (s: Service): boolean => {
+    if (activeCatId) {
+      const cat = s.category
+      const sid =
+        cat && typeof cat === 'object' && cat._id
+          ? String(cat._id)
+          : typeof cat === 'string'
+            ? cat
+            : ''
+      if (sid !== activeCatId) return false
+    }
+    if (keyword && !categoryLabel(s).toLowerCase().includes(keyword)) return false
+    return true
+  }
+
+  // Merge the scoped browse list with the scoped rest of the catalogue, then
+  // bucket every in-scope service under its category name.
+  const preferred = services.value.filter(inScope)
   const preferredIds = new Set(preferred.map((s) => s._id))
   const merged = [
     ...preferred,
-    ...allServices.value.filter((s) => !preferredIds.has(s._id)),
+    ...allServices.value.filter((s) => !preferredIds.has(s._id) && inScope(s)),
   ]
 
   const byLabel = new Map<string, Service[]>()
@@ -281,18 +364,14 @@ const panelGroups = computed<PanelGroup[]>(() => {
     else byLabel.set(label, [s])
   }
 
-  const activeName = categoryId.value
-    ? (store.categories.find((c) => c._id === categoryId.value)?.name ?? '')
-    : ''
-  const catByName = new Map(store.categories.map((c) => [c.name, c]))
   const curatedIndex = new Map(store.categories.map((c, i) => [c.name, i]))
 
   // Group order: active category first, then the active platform's
-  // categories, then the rest in curated order (unknown names at the end).
+  // categories (name-based, same rule as inScope), then the rest in curated
+  // order (unknown names at the end).
   const rank = (label: string): number => {
     if (activeName && label === activeName) return -1
-    const cat = catByName.get(label)
-    if (platform.value && cat?.platform === platform.value) {
+    if (keyword && label.toLowerCase().includes(keyword)) {
       return curatedIndex.get(label) ?? 1000
     }
     return 1000 + (curatedIndex.get(label) ?? 2000)
@@ -383,7 +462,8 @@ function termTokens(term: string): string[] {
  * server's search results, so the dropdown can never silently come up empty
  * — even when the cached load failed or a big catalogue paginated the
  * matching services beyond the first page. No platform icons, no category
- * rows — a clean flat list.
+ * rows — a clean flat list. Haystacks are memoized (see searchHaystack) so a
+ * keystroke only does substring checks — no string rebuilding per service.
  */
 const searchDropdownServices = computed<Service[]>(() => {
   const terms = searchTerms(search.value)
@@ -397,7 +477,7 @@ const searchDropdownServices = computed<Service[]>(() => {
 
   const scored: Array<{ service: Service; score: number }> = []
   for (const s of source) {
-    const haystack = `${s.name} ${categoryLabel(s)} ${s.description ?? ''}`.toLowerCase()
+    const haystack = searchHaystack(s)
     let score = 0
     for (const term of terms) {
       if (termTokens(term).some((t) => haystack.includes(t))) score++
@@ -409,6 +489,12 @@ const searchDropdownServices = computed<Service[]>(() => {
     .sort((a, b) => b.score - a.score || a.service.pricePerUnit - b.service.pricePerUnit)
     .map((s) => s.service)
 })
+
+/** Rendered slice of the ranked results (keeps the DOM light on broad
+ *  queries) — keyboard navigation works against this same capped list. */
+const searchDropdownResults = computed<Service[]>(() =>
+  searchDropdownServices.value.slice(0, 100),
+)
 
 /**
  * Category id of a service, so picking it can auto-set the Category dropdown.
@@ -544,7 +630,7 @@ watch(
 
 /** Arrow up/down + Enter navigation for the search results dropdown. */
 function onSearchKeydown(event: KeyboardEvent): void {
-  const list = searchDropdownServices.value
+  const list = searchDropdownResults.value
   if (list.length === 0) return
   if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
     event.preventDefault()
@@ -1066,9 +1152,9 @@ onMounted(async () => {
               <div ref="searchListEl" class="max-h-80 overflow-y-auto p-1.5">
                 <!-- Matching services (click to auto-pick + auto-set category) —
                      a clean flat list, no platform icons and no category rows. -->
-                <template v-if="searchDropdownServices.length">
+                <template v-if="searchDropdownResults.length">
                   <button
-                    v-for="(s, index) in searchDropdownServices"
+                    v-for="(s, index) in searchDropdownResults"
                     :key="s._id"
                     type="button"
                     data-search-service

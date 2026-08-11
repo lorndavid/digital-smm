@@ -33,8 +33,15 @@ export default defineConfig({
   webServer: [
     {
       // Test backend (mock provider, frozen mock, webhook secret, port 4001).
+      // SUPER_ADMIN_* seeds an admin account (seedSuperAdmin) so the admin
+      // dashboard can be exercised end-to-end too.
       command: 'npm run start:browser-test',
       cwd: '../backend',
+      env: {
+        ...process.env,
+        SUPER_ADMIN_EMAIL: 'superadmin@digitalsmm.test',
+        SUPER_ADMIN_PASSWORD: 'SuperAdminTest!2026',
+      },
       url: 'http://localhost:4001/api/health',
       reuseExistingServer: false,
       timeout: 120_000,
@@ -45,6 +52,15 @@ export default defineConfig({
       cwd: '.',
       env: { ...process.env, VITE_PROXY_TARGET: 'http://localhost:4001' },
       url: 'http://localhost:5199',
+      reuseExistingServer: false,
+      timeout: 120_000,
+    },
+    {
+      // Admin dev server proxying /api to the SAME test backend.
+      command: 'npm run dev -- --port 5198 --strictPort',
+      cwd: '../admin',
+      env: { ...process.env, VITE_PROXY_TARGET: 'http://localhost:4001' },
+      url: 'http://localhost:5198',
       reuseExistingServer: false,
       timeout: 120_000,
     },

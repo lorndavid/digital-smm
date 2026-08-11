@@ -162,7 +162,7 @@ export class ServiceRepository extends BaseRepository<Service> {
     return { items: docs, total, page, limit }
   }
 
-  listAdmin(params: {
+  async listAdmin(params: {
     search?: string
     page?: number
     limit?: number
@@ -170,7 +170,30 @@ export class ServiceRepository extends BaseRepository<Service> {
     status?: 'active' | 'inactive' | 'featured'
   }) {
     const filter: FilterQuery<Service> = {}
-    if (params.search) filter.name = { $regex: params.search, $options: 'i' }
+    if (params.search) {
+      // Same alias-aware search as the storefront — multi-word queries match
+      // ANY expanded token against name/description/category name, so
+      // "facebook live stream" surfaces FB live services (and plain Facebook
+      // ones) instead of returning empty when no name contains every word.
+      const terms = params.search.trim().toLowerCase().split(/\s+/).filter(Boolean)
+      if (terms.length) {
+        // Dedupe tokens — 'live' and 'stream' both expand to overlapping sets.
+        const tokens = [...new Set(terms.flatMap((term) => SEARCH_ALIASES[term] ?? [term]))]
+        const alternation = tokens
+          .map((token) => token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+          .join('|')
+        const regex = { $regex: alternation, $options: 'i' }
+        const catIds = await CategoryModel.find({
+          name: { $regex: alternation, $options: 'i' },
+        })
+          .select('_id')
+          .lean()
+          .exec()
+        const ors: FilterQuery<Service>[] = [{ name: regex }, { description: regex }]
+        if (catIds.length) ors.push({ category: { $in: catIds.map((c) => String(c._id)) } })
+        filter.$or = ors
+      }
+    }
     if (params.category) filter.category = params.category
     if (params.status === 'active') filter.isActive = true
     if (params.status === 'inactive') filter.isActive = false

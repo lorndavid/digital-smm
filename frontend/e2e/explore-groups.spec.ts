@@ -282,24 +282,24 @@ test('service field: click opens the grouped catalogue; Enter picks the highligh
   await expect(field).not.toHaveValue('')
 })
 
-test('platform chips filter the catalogue; the open combobox still shows everything', async ({
+test('platform chips scope the service dropdown to that platform only', async ({
   page,
 }) => {
   // Header shows platform chips (replacing the wallet balance card).
   const facebookChip = page.locator('[data-platform-chip="facebook"]')
   await expect(facebookChip).toBeVisible()
 
-  // Click Facebook → chip active; Facebook services lead the dropdown…
+  // Click Facebook → chip active; the Service dropdown shows ONLY Facebook
+  // services — no other platform's services leak in.
   await facebookChip.click()
   await expect(facebookChip).toHaveAttribute('aria-pressed', 'true')
 
   await page.getByPlaceholder(/Select a service/).click()
   await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toBeVisible()
-  // …but opening the dropdown reveals the WHOLE catalogue, so changing the
-  // service is never trapped inside the filtered platform.
-  await expect(page.getByRole('button', { name: /TikTok Followers/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /TikTok Followers/ })).toHaveCount(0)
+  await expect(page.locator('[data-group-label="TikTok"]')).toHaveCount(0)
 
-  // Click TikTok → the active chip switches.
+  // Click TikTok → the active chip switches and the dropdown scopes to it.
   const tiktokChip = page.locator('[data-platform-chip="tiktok"]')
   await tiktokChip.click()
   await expect(tiktokChip).toHaveAttribute('aria-pressed', 'true')
@@ -307,7 +307,7 @@ test('platform chips filter the catalogue; the open combobox still shows everyth
 
   await page.getByPlaceholder(/Select a service/).click()
   await expect(page.getByRole('button', { name: /TikTok Followers/ })).toBeVisible()
-  await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toHaveCount(0)
 })
 
 test('platform chip narrows the Category combobox to matching categories', async ({
@@ -349,43 +349,43 @@ test('clearing the Service selection removes the details and order form', async 
   await expect(page.getByLabel('Link to your page or post')).toHaveCount(0)
 })
 
-test('clicking the Service field with a chosen service opens the full catalogue', async ({
+test('clicking the Service field with a chosen service scopes to its category', async ({
   page,
 }) => {
-  // Pick a service — its name stays in the field.
+  // Pick a service — its name stays in the field and its category auto-sets.
   await page.getByPlaceholder(/Search all services/).fill('TikTok Followers')
   await pickService(page, 'TikTok Followers')
   await expect(page.getByPlaceholder(/Select a service/)).toHaveValue('TikTok Followers')
 
-  // Clicking the field opens the whole catalogue grouped by category.
+  // Clicking the field opens ONLY the chosen service's category group — no
+  // services from other categories appear.
+  await page.getByPlaceholder(/Select a service/).click()
+  await expect(page.locator('[data-group-label="TikTok"]')).toBeVisible()
+  await expect(page.getByRole('button', { name: /TikTok Followers/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toHaveCount(0)
+
+  // Clearing the category reveals the whole catalogue grouped again.
+  await page.getByPlaceholder(/Select a service/).press('Escape')
+  await page.getByPlaceholder(/Search or select a category/).click()
+  await page.locator('[data-category-option="All categories"]').click()
   await page.getByPlaceholder(/Select a service/).click()
   await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toBeVisible()
-  await expect(page.locator('[data-group-label="Facebook"]')).toBeVisible()
-
-  // Picking a different service auto-updates the details + order form. The
-  // row may sit below the panel's fold — scroll it into view first.
-  const fbRow = page.getByRole('button', { name: /Facebook Page Likes/ })
-  await fbRow.scrollIntoViewIfNeeded()
-  await fbRow.click()
-  await expect(page.getByRole('heading', { name: 'Facebook Page Likes', level: 3 })).toBeVisible()
-  await expect(page.getByPlaceholder(/Search or select a category/)).toHaveValue('Facebook')
 })
 
-test('category loads its services first; the open combobox shows every category', async ({
+test('a selected category scopes the service dropdown to that category only', async ({
   page,
 }) => {
   // Pick the Facebook category from the searchable combobox.
   await page.getByPlaceholder(/Search or select a category/).click()
   await page.locator('[data-category-option="Facebook"]').click()
 
-  // The Service field auto-loads the selected category's services first.
+  // The Service dropdown shows ONLY the selected category's services,
+  // grouped under its header — no other categories appear.
   await page.getByPlaceholder(/Select a service/).click()
+  await expect(page.locator('[data-group-label="Facebook"]')).toBeVisible()
   await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toBeVisible()
-
-  // Opening the dropdown to change the service shows ALL categories as
-  // their own groups — the active category leads but never cages the list.
-  await expect(page.getByRole('button', { name: /TikTok Followers/ })).toBeVisible()
-  await expect(page.locator('[data-group-label="TikTok"]')).toBeVisible()
+  await expect(page.getByRole('button', { name: /TikTok Followers/ })).toHaveCount(0)
+  await expect(page.locator('[data-group-label="TikTok"]')).toHaveCount(0)
 })
 
 test('typing a nonsense category shows the no-results message', async ({ page }) => {
@@ -435,9 +435,10 @@ test('changing the category resets the service and order form', async ({ page })
   await expect(page.getByRole('heading', { name: 'TikTok Followers', level: 3 })).toHaveCount(0)
   await expect(page.getByText('Pick a service above to get started.')).toBeVisible()
 
-  // The dropdown still reveals every category, so changing service is easy.
+  // The dropdown now shows only the new category's services.
   await page.getByPlaceholder(/Select a service/).click()
-  await expect(page.getByRole('button', { name: /TikTok Followers/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /TikTok Followers/ })).toHaveCount(0)
 })
 
 test('orders are paid from the wallet; empty balance prompts a top-up', async ({ page }) => {
