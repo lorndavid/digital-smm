@@ -263,6 +263,36 @@ test('category loads its services first; the open combobox shows every category'
   await expect(page.locator('[data-group-label="TikTok"]')).toBeVisible()
 })
 
+test('typing a nonsense query still shows the no-results message', async ({ page }) => {
+  const field = page.getByPlaceholder(/Search or select a service/)
+  await field.click()
+  await field.pressSequentially('zzzzzz-no-such-service')
+  await expect(page.getByText('No services match — try a different search or category.')).toBeVisible()
+})
+
+test('category group headers collapse and expand their services', async ({
+  page,
+}) => {
+  // Open the combobox — every category is its own collapsible group, and
+  // all groups start expanded.
+  await page.getByPlaceholder(/Search or select a service/).click()
+  const fbGroup = page.locator('[data-group-label="Facebook"]')
+  await expect(fbGroup).toBeVisible()
+  await expect(fbGroup).toHaveAttribute('aria-expanded', 'true')
+  const fbRow = page.getByRole('button', { name: /Facebook Page Likes/ })
+  await expect(fbRow).toBeVisible()
+
+  // Click the header → the group collapses and its services hide.
+  await fbGroup.click()
+  await expect(fbGroup).toHaveAttribute('aria-expanded', 'false')
+  await expect(fbRow).toHaveCount(0)
+
+  // Click again → expands, services come back.
+  await fbGroup.click()
+  await expect(fbGroup).toHaveAttribute('aria-expanded', 'true')
+  await expect(fbRow).toBeVisible()
+})
+
 test('changing the category resets the service and order form', async ({ page }) => {
   // Pick a service and fill the order form.
   await page.getByPlaceholder('Search all services…').fill('TikTok Followers')

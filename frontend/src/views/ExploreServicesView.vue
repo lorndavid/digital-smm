@@ -69,6 +69,8 @@ const trigger = ref('')
  */
 const triggerDirty = ref(false)
 const panelOpen = ref(false)
+/** Category group labels currently collapsed in the dropdown (rows hidden). */
+const collapsedGroups = ref<Set<string>>(new Set())
 /** Index of the keyboard-highlighted row in the service dropdown (-1 = none). */
 const panelIndex = ref(-1)
 /** Scrollable results container inside the service dropdown. */
@@ -158,6 +160,7 @@ function resetOrderFlow(): void {
   trigger.value = ''
   triggerDirty.value = false
   panelServices.value = []
+  collapsedGroups.value = new Set()
   closeSearch()
 }
 
@@ -217,7 +220,8 @@ function categoryLabel(service: Service): string {
  *  - Opened with no query: the WHOLE catalogue grouped by category — each
  *    category is its own section, so browsing by group is one scroll away.
  *    The active category (or the active platform's categories) leads the
- *    order; the rest follow the curated category order.
+ *    order; the rest follow the curated category order. Services inside a
+ *    group are sorted by price, cheapest first, like a real SMM panel.
  */
 const panelGroups = computed<PanelGroup[]>(() => {
   // A typed query filters; a plain open (click/focus, even with the old
@@ -270,7 +274,11 @@ const panelGroups = computed<PanelGroup[]>(() => {
 
   const groups: PanelGroup[] = [...byLabel.entries()]
     .sort((a, b) => rank(a[0]) - rank(b[0]) || a[0].localeCompare(b[0]))
-    .map(([label, items]) => ({ label, items }))
+    .map(([label, items]) => ({
+      label,
+      // Cheapest first inside each group (rate per 1,000 units).
+      items: [...items].sort((a, b) => a.pricePerUnit - b.pricePerUnit),
+    }))
 
   // The selected service is always visible at the very top of the list.
   if (selected.value && !groups.some((g) => g.items.some((s) => s._id === selected.value?._id))) {
@@ -279,8 +287,25 @@ const panelGroups = computed<PanelGroup[]>(() => {
   return groups
 })
 
-/** Flat projection of the dropdown rows — drives keyboard navigation. */
-const dropdownServices = computed<Service[]>(() => panelGroups.value.flatMap((g) => g.items))
+/**
+ * Flat projection of the VISIBLE dropdown rows — drives keyboard navigation.
+ * Rows inside collapsed groups are excluded so arrow-key indices stay aligned
+ * with what's actually on screen.
+ */
+const dropdownServices = computed<Service[]>(() =>
+  panelGroups.value.flatMap((g) => (isGroupCollapsed(g.label) ? [] : g.items)),
+)
+
+/**
+ * True when the panel has nothing to show at all — no visible rows AND no
+ * group holds any items. Collapsed groups with services keep this false, so
+ * collapsing every group never triggers a misleading "no results" message.
+ */
+const panelEmpty = computed(
+  () =>
+    dropdownServices.value.length === 0 &&
+    panelGroups.value.every((g) => g.items.length === 0),
+)
 
 /** Row id → flat index, so the keyboard highlight works across sections. */
 const panelIndexById = computed(() => new Map(dropdownServices.value.map((s, i) => [s._id, i])))
@@ -422,6 +447,19 @@ function selectServiceFromSearch(service: Service): void {
   panelIndex.value = -1
 }
 
+/** True when a category group's rows are hidden in the dropdown. */
+function isGroupCollapsed(label: string): boolean {
+  return collapsedGroups.value.has(label)
+}
+
+/** Toggles a category group between expanded and collapsed. */
+function toggleGroup(label: string): void {
+  const next = new Set(collapsedGroups.value)
+  if (next.has(label)) next.delete(label)
+  else next.add(label)
+  collapsedGroups.value = next
+}
+
 /** Opens the service dropdown (trigger's focus event). */
 function openServicePanel(): void {
   triggerDirty.value = false
@@ -429,6 +467,15 @@ function openServicePanel(): void {
   panelIndex.value = -1
   closeSearch()
   void loadAllServices()
+  // Keep the chosen service visible: expand its group if it was collapsed.
+  if (selected.value) {
+    const label = categoryLabel(selected.value)
+    if (collapsedGroups.value.has(label)) {
+      const next = new Set(collapsedGroups.value)
+      next.delete(label)
+      collapsedGroups.value = next
+    }
+  }
 }
 
 /** Closes the dropdown, restoring the selected service's name in the trigger. */
@@ -471,11 +518,14 @@ function onPanelKeydown(event: KeyboardEvent): void {
 }
 
 // Keep the highlighted service row visible while navigating with arrow keys.
+// Only rows tagged [data-service-row] count (group headers are buttons too).
 watch(
   panelIndex,
   (index) => {
     if (index < 0) return
-    panelListEl.value?.querySelectorAll('button')[index]?.scrollIntoView({ block: 'nearest' })
+    panelListEl.value
+      ?.querySelectorAll('button[data-service-row]')
+      [index]?.scrollIntoView({ block: 'nearest' })
   },
   { flush: 'post' },
 )
@@ -919,33 +969,46 @@ onMounted(async () => {
                   class="absolute z-40 mt-2 w-full overflow-hidden rounded-2xl border border-ink/10 bg-card/95 shadow-glow backdrop-blur-xl"
                 >
                   <div ref="panelListEl" class="max-h-96 overflow-y-auto p-1.5">
-                    <!-- Sectioned by category: each category is its own group,
-                         like a real SMM panel — changing the service is never
-                         trapped inside the current filter. -->
+                    <!-- Sectioned by category: each category is its own
+                         collapsible group, like a real SMM panel. Clicking a
+                         header expands/collapses its services; the active
+                         category leads but the list is never caged. -->
                     <template v-for="(group, gi) in panelGroups" :key="gi">
-                      <p
-                        v-if="group.label"
-                        :data-group-label="group.label"
-                        class="sticky top-0 z-10 bg-card/95 px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-ink/35 backdrop-blur"
-                      >
-                        {{ group.label }}
-                        <span class="ml-1.5 font-normal text-ink/25">{{ group.items.length }}</span>
-                      </p>
                       <button
-                        v-for="s in group.items"
-                        :key="s._id"
+                        v-if="group.label"
                         type="button"
-                        class="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-ink/5"
-                        :class="
-                          selected?._id === s._id
-                            ? 'bg-brand-500/15'
-                            : panelIndexById.get(s._id) === panelIndex
-                              ? 'bg-ink/10 ring-1 ring-brand-400/40'
-                              : ''
-                        "
+                        :data-group-label="group.label"
+                        :aria-expanded="!isGroupCollapsed(group.label)"
+                        class="sticky top-0 z-10 flex w-full items-center justify-between gap-2 bg-card/95 px-3 pb-1 pt-2 text-left text-[10px] font-semibold uppercase tracking-wider text-ink/35 backdrop-blur transition-colors hover:text-ink/60"
                         @mousedown.prevent
-                        @click="selectService(s)"
+                        @click="toggleGroup(group.label)"
                       >
+                        <span class="flex min-w-0 items-center gap-1.5">
+                          <ChevronDown
+                            class="h-3 w-3 shrink-0 text-ink/40 transition-transform duration-200"
+                            :class="isGroupCollapsed(group.label) ? '-rotate-90' : ''"
+                          />
+                          <span class="truncate">{{ group.label }}</span>
+                          <span class="ml-0.5 shrink-0 font-normal text-ink/25">{{ group.items.length }}</span>
+                        </span>
+                      </button>
+                      <template v-if="!isGroupCollapsed(group.label)">
+                        <button
+                          v-for="s in group.items"
+                          :key="s._id"
+                          type="button"
+                          data-service-row
+                          class="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-ink/5"
+                          :class="
+                            selected?._id === s._id
+                              ? 'bg-brand-500/15'
+                              : panelIndexById.get(s._id) === panelIndex
+                                ? 'bg-ink/10 ring-1 ring-brand-400/40'
+                                : ''
+                          "
+                          @mousedown.prevent
+                          @click="selectService(s)"
+                        >
                         <span class="min-w-0">
                           <span class="block truncate text-sm font-medium text-ink">
                             <Check
@@ -967,18 +1030,16 @@ onMounted(async () => {
                           </span>
                         </span>
                       </button>
+                      </template>
                     </template>
 
                     <p
-                      v-if="!loading && dropdownServices.length === 0"
+                      v-if="!loading && panelEmpty"
                       class="px-3 py-6 text-center text-sm text-ink/40"
                     >
                       No services match — try a different search or category.
                     </p>
-                    <p
-                      v-else-if="loading && dropdownServices.length === 0"
-                      class="space-y-2 px-3 py-4"
-                    >
+                    <p v-else-if="loading && panelEmpty" class="space-y-2 px-3 py-4">
                       <BaseSkeleton v-for="n in 4" :key="n" class="h-10 w-full" />
                     </p>
                   </div>
