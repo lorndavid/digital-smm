@@ -201,15 +201,23 @@ interface PanelGroup {
   items: Service[]
 }
 
+function categoryLabel(service: Service): string {
+  const cat = service.category
+  if (cat && typeof cat === 'object' && 'name' in cat) return cat.name
+  if (typeof cat === 'string') {
+    return store.categories.find((c) => c._id === cat)?.name ?? 'General'
+  }
+  return 'General'
+}
+
 /**
  * Rows shown in the service dropdown, sectioned like a real SMM panel:
  *  - While typing: one flat list (whole-catalogue server search + instant
  *    client filter).
- *  - Opened with no query: the currently filtered services first (labelled
- *    by category or platform — the "auto load" of the selected category),
- *    then ALL services from every other category under "All services" — so
- *    opening the dropdown to change the service always reveals the whole
- *    catalogue.
+ *  - Opened with no query: the WHOLE catalogue grouped by category — each
+ *    category is its own section, so browsing by group is one scroll away.
+ *    The active category (or the active platform's categories) leads the
+ *    order; the rest follow the curated category order.
  */
 const panelGroups = computed<PanelGroup[]>(() => {
   // A typed query filters; a plain open (click/focus, even with the old
@@ -226,19 +234,43 @@ const panelGroups = computed<PanelGroup[]>(() => {
     return [{ label: '', items }]
   }
 
+  // No query → merge the filtered services with the rest of the catalogue,
+  // then bucket every service under its category name.
   const preferred = services.value
   const preferredIds = new Set(preferred.map((s) => s._id))
-  const rest = allServices.value.filter((s) => !preferredIds.has(s._id))
+  const merged = [
+    ...preferred,
+    ...allServices.value.filter((s) => !preferredIds.has(s._id)),
+  ]
 
-  const preferredLabel = categoryId.value
-    ? (store.categories.find((c) => c._id === categoryId.value)?.name ?? 'Selected category')
-    : platform.value
-      ? platformLabel(platform.value)
-      : 'All services'
+  const byLabel = new Map<string, Service[]>()
+  for (const s of merged) {
+    const label = categoryLabel(s)
+    const list = byLabel.get(label)
+    if (list) list.push(s)
+    else byLabel.set(label, [s])
+  }
 
-  const groups: PanelGroup[] = []
-  if (preferred.length) groups.push({ label: preferredLabel, items: preferred })
-  if (rest.length) groups.push({ label: 'All services', items: rest })
+  const activeName = categoryId.value
+    ? (store.categories.find((c) => c._id === categoryId.value)?.name ?? '')
+    : ''
+  const catByName = new Map(store.categories.map((c) => [c.name, c]))
+  const curatedIndex = new Map(store.categories.map((c, i) => [c.name, i]))
+
+  // Group order: active category first, then the active platform's
+  // categories, then the rest in curated order (unknown names at the end).
+  const rank = (label: string): number => {
+    if (activeName && label === activeName) return -1
+    const cat = catByName.get(label)
+    if (platform.value && cat?.platform === platform.value) {
+      return curatedIndex.get(label) ?? 1000
+    }
+    return 1000 + (curatedIndex.get(label) ?? 2000)
+  }
+
+  const groups: PanelGroup[] = [...byLabel.entries()]
+    .sort((a, b) => rank(a[0]) - rank(b[0]) || a[0].localeCompare(b[0]))
+    .map(([label, items]) => ({ label, items }))
 
   // The selected service is always visible at the very top of the list.
   if (selected.value && !groups.some((g) => g.items.some((s) => s._id === selected.value?._id))) {
@@ -275,12 +307,6 @@ function searchPanelServices(q: string): void {
       // Keep whatever we have — the client-side filter still shows matches.
     }
   }, 350)
-}
-
-function categoryName(service: Service): string {
-  const cat = service.category
-  if (cat && typeof cat === 'object' && 'name' in cat) return cat.name
-  return ''
 }
 
 /** Services listed under the search box while the user types (instant). */
@@ -820,7 +846,7 @@ onMounted(async () => {
                   <span class="min-w-0">
                     <span class="block truncate text-sm font-medium text-ink">{{ s.name }}</span>
                     <span class="mt-0.5 block truncate text-xs text-ink/40">
-                      {{ categoryName(s) || 'General' }} · {{ SERVICE_TYPE_LABEL[s.type] ?? s.type }}
+                      {{ categoryLabel(s) }} · {{ SERVICE_TYPE_LABEL[s.type] ?? s.type }}
                     </span>
                   </span>
                   <span class="shrink-0 text-right">
@@ -893,15 +919,17 @@ onMounted(async () => {
                   class="absolute z-40 mt-2 w-full overflow-hidden rounded-2xl border border-ink/10 bg-card/95 shadow-glow backdrop-blur-xl"
                 >
                   <div ref="panelListEl" class="max-h-96 overflow-y-auto p-1.5">
-                    <!-- Sectioned: the selected category's services first, then
-                         the WHOLE catalogue — changing the service is never
+                    <!-- Sectioned by category: each category is its own group,
+                         like a real SMM panel — changing the service is never
                          trapped inside the current filter. -->
                     <template v-for="(group, gi) in panelGroups" :key="gi">
                       <p
                         v-if="group.label"
+                        :data-group-label="group.label"
                         class="sticky top-0 z-10 bg-card/95 px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-ink/35 backdrop-blur"
                       >
                         {{ group.label }}
+                        <span class="ml-1.5 font-normal text-ink/25">{{ group.items.length }}</span>
                       </p>
                       <button
                         v-for="s in group.items"
@@ -927,7 +955,7 @@ onMounted(async () => {
                             {{ s.name }}
                           </span>
                           <span class="mt-0.5 block truncate text-xs text-ink/40">
-                            {{ categoryName(s) || 'General' }} · {{ SERVICE_TYPE_LABEL[s.type] ?? s.type }}
+                            {{ categoryLabel(s) }} · {{ SERVICE_TYPE_LABEL[s.type] ?? s.type }}
                           </span>
                         </span>
                         <span class="shrink-0 text-right">

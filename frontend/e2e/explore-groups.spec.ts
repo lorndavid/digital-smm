@@ -236,7 +236,7 @@ test('clicking the Service field with a chosen service opens the full catalogue'
   // grouped by category (not a one-row filter of the old service name).
   await page.getByPlaceholder(/Search or select a service/).click()
   await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toBeVisible()
-  await expect(page.getByText('All services', { exact: true })).toBeVisible()
+  await expect(page.locator('[data-group-label="Facebook"]')).toBeVisible()
 
   // Picking a different service auto-updates the details + order form. The
   // row may sit below the panel's fold — scroll it into view first.
@@ -257,10 +257,10 @@ test('category loads its services first; the open combobox shows every category'
   await page.getByPlaceholder(/Search or select a service/).click()
   await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toBeVisible()
 
-  // Opening the dropdown to change the service shows ALL categories — the
-  // category filter leads the list but never cages it.
+  // Opening the dropdown to change the service shows ALL categories as
+  // their own groups — the active category leads but never cages the list.
   await expect(page.getByRole('button', { name: /TikTok Followers/ })).toBeVisible()
-  await expect(page.getByText('All services', { exact: true })).toBeVisible()
+  await expect(page.locator('[data-group-label="TikTok"]')).toBeVisible()
 })
 
 test('changing the category resets the service and order form', async ({ page }) => {
