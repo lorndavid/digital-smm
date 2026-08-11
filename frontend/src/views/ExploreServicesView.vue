@@ -61,6 +61,13 @@ const categoryId = ref('')
 
 /** Search text inside the service combobox trigger (client-side, instant). */
 const trigger = ref('')
+/**
+ * True while the user is actively typing in the combobox. A plain click or
+ * focus on the field — even with the selected service's name still in it —
+ * opens the FULL grouped catalogue instead of filtering by the stale text.
+ * Typing flips this on and filters live; selecting/clearing flips it off.
+ */
+const triggerDirty = ref(false)
 const panelOpen = ref(false)
 /** Index of the keyboard-highlighted row in the service dropdown (-1 = none). */
 const panelIndex = ref(-1)
@@ -81,10 +88,22 @@ const selected = ref<Service | null>(null)
 /** Active platform chip ('facebook', 'tiktok', … — '' = all platforms). */
 const platform = ref('')
 
-const categoryOptions = computed(() => [
-  { value: '', label: 'All categories' },
-  ...store.categories.map((c) => ({ value: c._id, label: c.name })),
-])
+/**
+ * Category dropdown options. When a platform chip is active, only categories
+ * whose name contains the platform keyword are listed (the same rule the
+ * backend uses to resolve a platform into category ids) — clicking "Facebook"
+ * shows Facebook categories only, "TikTok" shows TikTok ones, and so on.
+ */
+const categoryOptions = computed(() => {
+  const keyword = platform.value?.toLowerCase()
+  const cats = keyword
+    ? store.categories.filter((c) => c.name.toLowerCase().includes(keyword))
+    : store.categories
+  return [
+    { value: '', label: 'All categories' },
+    ...cats.map((c) => ({ value: c._id, label: c.name })),
+  ]
+})
 
 /**
  * Platform chips shown in the header — one per platform that actually has
@@ -137,6 +156,7 @@ function resetOrderFlow(): void {
   clearOrder()
   selected.value = null
   trigger.value = ''
+  triggerDirty.value = false
   panelServices.value = []
   closeSearch()
 }
@@ -192,7 +212,9 @@ interface PanelGroup {
  *    catalogue.
  */
 const panelGroups = computed<PanelGroup[]>(() => {
-  const q = trigger.value.trim().toLowerCase()
+  // A typed query filters; a plain open (click/focus, even with the old
+  // service's name still in the field) shows the full grouped catalogue.
+  const q = triggerDirty.value ? trigger.value.trim().toLowerCase() : ''
 
   // Typing → flat results (server search over the whole catalogue).
   if (q) {
@@ -339,11 +361,23 @@ watch(
 function setService(service: Service): void {
   selected.value = service
   categoryId.value = serviceCategoryId(service)
+  // If the picked service's category is not part of the active platform chip,
+  // the Category select would land on an invisible value — deactivate the chip
+  // so the selection always stays consistent with the filtered dropdown.
+  // (Only evaluated when the service actually resolves to a real category id.)
+  if (
+    platform.value &&
+    categoryId.value &&
+    !categoryOptions.value.some((o) => o.value === categoryId.value)
+  ) {
+    platform.value = ''
+  }
   clearOrder()
 }
 
 function selectService(service: Service): void {
   setService(service)
+  triggerDirty.value = false
   panelOpen.value = false
   panelIndex.value = -1
   trigger.value = service.name
@@ -353,6 +387,7 @@ function selectService(service: Service): void {
 /** Picked from the search autocomplete — fills the box and auto-sets the category. */
 function selectServiceFromSearch(service: Service): void {
   setService(service)
+  triggerDirty.value = false
   search.value = service.name
   trigger.value = service.name
   panelServices.value = []
@@ -363,6 +398,7 @@ function selectServiceFromSearch(service: Service): void {
 
 /** Opens the service dropdown (trigger's focus event). */
 function openServicePanel(): void {
+  triggerDirty.value = false
   panelOpen.value = true
   panelIndex.value = -1
   closeSearch()
@@ -371,6 +407,7 @@ function openServicePanel(): void {
 
 /** Closes the dropdown, restoring the selected service's name in the trigger. */
 function closePanel(): void {
+  triggerDirty.value = false
   panelOpen.value = false
   panelIndex.value = -1
   panelServices.value = []
@@ -379,6 +416,7 @@ function closePanel(): void {
 
 /** Typing in the trigger filters instantly and searches the whole catalogue. */
 function onPanelInput(): void {
+  triggerDirty.value = true
   panelOpen.value = true
   panelIndex.value = -1
   searchPanelServices(trigger.value)
@@ -415,6 +453,15 @@ watch(
   },
   { flush: 'post' },
 )
+
+// Clearing the Service field deselects the service — the Service details and
+// Order details sections disappear (the dropdown stays open to pick again).
+watch(trigger, (value) => {
+  if (!value.trim() && selected.value) {
+    selected.value = null
+    clearOrder()
+  }
+})
 
 function clearOrder(): void {
   link.value = ''
@@ -719,8 +766,14 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- Step 1 — Find your service (full width) -->
-    <div class="glass rounded-2xl p-5 shadow-card sm:p-7">
+    <!-- Step 1 — Find your service (full width). The card's .glass
+         backdrop-filter creates its own stacking context; when a dropdown is
+         open we elevate the whole card so its panel paints above the order
+         form that follows it in the DOM. -->
+    <div
+      class="glass rounded-2xl p-5 shadow-card sm:p-7 transition-shadow"
+      :class="panelOpen || searchOpen ? 'relative z-50 shadow-glow' : ''"
+    >
       <section class="space-y-4">
         <div class="flex items-center gap-2.5">
           <span
@@ -836,12 +889,10 @@ onMounted(async () => {
               <!-- Click-away overlay -->
               <div v-if="panelOpen" class="fixed inset-0 z-20" @click="closePanel" />
 
-              <Transition name="fade">
-                <div
-                  v-if="panelOpen"
+              <Transition name="fade">                <div v-if="panelOpen"
                   class="absolute z-40 mt-2 w-full overflow-hidden rounded-2xl border border-ink/10 bg-card/95 shadow-glow backdrop-blur-xl"
                 >
-                  <div ref="panelListEl" class="max-h-72 overflow-y-auto p-1.5">
+                  <div ref="panelListEl" class="max-h-96 overflow-y-auto p-1.5">
                     <!-- Sectioned: the selected category's services first, then
                          the WHOLE catalogue — changing the service is never
                          trapped inside the current filter. -->
@@ -942,7 +993,9 @@ onMounted(async () => {
     <!-- ==============================================================
          Order form — single vertical card
          ============================================================== -->
-    <div v-if="selected" data-order-form class="w-full scroll-mt-24">
+    <!-- The sticky dashboard topbar now includes the promo marquee (~36px) on
+         top of the 64px bar — keep the prefill scroll target clear of it. -->
+    <div v-if="selected" data-order-form class="w-full scroll-mt-32">
       <div class="glass space-y-6 rounded-2xl p-5 shadow-card sm:p-7">
         <!-- Step 2 — Selected service details -->
         <section class="space-y-4">

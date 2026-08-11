@@ -29,7 +29,7 @@ vi.mock('./config/env.js', () => ({
   env: {
     NODE_ENV: 'test',
     PORT: 4000,
-    MONGODB_URI: 'mongodb://localhost:27017/vidsmm_test',
+    MONGODB_URI: 'mongodb://localhost:27017/digitalsmm_test',
     DNS_SERVERS: [],
     GOOGLE_CLIENT_ID: '',
     GOOGLE_CLIENT_SECRET: '',
@@ -81,7 +81,7 @@ describe('DigitalSMM API', () => {
     const res = await request(createApp()).get('/api/health')
     expect(res.status).toBe(200)
     expect(res.body.status).toBe('ok')
-    expect(res.body.service).toBe('vidsmm-backend')
+    expect(res.body.service).toBe('digitalsmm-backend')
     expect(res.body.db).toBe('disconnected')
   })
 

@@ -33,8 +33,8 @@ export async function signCustomerToken(user: SessionUser): Promise<string> {
   })
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(user.id)
-    .setIssuer('vidsmm-customer')
-    .setAudience('vidsmm-frontend')
+    .setIssuer('digitalsmm-customer')
+    .setAudience('digitalsmm-frontend')
     .setIssuedAt()
     .setExpirationTime(env.CUSTOMER_JWT_EXPIRES_IN)
     .sign(secret())
@@ -45,8 +45,8 @@ export async function verifyCustomerToken(token: string): Promise<CustomerAuth> 
   try {
     const { payload } = await jwtVerify(token, secret(), {
       algorithms: ['HS256'],
-      issuer: 'vidsmm-customer',
-      audience: 'vidsmm-frontend',
+      issuer: 'digitalsmm-customer',
+      audience: 'digitalsmm-frontend',
     })
     if (!payload.sub) {
       throw new Error('Missing sub claim')

@@ -38,7 +38,7 @@ export interface PaymentStatusPayload {
 }
 
 /** Redis channel name — namespace it so it never collides with other apps. */
-const CHANNEL = 'vidsmm:payment-status'
+const CHANNEL = 'digitalsmm:payment-status'
 
 const instanceId = randomUUID()
 

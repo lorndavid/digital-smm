@@ -17,8 +17,8 @@
  *      OTHER instance) is deduped, so nothing double-charges.
  *
  * Prerequisites (run from a shell with Docker):
- *   docker run -d --name vidsmm-lt-mongo  -p 27017:27017 mongo:7
- *   docker run -d --name vidsmm-lt-redis  -p 6379:6379  redis:7-alpine
+ *   docker run -d --name digitalsmm-lt-mongo  -p 27017:27017 mongo:7
+ *   docker run -d --name digitalsmm-lt-redis  -p 6379:6379  redis:7-alpine
  *
  * Usage: npx tsx scripts/loadtest-multi-instance.ts
  *
@@ -41,7 +41,7 @@ const N = 100
 const TOPUP = 5
 const PORTS = [4001, 4002]
 
-const DB_NAME = `vidsmm_multi_${Date.now()}`
+const DB_NAME = `digitalsmm_multi_${Date.now()}`
 const MONGO_URI = `mongodb://127.0.0.1:27017/${DB_NAME}`
 const REDIS_URL = 'redis://127.0.0.1:6379'
 const WEBHOOK_SECRET = 'loadtest-webhook-secret-0123456789'
@@ -229,7 +229,7 @@ const children = new Map<number, ChildProcess>()
 
 function bootInstance(port: number): Promise<void> {
   return new Promise((resolve, reject) => {
-    const log = fs.openSync(path.join(os.tmpdir(), `vidsmm-multi-${port}.log`), 'w')
+    const log = fs.openSync(path.join(os.tmpdir(), `digitalsmm-multi-${port}.log`), 'w')
     // Spawn the real app entrypoint via the resolved tsx CLI — no npx.
     const child = spawn(process.execPath, [tsxCli, 'src/index.ts'], {
       cwd: backendRoot,
@@ -281,7 +281,7 @@ async function main() {
       Array.from({ length: N }, (_, i) =>
         userRepository.upsertFromGoogle({
           sub: `multi-${i}`,
-          email: `multi-${i}@vidsmm.local`,
+          email: `multi-${i}@digitalsmm.local`,
           name: `Multi Tester ${i}`,
           picture: '',
           emailVerified: true,

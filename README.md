@@ -49,7 +49,7 @@ NODE_ENV=development
 PORT=4000
 
 # MongoDB Atlas (required)
-MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/vidsmm
+MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/digitalsmm
 
 # Optional: explicit DNS servers (comma-separated). Fixes `querySrv ECONNREFUSED`
 # on Windows/ISP networks where Node's resolver (c-ares) fails SRV lookups even
@@ -132,7 +132,7 @@ docker compose up --build -d
 | Customer | http://localhost:5173   |
 | Admin    | http://localhost:5174   |
 | API      | http://localhost:4000   |
-| Mongo    | mongodb://mongo:27017/vidsmm (internal) |
+| Mongo    | mongodb://mongo:27017/digitalsmm (internal) |
 | Redis    | redis://redis:6379      (internal) |
 
 - **No `.env` needed for defaults** — `SMM_PROVIDER=mock` and
@@ -397,8 +397,8 @@ npm run test:e2e        # boots its own backend (:4001) + frontend (:5199),
 
 ```bash
 # throwaway infra for the load tests
-docker run -d --name vidsmm-lt-mongo -p 27017:27017 mongo:7
-docker run -d --name vidsmm-lt-redis -p 6379:6379 redis:7-alpine
+docker run -d --name digitalsmm-lt-mongo -p 27017:27017 mongo:7
+docker run -d --name digitalsmm-lt-redis -p 6379:6379 redis:7-alpine
 ```
 
 ## Testing

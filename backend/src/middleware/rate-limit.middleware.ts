@@ -25,7 +25,7 @@ export const apiLimiter = rateLimit({
   limit: env.RATE_LIMIT_MAX,
   standardHeaders: 'draft-8',
   legacyHeaders: false,
-  store: createDistributedStore('vidsmm:rl:api:'),
+  store: createDistributedStore('digitalsmm:rl:api:'),
 })
 
 /**
@@ -41,7 +41,7 @@ export const catalogueLimiter = rateLimit({
   limit: env.RATE_LIMIT_CATALOGUE_MAX,
   standardHeaders: 'draft-8',
   legacyHeaders: false,
-  store: createDistributedStore('vidsmm:rl:catalogue:'),
+  store: createDistributedStore('digitalsmm:rl:catalogue:'),
 })
 
 /** Stricter limiter for payment and order checkout endpoints. */
@@ -50,7 +50,7 @@ export const checkoutLimiter = rateLimit({
   limit: 120, // 120 creates/verifies per minute = 2/sec — handles burst traffic
   standardHeaders: 'draft-8',
   legacyHeaders: false,
-  store: createDistributedStore('vidsmm:rl:checkout:'),
+  store: createDistributedStore('digitalsmm:rl:checkout:'),
 })
 
 /**
@@ -62,7 +62,7 @@ export const adminMutationLimiter = rateLimit({
   limit: 60,
   standardHeaders: 'draft-8',
   legacyHeaders: false,
-  store: createDistributedStore('vidsmm:rl:admin-mutation:'),
+  store: createDistributedStore('digitalsmm:rl:admin-mutation:'),
 })
 
 /** Login limiter — throttles admin password guessing attempts. */
@@ -71,5 +71,5 @@ export const loginLimiter = rateLimit({
   limit: 20,
   standardHeaders: 'draft-8',
   legacyHeaders: false,
-  store: createDistributedStore('vidsmm:rl:login:'),
+  store: createDistributedStore('digitalsmm:rl:login:'),
 })

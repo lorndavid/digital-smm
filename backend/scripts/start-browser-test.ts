@@ -41,7 +41,7 @@ process.env.RATE_LIMIT_WINDOW_MS = '600000'
 // identically for the browser tests.
 process.env.REDIS_URL = ''
 
-const DB_NAME = `vidsmm_browsertest_${Date.now()}`
+const DB_NAME = `digitalsmm_browsertest_${Date.now()}`
 
 /** Rewrites MONGODB_URI to point at a throwaway database. */
 function throwawayUri(): string {
@@ -64,7 +64,7 @@ async function main(): Promise<void> {
   console.log(`[browser-test] connected to throwaway db: ${DB_NAME}`)
 
   // Self-healing cleanup: an abruptly-killed previous run (e.g. Playwright
-  // force-killing the webServer) can leave `vidsmm_browsertest_*` databases
+  // force-killing the webServer) can leave `digitalsmm_browsertest_*` databases
   // behind. Each one holds ~12 collections and free Atlas clusters cap at
   // 500 collections total, so sweep every leftover EXCEPT this run's db.
   // IMPORTANT: drop BY NAME via client.db(name).dropDatabase().
@@ -75,7 +75,7 @@ async function main(): Promise<void> {
     const { databases } = await adminDb.listDatabases()
     const stale = (databases as Array<{ name: string }>)
       .map((d) => d.name)
-      .filter((name) => name.startsWith('vidsmm_browsertest_') && name !== DB_NAME)
+      .filter((name) => name.startsWith('digitalsmm_browsertest_') && name !== DB_NAME)
     const client = mongoose.connection.getClient()
     for (const name of stale) {
       await client.db(name).dropDatabase().catch(() => undefined)

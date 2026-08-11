@@ -48,14 +48,14 @@ describe('admin-auth service', () => {
   it('issues and verifies admin JWTs', async () => {
     const admin = {
       _id: { toString: () => 'admin_1' },
-      email: 'admin@vidsmm.com',
+      email: 'admin@digitalsmm.com',
       role: 'super_admin',
     } as unknown as Parameters<typeof issueAdminToken>[0]
 
     const token = await issueAdminToken(admin)
     const payload = await verifyAdminToken(token)
     expect(payload.sub).toBe('admin_1')
-    expect(payload.email).toBe('admin@vidsmm.com')
+    expect(payload.email).toBe('admin@digitalsmm.com')
     expect(payload.role).toBe('super_admin')
   })
 

@@ -98,7 +98,7 @@ describe('DistributedRateLimitStore — Redis path (fake client)', () => {
   })
 
   it('counts hits within a fixed window and reports a resetTime', async () => {
-    const store = new DistributedRateLimitStore('vidsmm:rl:t1:', () => Promise.resolve(redis))
+    const store = new DistributedRateLimitStore('digitalsmm:rl:t1:', () => Promise.resolve(redis))
     initStore(store, 60_000)
 
     const first = await store.increment('203.0.113.5')
@@ -111,7 +111,7 @@ describe('DistributedRateLimitStore — Redis path (fake client)', () => {
   })
 
   it('resets the window after windowMs elapses', async () => {
-    const store = new DistributedRateLimitStore('vidsmm:rl:t2:', () => Promise.resolve(redis))
+    const store = new DistributedRateLimitStore('digitalsmm:rl:t2:', () => Promise.resolve(redis))
     initStore(store, 60)
 
     expect((await store.increment('203.0.113.6')).totalHits).toBe(1)
@@ -120,7 +120,7 @@ describe('DistributedRateLimitStore — Redis path (fake client)', () => {
   })
 
   it('get() returns current hits and undefined after resetKey', async () => {
-    const store = new DistributedRateLimitStore('vidsmm:rl:t3:', () => Promise.resolve(redis))
+    const store = new DistributedRateLimitStore('digitalsmm:rl:t3:', () => Promise.resolve(redis))
     initStore(store)
 
     await store.increment('203.0.113.7')
@@ -132,7 +132,7 @@ describe('DistributedRateLimitStore — Redis path (fake client)', () => {
   })
 
   it('decrement() lowers the count and deletes the key at zero', async () => {
-    const store = new DistributedRateLimitStore('vidsmm:rl:t4:', () => Promise.resolve(redis))
+    const store = new DistributedRateLimitStore('digitalsmm:rl:t4:', () => Promise.resolve(redis))
     initStore(store)
 
     await store.increment('203.0.113.8')
@@ -144,8 +144,8 @@ describe('DistributedRateLimitStore — Redis path (fake client)', () => {
   })
 
   it('resetAll() clears only its own prefix', async () => {
-    const storeA = new DistributedRateLimitStore('vidsmm:rl:a:', () => Promise.resolve(redis))
-    const storeB = new DistributedRateLimitStore('vidsmm:rl:b:', () => Promise.resolve(redis))
+    const storeA = new DistributedRateLimitStore('digitalsmm:rl:a:', () => Promise.resolve(redis))
+    const storeB = new DistributedRateLimitStore('digitalsmm:rl:b:', () => Promise.resolve(redis))
     initStore(storeA)
     initStore(storeB)
 
@@ -202,7 +202,7 @@ class NoTtlRedis implements RateLimitRedisClient {
 
 describe('DistributedRateLimitStore — fallback to memory', () => {
   it('degrades to in-memory when Redis is disabled (client null)', async () => {
-    const store = new DistributedRateLimitStore('vidsmm:rl:mem:', () => Promise.resolve(null))
+    const store = new DistributedRateLimitStore('digitalsmm:rl:mem:', () => Promise.resolve(null))
     initStore(store)
 
     expect((await store.increment('203.0.113.9')).totalHits).toBe(1)
@@ -215,7 +215,7 @@ describe('DistributedRateLimitStore — fallback to memory', () => {
   })
 
   it('falls back per-request when Redis errors mid-flight', async () => {
-    const store = new DistributedRateLimitStore('vidsmm:rl:err:', () =>
+    const store = new DistributedRateLimitStore('digitalsmm:rl:err:', () =>
       Promise.resolve(new ThrowingRedis()),
     )
     initStore(store)
@@ -226,20 +226,20 @@ describe('DistributedRateLimitStore — fallback to memory', () => {
   })
 
   it('marks itself as distributed (localKeys false) with the given prefix', () => {
-    const store = new DistributedRateLimitStore('vidsmm:rl:meta:', () => Promise.resolve(null))
+    const store = new DistributedRateLimitStore('digitalsmm:rl:meta:', () => Promise.resolve(null))
     expect(store.localKeys).toBe(false)
-    expect(store.prefix).toBe('vidsmm:rl:meta:')
+    expect(store.prefix).toBe('digitalsmm:rl:meta:')
   })
 
   it('self-heals an orphaned key that lost its TTL (re-stamps the window)', async () => {
     const redis = new NoTtlRedis()
-    const store = new DistributedRateLimitStore('vidsmm:rl:orphan:', () => Promise.resolve(redis))
+    const store = new DistributedRateLimitStore('digitalsmm:rl:orphan:', () => Promise.resolve(redis))
     initStore(store, 60_000)
 
     // First hit stamps the window; subsequent hits with PTTL -1 re-stamp it.
     await store.increment('203.0.113.99')
     await store.increment('203.0.113.99')
-    expect(redis.pExpireCalls).toContain('vidsmm:rl:orphan:203.0.113.99')
+    expect(redis.pExpireCalls).toContain('digitalsmm:rl:orphan:203.0.113.99')
     expect(redis.pExpireCalls.length).toBeGreaterThanOrEqual(2)
   })
 })
@@ -271,8 +271,8 @@ describe.skipIf(!runRedisTests)('DistributedRateLimitStore — real Redis (fairn
   it('two store instances SHARE the same global counter (distributed fairness)', async () => {
     // Two stores = two limiter instances on two backend processes, both
     // pointing at the same Redis — the exact multi-instance production shape.
-    const instanceA = new DistributedRateLimitStore('vidsmm:rl:fair:', getClient)
-    const instanceB = new DistributedRateLimitStore('vidsmm:rl:fair:', getClient)
+    const instanceA = new DistributedRateLimitStore('digitalsmm:rl:fair:', getClient)
+    const instanceB = new DistributedRateLimitStore('digitalsmm:rl:fair:', getClient)
     initStore(instanceA, 60_000)
     initStore(instanceB, 60_000)
     await instanceA.resetKey('shared-ip')
@@ -287,8 +287,8 @@ describe.skipIf(!runRedisTests)('DistributedRateLimitStore — real Redis (fairn
   })
 
   it('different limiter prefixes never collide on shared Redis', async () => {
-    const api = new DistributedRateLimitStore('vidsmm:rl:api:', getClient)
-    const login = new DistributedRateLimitStore('vidsmm:rl:login:', getClient)
+    const api = new DistributedRateLimitStore('digitalsmm:rl:api:', getClient)
+    const login = new DistributedRateLimitStore('digitalsmm:rl:login:', getClient)
     initStore(api, 60_000)
     initStore(login, 60_000)
     await api.resetKey('nobody')
@@ -302,8 +302,8 @@ describe.skipIf(!runRedisTests)('DistributedRateLimitStore — real Redis (fairn
   })
 
   it('get(), decrement() and resetAll() work against real Redis', async () => {
-    const storeA = new DistributedRateLimitStore('vidsmm:rl:ops:', getClient)
-    const storeB = new DistributedRateLimitStore('vidsmm:rl:ops2:', getClient)
+    const storeA = new DistributedRateLimitStore('digitalsmm:rl:ops:', getClient)
+    const storeB = new DistributedRateLimitStore('digitalsmm:rl:ops2:', getClient)
     initStore(storeA, 60_000)
     initStore(storeB, 60_000)
     await storeA.resetKey('ops-ip')
@@ -327,7 +327,7 @@ describe.skipIf(!runRedisTests)('DistributedRateLimitStore — real Redis (fairn
   })
 
   it('window expiry works against real Redis', async () => {
-    const store = new DistributedRateLimitStore('vidsmm:rl:exp:', getClient)
+    const store = new DistributedRateLimitStore('digitalsmm:rl:exp:', getClient)
     initStore(store, 300)
     await store.resetKey('exp-ip')
 

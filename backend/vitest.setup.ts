@@ -11,6 +11,6 @@
  * `??=` keeps any value the runner already set (CI job env, dotenv, etc.).
  * Keep the list in sync with the REQUIRED fields in src/config/env.ts.
  */
-process.env.MONGODB_URI ??= 'mongodb://localhost:27017/vidsmm_test'
+process.env.MONGODB_URI ??= 'mongodb://localhost:27017/digitalsmm_test'
 process.env.CUSTOMER_JWT_SECRET ??= 'test-customer-jwt-secret-0123456789'
 process.env.ADMIN_JWT_SECRET ??= 'test-admin-jwt-secret-0123456789'

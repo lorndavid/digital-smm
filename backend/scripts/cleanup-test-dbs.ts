@@ -1,11 +1,11 @@
 /**
- * One-time cleanup: drops every leaked `vidsmm_browsertest_*` database.
+ * One-time cleanup: drops every leaked `digitalsmm_browsertest_*` database.
  *
  * The e2e suite creates a throwaway DB per run and drops it on graceful
  * shutdown; abruptly-killed runs leak them, and free Atlas clusters cap at
  * 500 collections. Run once to reclaim the quota:
  *   npx tsx scripts/_cleanup-test-dbs.ts
- * Safe: only touches databases whose name starts with vidsmm_browsertest_.
+ * Safe: only touches databases whose name starts with digitalsmm_browsertest_.
  */
 import mongoose from 'mongoose'
 import { setServers } from 'node:dns'
@@ -25,10 +25,10 @@ async function main(): Promise<void> {
   const targets = (databases as Array<{ name: string }>)
     .map((d) => d.name)
     // Browsertest + loadtest suites both use throwaway databases.
-    .filter((name) => name.startsWith('vidsmm_browsertest_') || name.startsWith('vidsmm_loadtest_'))
+    .filter((name) => name.startsWith('digitalsmm_browsertest_') || name.startsWith('digitalsmm_loadtest_'))
 
   if (targets.length === 0) {
-    console.log('No stale vidsmm test databases found.')
+    console.log('No stale digitalsmm test databases found.')
   }
   // Drop BY NAME via the driver's Db handle. NEVER use
   // connection.dropDatabase() here — it ignores the argument and drops the

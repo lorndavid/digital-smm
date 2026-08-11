@@ -191,6 +191,62 @@ test('platform chips filter the catalogue; the open combobox still shows everyth
   await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toBeVisible()
 })
 
+test('platform chip narrows the Category dropdown to matching categories', async ({
+  page,
+}) => {
+  const category = page.getByLabel('Category')
+  // No chip → every platform's categories are listed.
+  await expect(category.locator('option')).toHaveCount(6) // All + 5 platforms
+
+  // Click Facebook → only categories whose name mentions facebook remain.
+  await page.getByRole('button', { name: 'Facebook', exact: true }).click()
+  await expect(category.locator('option')).toHaveText(['All categories', 'Facebook'])
+
+  // Switch to TikTok → the list narrows to TikTok categories.
+  await page.getByRole('button', { name: 'TikTok', exact: true }).click()
+  await expect(category.locator('option')).toHaveText(['All categories', 'TikTok'])
+})
+
+test('clearing the Service field removes the details and order form', async ({ page }) => {
+  // Pick a service first (details + order form appear).
+  await page.getByPlaceholder('Search all services…').fill('TikTok Followers')
+  await pickService(page, 'TikTok Followers')
+  await expect(page.getByRole('heading', { name: 'TikTok Followers', level: 3 })).toBeVisible()
+  await expect(page.getByLabel('Link to your page or post')).toBeVisible()
+
+  // Delete the text in the Service field → service + order form disappear.
+  await page.getByPlaceholder(/Search or select a service/).fill('')
+  await expect(page.getByRole('heading', { name: 'TikTok Followers', level: 3 })).toHaveCount(0)
+  await expect(page.getByText('Pick a service above to get started.')).toBeVisible()
+  await expect(page.getByLabel('Link to your page or post')).toHaveCount(0)
+
+  // The dropdown stays open showing the whole grouped catalogue.
+  await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toBeVisible()
+})
+
+test('clicking the Service field with a chosen service opens the full catalogue', async ({
+  page,
+}) => {
+  // Pick a service — its name stays in the field.
+  await page.getByPlaceholder('Search all services…').fill('TikTok Followers')
+  await pickService(page, 'TikTok Followers')
+  await expect(page.getByPlaceholder(/Search or select a service/)).toHaveValue('TikTok Followers')
+
+  // Clicking the field WITHOUT deleting the text opens the whole catalogue
+  // grouped by category (not a one-row filter of the old service name).
+  await page.getByPlaceholder(/Search or select a service/).click()
+  await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toBeVisible()
+  await expect(page.getByText('All services', { exact: true })).toBeVisible()
+
+  // Picking a different service auto-updates the details + order form. The
+  // row may sit below the panel's fold — scroll it into view first.
+  const fbRow = page.getByRole('button', { name: /Facebook Page Likes/ })
+  await fbRow.scrollIntoViewIfNeeded()
+  await fbRow.click()
+  await expect(page.getByRole('heading', { name: 'Facebook Page Likes', level: 3 })).toBeVisible()
+  await expect(page.getByLabel('Category').locator('option:checked')).toHaveText('Facebook')
+})
+
 test('category loads its services first; the open combobox shows every category', async ({
   page,
 }) => {

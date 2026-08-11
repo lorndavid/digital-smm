@@ -61,7 +61,7 @@ jobs:
     env:
       # The Playwright webServer boots its own backend on :4001 (mock
       # providers, throwaway DB derived from MONGODB_URI) + frontend :5199.
-      MONGODB_URI: mongodb://127.0.0.1:27017/vidsmm_e2e
+      MONGODB_URI: mongodb://127.0.0.1:27017/digitalsmm_e2e
       CUSTOMER_JWT_SECRET: ci-customer-jwt-secret-0123456789
       ADMIN_JWT_SECRET: ci-admin-jwt-secret-0123456789
       RATE_LIMIT_MAX: 100000

@@ -8,6 +8,7 @@ import { formatMoney } from '@/utils/format'
 import AvatarCircle from '../layout/AvatarCircle.vue'
 import AccountMenu from '../layout/AccountMenu.vue'
 import BrandLogo from '../layout/BrandLogo.vue'
+import PromoMarquee from '../layout/PromoMarquee.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import ThemeToggle from '@/components/ui/ThemeToggle.vue'
 
@@ -74,6 +75,9 @@ const profileItems = [
     class="fixed inset-x-0 top-0 z-40 transition-all duration-300"
     :class="scrolled || mobileOpen ? 'glass-strong border-b border-ink/10' : ''"
   >
+    <!-- Infinite promotional ticker with the brand logo -->
+    <PromoMarquee />
+
     <nav class="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
       <a href="#home" class="shrink-0"><BrandLogo /></a>
 

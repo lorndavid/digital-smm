@@ -15,7 +15,7 @@
  * counter is what we measure, and the mock's getPayment is frozen at
  * 'pending' so the phases stay deterministic.
  *
- * Runs against a throwaway Mongo database (vidsmm_loadtest_<ts>) that is
+ * Runs against a throwaway Mongo database (digitalsmm_loadtest_<ts>) that is
  * dropped when the test finishes.
  *
  * Usage: npx tsx scripts/loadtest-payment.ts
@@ -36,7 +36,7 @@ import type { AddressInfo } from 'node:net'
 import { shutdownRedis } from '../src/services/payment/events.bus.js'
 import { shutdownRedisClient } from '../src/services/redis/redis.client.js'
 
-const DB_NAME = `vidsmm_loadtest_${Date.now()}`
+const DB_NAME = `digitalsmm_loadtest_${Date.now()}`
 const N = 100
 const TOPUP = 5
 
@@ -164,7 +164,7 @@ async function main() {
       Array.from({ length: N }, (_, i) =>
         userRepository.upsertFromGoogle({
           sub: `loadtest-${i}`,
-          email: `loadtest-${i}@vidsmm.local`,
+          email: `loadtest-${i}@digitalsmm.local`,
           name: `Load Tester ${i}`,
           picture: '',
           emailVerified: true,

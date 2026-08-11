@@ -35,7 +35,7 @@ jobs:
     env:
       # loadtest-payment.ts derives a throwaway DB from MONGODB_URI and drops
       # it afterwards; the multi-instance test hardcodes 127.0.0.1:27017/6379.
-      MONGODB_URI: mongodb://127.0.0.1:27017/vidsmm_ci
+      MONGODB_URI: mongodb://127.0.0.1:27017/digitalsmm_ci
       REDIS_URL: redis://127.0.0.1:6379
       CUSTOMER_JWT_SECRET: ci-customer-jwt-secret-0123456789
       ADMIN_JWT_SECRET: ci-admin-jwt-secret-0123456789

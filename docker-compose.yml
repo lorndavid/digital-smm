@@ -22,7 +22,7 @@
 # publish 4000:4000). Replicas share MongoDB + Redis, so webhooks land
 # exactly-once and SSE live status fans out across all instances.
 # ============================================================
-name: vidsmm
+name: digitalsmm
 
 services:
   mongo:
@@ -61,7 +61,7 @@ services:
       PORT: "4000"
       # In-compose database + Redis by default; override via .env if you
       # prefer MongoDB Atlas (see .env.docker.example).
-      MONGODB_URI: ${MONGODB_URI:-mongodb://mongo:27017/vidsmm}
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongo:27017/digitalsmm}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       # Customer Google OAuth
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}

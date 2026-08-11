@@ -27,7 +27,7 @@ export const devRoutes = Router()
 devRoutes.post(
   '/dev/test-bootstrap',
   asyncHandler(async (_req, res) => {
-    const email = `e2e-${randomUUID().slice(0, 8)}@vidsmm.local`
+    const email = `e2e-${randomUUID().slice(0, 8)}@digitalsmm.local`
     const user = await userRepository.upsertFromGoogle({
       sub: `e2e-${randomUUID()}`,
       email,
