@@ -14,11 +14,11 @@ import {
   Settings,
   Sun,
   Users,
-  Zap,
 } from '@lucide/vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { KeyRound } from '@lucide/vue'
 import { getTheme, toggleTheme } from '@/utils/theme'
+import logoUrl from '@/assets/logo.png'
 
 const route = useRoute()
 const router = useRouter()
@@ -103,12 +103,10 @@ const pageTitle = computed(() => {
     <!-- Desktop sidebar -->
     <div class="fixed inset-y-0 left-0 z-40 hidden w-64 lg:block">
       <aside class="flex h-full w-64 flex-col border-r border-(--a-border) bg-(--a-sidebar) backdrop-blur-xl">
-        <div class="flex h-16 items-center gap-2 border-b border-(--a-border) px-5">
-          <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-secondary-500 shadow-glow">
-            <Zap class="h-4 w-4 text-white" fill="currentColor" />
-          </div>
+        <div class="flex h-16 items-center gap-2.5 border-b border-(--a-border) px-5">
+          <img :src="logoUrl" alt="DigitalSMM" class="block h-9 w-auto object-contain" />
           <span class="font-display text-lg font-bold text-(--a-text)">
-            Vid<span class="text-gradient">SMM</span>
+            Digital<span class="text-gradient">SMM</span>
             <span class="text-xs font-semibold text-(--a-muted-2)">ADMIN</span>
           </span>
         </div>
@@ -160,9 +158,12 @@ const pageTitle = computed(() => {
         <div class="absolute inset-y-0 left-0">
           <aside class="flex h-full w-72 flex-col border-r border-(--a-border) bg-(--a-sidebar) backdrop-blur-xl">
             <div class="flex h-16 items-center justify-between border-b border-(--a-border) px-5">
-              <span class="font-display text-lg font-bold text-(--a-text)">
-                Vid<span class="text-gradient">SMM</span>
-                <span class="text-xs font-semibold text-(--a-muted-2)">ADMIN</span>
+              <span class="flex items-center gap-2.5">
+                <img :src="logoUrl" alt="DigitalSMM" class="block h-8 w-auto object-contain" />
+                <span class="font-display text-lg font-bold text-(--a-text)">
+                  Digital<span class="text-gradient">SMM</span>
+                  <span class="text-xs font-semibold text-(--a-muted-2)">ADMIN</span>
+                </span>
               </span>
               <button class="text-(--a-muted)" @click="mobileOpen = false"><X class="h-5 w-5" /></button>
             </div>

@@ -5,7 +5,6 @@ import { Menu, Wallet } from '@lucide/vue'
 import { useWalletStore } from '@/stores/wallet.store'
 import BrandLogo from '@/components/layout/BrandLogo.vue'
 import AccountMenu from '@/components/layout/AccountMenu.vue'
-import PromoMarquee from '@/components/layout/PromoMarquee.vue'
 import ThemeToggle from '@/components/ui/ThemeToggle.vue'
 import { formatMoney } from '@/utils/format'
 
@@ -39,9 +38,6 @@ onMounted(() => {
 
 <template>
   <header class="glass-strong sticky top-0 z-30 border-b border-line">
-    <!-- Infinite promotional ticker with the brand logo -->
-    <PromoMarquee />
-
     <div
       class="flex h-16 items-center gap-2 px-4 sm:gap-3 sm:px-6"
     >

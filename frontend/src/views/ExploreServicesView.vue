@@ -1287,9 +1287,9 @@ onMounted(async () => {
     <!-- ==============================================================
          Order form — single vertical card
          ============================================================== -->
-    <!-- The sticky dashboard topbar now includes the promo marquee (~36px) on
-         top of the 64px bar — keep the prefill scroll target clear of it. -->
-    <div v-if="selected" data-order-form class="w-full scroll-mt-32">
+    <!-- The dashboard topbar is a single 64px bar (no promo marquee) — keep
+         the prefill scroll target clear of it. -->
+    <div v-if="selected" data-order-form class="w-full scroll-mt-20">
       <div class="glass space-y-6 rounded-2xl p-5 shadow-card sm:p-7">
         <!-- Step 2 — Selected service details -->
         <section class="space-y-4">

@@ -75,8 +75,14 @@ const profileItems = [
     class="fixed inset-x-0 top-0 z-40 transition-all duration-300"
     :class="scrolled || mobileOpen ? 'glass-strong border-b border-ink/10' : ''"
   >
-    <!-- Infinite promotional ticker with the brand logo -->
-    <PromoMarquee />
+    <!-- Infinite promotional ticker — visible at the top of the welcome page,
+         slides away as soon as the user scrolls down so only the navbar stays. -->
+    <div
+      class="overflow-hidden transition-[max-height] duration-300 ease-out"
+      :class="scrolled ? 'max-h-0' : 'max-h-10'"
+    >
+      <PromoMarquee />
+    </div>
 
     <nav class="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
       <a href="#home" class="shrink-0"><BrandLogo /></a>

@@ -149,22 +149,29 @@ test('signed-out visitor still sees Sign In + Get Started', async ({ page }) => 
   await expect(hero.getByRole('button', { name: /Explore Services/ })).toBeVisible()
 })
 
-test('header shows the infinite promo marquee with the brand logo', async ({ page }) => {
+test('header shows the infinite promo marquee; scrolling hides it to keep the navbar', async ({
+  page,
+}) => {
   await page.goto('/')
 
-  // The promotional ticker sits at the top of the fixed header.
+  // The promotional ticker sits at the top of the fixed header with the
+  // promo phrases scrolling through (no logo inside — it lives in the navbar).
   const marquee = page.getByRole('region', { name: 'Promotions' })
   await expect(marquee).toBeVisible()
-
-  // Promo phrases scroll through (at least the first one is present). The
-  // track duplicates its content for the seamless loop — scope to the first.
   await expect(marquee.getByText('Fast Delivery').first()).toBeVisible()
   await expect(marquee.getByText('Secure KHQR Payments').first()).toBeVisible()
-
-  // The brand logo image rides along in the ticker.
-  await expect(marquee.getByRole('img', { name: 'DigitalSMM' }).first()).toBeVisible()
+  await expect(marquee.getByRole('img', { name: 'DigitalSMM' })).toHaveCount(0)
 
   // The nav brand is the real logo image now (not the old text wordmark).
   const nav = page.locator('header')
   await expect(nav.getByRole('img', { name: 'DigitalSMM' }).first()).toBeVisible()
+
+  // Scrolling down collapses the marquee shell (max-h → 0) so only the
+  // navbar remains pinned at the top — assert its box has collapsed.
+  const shell = marquee.locator('..') // the max-h collapse wrapper
+  await expect(shell).toBeVisible()
+  await page.mouse.wheel(0, 600)
+  await expect
+    .poll(async () => (await shell.boundingBox())?.height ?? 0)
+    .toBeLessThan(4)
 })
