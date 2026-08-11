@@ -200,18 +200,43 @@ function selectPlatform(p: string): void {
 
 /** Whole catalogue (no category/platform/search filters) — the fallback list
  *  shown when the combobox is opened, so changing the service is never
- *  trapped inside the current category's filtered list. */
+ *  trapped inside the current category's filtered list. It also backs the
+ *  ranked search, so it is fetched page by page until the full catalogue is
+ *  covered — a provider catalogue larger than the 1,000-row API cap must not
+ *  hide matching services from the search. */
 const allServices = ref<Service[]>([])
 let allServicesLoaded = false
+/** Highest page already merged into allServices (1-based) — a retry after a
+ *  partial failure resumes from the next page instead of restarting. */
+let allServicesPage = 0
+
+/** Dedupe-append services into the cached full catalogue. */
+function mergeAllServices(items: Service[]): void {
+  const seen = new Set(allServices.value.map((s) => s._id))
+  for (const s of items) {
+    if (seen.has(s._id)) continue
+    seen.add(s._id)
+    allServices.value.push(s)
+  }
+}
 
 async function loadAllServices(): Promise<void> {
   if (allServicesLoaded) return
   try {
-    const res = await servicesApi.list({ limit: 1000 })
-    allServices.value = res.items
+    const first = await servicesApi.list({ limit: 1000 })
+    // Commit page 1 immediately so a later failure never discards it.
+    mergeAllServices(first.items)
+    allServicesPage = Math.max(allServicesPage, 1)
+    const pages = Math.ceil(first.total / 1000)
+    for (let page = allServicesPage + 1; page <= pages; page++) {
+      const res = await servicesApi.list({ limit: 1000, page })
+      mergeAllServices(res.items)
+      allServicesPage = page
+    }
     allServicesLoaded = true
   } catch {
-    /* keep whatever we have — the filtered list still works */
+    /* Keep whatever pages merged so far — a failed page never discards the
+       rest, and the union with the server list still fills the dropdown. */
   }
 }
 
@@ -317,25 +342,65 @@ function searchTerms(q: string): string[] {
 }
 
 /**
+ * Search aliases: provider catalogues abbreviate platforms (FB, IG, TT, YT)
+ * and collapse live/streaming variants — so "facebook live stream" or
+ * "tiktok live stream" expands to tokens that hit services named "FB Live
+ * Views", "TT Live Stream Comments", etc. Matching only needs ANY alias of a
+ * term to appear in name/category/description.
+ */
+const SEARCH_ALIASES: Record<string, string[]> = {
+  facebook: ['facebook', 'fb'],
+  tiktok: ['tiktok', 'tt'],
+  instagram: ['instagram', 'ig'],
+  youtube: ['youtube', 'yt'],
+  telegram: ['telegram', 'tg'],
+  live: ['live', 'livestream', 'stream', 'streaming', 'broadcast'],
+  stream: ['stream', 'livestream', 'streaming', 'broadcast', 'live'],
+  views: ['views', 'view'],
+  likes: ['likes', 'like'],
+  followers: ['followers', 'follower'],
+  subscribers: ['subscribers', 'subscriber', 'subs', 'sub'],
+  members: ['members', 'member'],
+  comments: ['comments', 'comment'],
+  reels: ['reels', 'reel'],
+  shares: ['shares', 'share'],
+  reactions: ['reactions', 'reaction'],
+  plays: ['plays', 'play'],
+}
+
+/** All tokens that can stand in for a query term (aliases or the term itself). */
+function termTokens(term: string): string[] {
+  return SEARCH_ALIASES[term] ?? [term]
+}
+
+/**
  * Services listed under the search box while the user types (instant,
- * client-side). This is a RANKED search across the WHOLE catalogue: every
+ * client-side). This is a RANKED search over the WHOLE catalogue: every
  * service whose name, category or description contains ANY word of the query
- * is included, ordered by how many words it matches (a full "facebook live
- * stream" match leads; a partial "facebook"-only match trails). So a query
- * like "facebook live stream" always surfaces the right services — even when
- * no single service contains every word literally — instead of returning an
- * empty list. No platform icons, no category rows — a clean flat list.
+ * (or one of its aliases) is included, ordered by how many words it matches
+ * (a full "facebook live stream" match leads; a partial "facebook"-only
+ * match trails). The source is the union of the cached full catalogue AND the
+ * server's search results, so the dropdown can never silently come up empty
+ * — even when the cached load failed or a big catalogue paginated the
+ * matching services beyond the first page. No platform icons, no category
+ * rows — a clean flat list.
  */
 const searchDropdownServices = computed<Service[]>(() => {
   const terms = searchTerms(search.value)
   if (!terms.length) return []
-  const source = allServices.value.length ? allServices.value : services.value
+  // Union of both sources, deduped — the server's any-word results always
+  // contribute, filling gaps the cached full-catalogue list may have.
+  const sourceById = new Map<string, Service>()
+  for (const s of services.value) if (!sourceById.has(s._id)) sourceById.set(s._id, s)
+  for (const s of allServices.value) if (!sourceById.has(s._id)) sourceById.set(s._id, s)
+  const source = [...sourceById.values()]
+
   const scored: Array<{ service: Service; score: number }> = []
   for (const s of source) {
     const haystack = `${s.name} ${categoryLabel(s)} ${s.description ?? ''}`.toLowerCase()
     let score = 0
     for (const term of terms) {
-      if (haystack.includes(term)) score++
+      if (termTokens(term).some((t) => haystack.includes(t))) score++
     }
     if (score > 0) scored.push({ service: s, score })
   }
@@ -359,6 +424,10 @@ function serviceCategoryId(service: Service): string {
 
 /** Fired as the user types — keeps the search GLOBAL (client-side, instant). */
 function onSearchInput(): void {
+  // Make sure the WHOLE catalogue is available for the ranked search. If the
+  // mount-time load failed (network blip, rate limit), this retries it —
+  // the dropdown must never fall back to a narrow/failed server list.
+  void loadAllServices()
   // A fresh query searches the whole catalogue: drop any auto-set or manual
   // category so results are never silently scoped to one category.
   if (selected.value && search.value !== selected.value.name) {
@@ -1026,13 +1095,13 @@ onMounted(async () => {
                 </template>
 
                 <p
-                  v-if="
-                    searchDropdownServices.length === 0 &&
-                    (allServices.length > 0 || services.length > 0)
-                  "
+                  v-if="searchDropdownServices.length === 0"
                   class="px-3 py-6 text-center text-sm text-ink/40"
                 >
                   No results found for “{{ search.trim() }}”.
+                  <span class="mt-1 block text-xs text-ink/30">
+                    Try a keyword like “facebook”, “tiktok”, “live”, “views” or “followers”.
+                  </span>
                 </p>
               </div>
             </div>

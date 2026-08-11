@@ -183,6 +183,56 @@ test('multi-word search matches across service name and category words', async (
   )
 })
 
+test('multi-word phrase like "facebook live stream" never comes up empty', async ({
+  page,
+}) => {
+  // None of the mock services literally contain "live" or "stream", so a
+  // strict AND search would return ZERO results. The search matches ANY word
+  // against name/category/description — the Facebook services match via
+  // "facebook" and still surface, ranked above unrelated partial matches.
+  await page.getByPlaceholder(/Search all services/).fill('facebook live stream')
+  await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Facebook Post Likes/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Facebook Video Views/ })).toBeVisible()
+  // Only Facebook services rank (score via "facebook") — no unrelated noise.
+  await expect(page.locator('[data-search-service]')).toHaveCount(3)
+  await expect(page.locator('[data-search-service]').first()).toContainText('Facebook')
+  await expect(page.getByText(/result/)).toBeVisible()
+
+  // Clicking a result still auto-picks the service + its category.
+  await page.getByRole('button', { name: /Facebook Page Likes/ }).click()
+  await expect(page.getByRole('heading', { name: 'Facebook Page Likes', level: 3 })).toBeVisible()
+  await expect(page.getByPlaceholder(/Search or select a category/)).toHaveValue('Facebook')
+})
+
+test('multi-word phrase like "tiktok live stream" surfaces TikTok services', async ({
+  page,
+}) => {
+  // Same any-word matching for TikTok: only the "tiktok" word matches the
+  // mock catalogue, yet every TikTok service still surfaces in the dropdown.
+  await page.getByPlaceholder(/Search all services/).fill('tiktok live stream')
+  await expect(page.getByRole('button', { name: /TikTok Followers/ })).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: /TikTok Views \(High Retention\)/ }),
+  ).toBeVisible()
+  await expect(page.locator('[data-search-service]').first()).toContainText('TikTok')
+
+  // Clicking a result still auto-picks the service + its category.
+  await page.getByRole('button', { name: /TikTok Followers/ }).click()
+  await expect(page.getByRole('heading', { name: 'TikTok Followers', level: 3 })).toBeVisible()
+  await expect(page.getByPlaceholder(/Search or select a category/)).toHaveValue('TikTok')
+})
+
+test('unknown phrases show a helpful no-results tip instead of an empty panel', async ({
+  page,
+}) => {
+  // "live stream" alone matches nothing in the mock catalogue — the dropdown
+  // must still render guidance, never an invisible empty panel.
+  await page.getByPlaceholder(/Search all services/).fill('live stream')
+  await expect(page.getByText(/No results found for/)).toBeVisible()
+  await expect(page.getByText(/Try a keyword like/)).toBeVisible()
+})
+
 test('chevron buttons toggle their dropdowns open and closed', async ({ page }) => {
   // Category chevron opens the category list…
   const catChevron = page.getByRole('button', { name: 'Toggle category list' })

@@ -40,6 +40,33 @@ export interface ListServicesParams {
   sort?: ServiceSort
 }
 
+/**
+ * Search aliases — keep in sync with the storefront's copy in
+ * ExploreServicesView.vue. Provider catalogues abbreviate platforms (FB, IG,
+ * TT, YT) and collapse live/streaming variants, so multi-word queries like
+ * "facebook live stream" or "tiktok live stream" are expanded to every
+ * plausible spelling before matching name/description/category.
+ */
+const SEARCH_ALIASES: Record<string, string[]> = {
+  facebook: ['facebook', 'fb'],
+  tiktok: ['tiktok', 'tt'],
+  instagram: ['instagram', 'ig'],
+  youtube: ['youtube', 'yt'],
+  telegram: ['telegram', 'tg'],
+  live: ['live', 'livestream', 'stream', 'streaming', 'broadcast'],
+  stream: ['stream', 'livestream', 'streaming', 'broadcast', 'live'],
+  views: ['views', 'view'],
+  likes: ['likes', 'like'],
+  followers: ['followers', 'follower'],
+  subscribers: ['subscribers', 'subscriber', 'subs', 'sub'],
+  members: ['members', 'member'],
+  comments: ['comments', 'comment'],
+  reels: ['reels', 'reel'],
+  shares: ['shares', 'share'],
+  reactions: ['reactions', 'reaction'],
+  plays: ['plays', 'play'],
+}
+
 export class ServiceRepository extends BaseRepository<Service> {
   constructor() {
     super(ServiceModel)
@@ -70,30 +97,30 @@ export class ServiceRepository extends BaseRepository<Service> {
     }
     if (params.featured) filter.isFeatured = true
     if (params.search) {
-      // Multi-word queries: split into words and require EVERY word to match
-      // the service name, description or category name — so "facebook live
-      // stream" finds Facebook live-stream services without needing the whole
-      // phrase in a single field.
+      // Multi-word queries match ANY word against the service name, description
+      // or category name — so "facebook live stream" surfaces Facebook
+      // live-stream services (and partial matches like plain Facebook ones)
+      // instead of returning empty when no single service literally contains
+      // every word. Aliases expand abbreviations and naming variants. The
+      // storefront ranks results client-side.
       const terms = params.search.trim().toLowerCase().split(/\s+/).filter(Boolean)
-      const termFilters = await Promise.all(
-        terms.map(async (term) => {
-          const esc = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-          const catIds = await CategoryModel.find({ name: { $regex: esc, $options: 'i' } })
-            .select('_id')
-            .lean()
-            .exec()
-          const ors: FilterQuery<Service>[] = [
-            { name: { $regex: esc, $options: 'i' } },
-            { description: { $regex: esc, $options: 'i' } },
-          ]
-          if (catIds.length) ors.push({ category: { $in: catIds.map((c) => String(c._id)) } })
-          return { $or: ors }
-        }),
-      )
-      // A whitespace-only search yields no terms — guard so an empty $and
-      // never silently matches every service.
-      if (termFilters.length === 1) Object.assign(filter, termFilters[0])
-      else if (termFilters.length > 1) filter.$and = termFilters
+      if (terms.length) {
+        // Dedupe tokens — 'live' and 'stream' both expand to overlapping sets.
+        const tokens = [...new Set(terms.flatMap((term) => SEARCH_ALIASES[term] ?? [term]))]
+        const alternation = tokens
+          .map((token) => token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+          .join('|')
+        const regex = { $regex: alternation, $options: 'i' }
+        const catIds = await CategoryModel.find({
+          name: { $regex: alternation, $options: 'i' },
+        })
+          .select('_id')
+          .lean()
+          .exec()
+        const ors: FilterQuery<Service>[] = [{ name: regex }, { description: regex }]
+        if (catIds.length) ors.push({ category: { $in: catIds.map((c) => String(c._id)) } })
+        filter.$or = ors
+      }
     }
     if (params.type) filter.type = params.type
     if (params.refill) filter.refill = true
