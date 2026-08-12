@@ -124,7 +124,10 @@ function installProbes(page: Page, opts: { allowAuthMe401?: boolean } = {}): Pro
   page.on('console', (msg) => {
     if (msg.type() !== 'error') return
     const text = msg.text()
-    if (EXTERNAL_OK.some((h) => text.includes(h))) return
+    const locUrl = msg.location().url
+    // The network gate ignores external hosts (offline CI); the console gate
+    // must too — Chrome's console text omits the URL, so check it here.
+    if (EXTERNAL_OK.some((h) => text.includes(h) || locUrl.includes(h))) return
     // The signed-out session probe's 401 resource error is expected only when
     // we actually saw that allowed /api/auth/me 401 (never mask real errors).
     if (
@@ -135,7 +138,8 @@ function installProbes(page: Page, opts: { allowAuthMe401?: boolean } = {}): Pro
       authMe401s -= 1
       return
     }
-    probe.consoleErrors.push(text)
+    // Include the failing resource URL — Chrome's default console text omits it.
+    probe.consoleErrors.push(`${text} @ ${msg.location().url}`)
   })
   page.on('pageerror', (err) => probe.pageErrors.push(String(err)))
   return probe

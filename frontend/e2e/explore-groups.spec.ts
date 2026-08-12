@@ -292,46 +292,47 @@ test('service field: click opens the grouped catalogue; Enter picks the highligh
   await expect(field).not.toHaveValue('')
 })
 
-test('Facebook Live chip: one click shows ONLY facebook live-stream services', async ({
+test('Facebook Live is a main chip: filters categories and services to facebook-live only', async ({
   page,
 }) => {
-  // The header has the 6th feature: a Facebook Live quick-filter chip.
+  // The header has 6 main chips: the five platforms plus Facebook Live.
   const liveChip = page.locator('[data-live-chip]')
   await expect(liveChip).toBeVisible()
 
-  // Click it → the search box is filled with the "facebook live" keyword and
-  // the live dropdown opens with ONLY live-stream services (no plain Facebook
-  // page/post/video services leak in).
+  // Click it → the 'facebook live' filter activates exactly like the other
+  // platform chips (same facebook icon, no search box involved).
   await liveChip.click()
   await expect(liveChip).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByPlaceholder(/Search all services/)).toHaveValue('facebook live')
 
+  // The Category dropdown shows ONLY categories with 'facebook live' in
+  // their name.
+  const category = page.getByPlaceholder(/Search or select a category/)
+  await category.click()
+  await expect(page.locator('[data-category-option]')).toHaveText([
+    'All categories',
+    'Facebook Live Stream',
+  ])
+  await category.press('Escape')
+
+  // The Service dropdown shows ONLY facebook-live services — plain Facebook
+  // page/post/video services and every other platform never leak in.
+  await page.getByPlaceholder(/Select a service/).click()
   await expect(page.getByRole('button', { name: /Facebook Live Stream Views/ })).toBeVisible()
   await expect(page.getByRole('button', { name: /Facebook Live Stream Likes/ })).toBeVisible()
   await expect(page.getByRole('button', { name: /Facebook Live Stream Comments/ })).toBeVisible()
-  // Exactly the 3 Facebook Live services — nothing else.
-  await expect(page.locator('[data-search-service]')).toHaveCount(3)
   await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: /TikTok Live Stream Views/ })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /TikTok Followers/ })).toHaveCount(0)
+  await expect(page.locator('[data-group-label="TikTok"]')).toHaveCount(0)
 
-  // Toggle off: chip unpressed, search cleared, dropdown closed.
-  await liveChip.click()
-  await expect(liveChip).toHaveAttribute('aria-pressed', 'false')
-  await expect(page.getByPlaceholder(/Search all services/)).toHaveValue('')
-  await expect(page.locator('[data-search-service]')).toHaveCount(0)
-
-  // Toggle back on and click a live result — auto-picks the service + its
-  // category. Picking a service exits the chip (the search now holds the
-  // service name, not the "facebook live" keyword).
-  await liveChip.click()
-  await expect(liveChip).toHaveAttribute('aria-pressed', 'true')
+  // Picking a live service auto-sets its category (the chip stays active).
   await page.getByRole('button', { name: /Facebook Live Stream Views/ }).click()
   await expect(
     page.getByRole('heading', { name: 'Facebook Live Stream Views', level: 3 }),
   ).toBeVisible()
-  await expect(page.getByPlaceholder(/Search or select a category/)).toHaveValue(
-    'Facebook Live Stream',
-  )
+  await expect(category).toHaveValue('Facebook Live Stream')
+
+  // Clicking the chip again deactivates the filter.
+  await liveChip.click()
   await expect(liveChip).toHaveAttribute('aria-pressed', 'false')
 })
 
@@ -371,6 +372,87 @@ test('favourites: star a category, browse it from the Favourites tab, remove it'
   await page.locator('[data-unfavorite]').click()
   await expect(page.getByText('No favourites yet')).toBeVisible()
   await expect(page.getByRole('button', { name: /Explore Services/ })).toBeVisible()
+})
+
+test('favourites filter toggle narrows the Category dropdown to starred categories', async ({
+  page,
+}) => {
+  const category = page.getByPlaceholder(/Search or select a category/)
+  const toggle = page.locator('[data-fav-filter]')
+
+  // Open the dropdown — the filter toggle sits at the top of the panel and
+  // the full category list is shown (All + 8 categories).
+  await category.click()
+  await expect(toggle).toBeVisible()
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.locator('[data-category-option]')).toHaveCount(9)
+
+  // Star the Facebook category (star button is a sibling of the select row).
+  const facebookRow = page.locator('[data-category-option="Facebook"]').locator('..')
+  await facebookRow.locator('[data-fav-category]').click()
+  await expect(facebookRow.locator('[data-fav-category]')).toHaveAttribute(
+    'data-favorited',
+    'true',
+  )
+
+  // Enable the filter → ONLY the starred category remains; 'All categories'
+  // and every other platform's categories disappear.
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.locator('[data-category-option]')).toHaveCount(1)
+  await expect(page.locator('[data-category-option="Facebook"]')).toBeVisible()
+  await expect(page.locator('[data-category-option="TikTok"]')).toHaveCount(0)
+  await expect(page.locator('[data-category-option="All categories"]')).toHaveCount(0)
+
+  // Toggle off → the full list returns.
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.locator('[data-category-option]')).toHaveCount(9)
+
+  // Unstar the last favourite, then enable the filter again → the dedicated
+  // empty state points the user at the star buttons.
+  await facebookRow.locator('[data-fav-category]').click()
+  await expect(facebookRow.locator('[data-fav-category]')).toHaveAttribute(
+    'data-favorited',
+    'false',
+  )
+  await toggle.click()
+  await expect(page.getByText(/No favourites yet/)).toBeVisible()
+})
+
+test('reopening the Category dropdown pins the selected category on top', async ({
+  page,
+}) => {
+  const category = page.getByPlaceholder(/Search or select a category/)
+  // Select the TikTok category from the dropdown.
+  await category.click()
+  await page.locator('[data-category-option="TikTok"]').click()
+
+  // Click the field again — it reopens even though focus never left the
+  // input (picking a row keeps focus), and the selected category is pinned
+  // on top right after 'All categories' (its star sits beside it).
+  await category.click()
+
+  // Reopen → the selected category leads the list right after
+  // 'All categories' (its star button sits beside it, ready to favourite).
+  const options = page.locator('[data-category-option]')
+  await expect(options.first()).toHaveText('All categories')
+  await expect(options.nth(1)).toHaveText('TikTok')
+})
+
+test('mobile: the 6 filter chips form a 3-column × 2-row grid', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  const chips = page.locator('[data-platform-chip]')
+  await expect(chips).toHaveCount(6)
+
+  // Row 1 (chips 0–2) share the same vertical position; chip 3 starts row 2
+  // clearly lower → 3 columns × 2 rows on phones.
+  const r1 = (await chips.nth(0).boundingBox())!
+  const r1c = (await chips.nth(2).boundingBox())!
+  const r2 = (await chips.nth(3).boundingBox())!
+  expect(Math.abs(r1.y - r1c.y)).toBeLessThan(2)
+  expect(r2.y).toBeGreaterThan(r1.y + 10)
+  expect(r1.x).toBeLessThan(r1c.x)
 })
 
 test('platform chips scope the service dropdown to that platform only', async ({

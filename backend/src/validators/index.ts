@@ -109,9 +109,12 @@ export const updateProfileBodySchema = z.object({
   avatarUrl: z.union([z.url(), z.literal('')]).optional(),
 })
 
-/** Favourited category ids (full-list replace, capped at a sane catalogue size). */
+/** Favourited category ids (full-list replace, capped at a sane catalogue size).
+ *  Each entry must be a Mongo ObjectId so garbage can never be persisted. */
 export const favoriteCategoriesBodySchema = z.object({
-  categoryIds: z.array(z.string().min(1)).max(200),
+  categoryIds: z
+    .array(z.string().regex(/^[a-f0-9]{24}$/i, 'Invalid category id'))
+    .max(200),
 })
 
 // ---------------------------------------------------------------------------

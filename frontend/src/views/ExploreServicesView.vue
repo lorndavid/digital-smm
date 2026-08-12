@@ -96,38 +96,20 @@ const categoryOpen = ref(false)
 const categoryIndex = ref(-1)
 /** Scrollable results container inside the category dropdown. */
 const categoryListEl = ref<HTMLElement | null>(null)
+/** 'Favourites only' filter inside the Category dropdown — shows only the
+ *  categories the customer starred. */
+const favFilter = ref(false)
 
 const selected = ref<Service | null>(null)
 
 /** Active platform chip ('facebook', 'tiktok', … — '' = all platforms). */
 const platform = ref('')
 
-/** 'Facebook Live' quick-filter chip — searches the WHOLE catalogue for live
- *  stream services and, unlike the plain search, keeps ONLY services that
- *  match BOTH "facebook" AND "live" aliases (no non-live Facebook services). */
-const liveChip = ref(false)
-const LIVE_QUERY = 'facebook live'
-
-/** Toggles the Facebook Live quick-filter. */
-function selectLiveChip(): void {
-  liveChip.value = !liveChip.value
-  if (liveChip.value) {
-    platform.value = ''
-    categoryId.value = ''
-    resetOrderFlow()
-    search.value = LIVE_QUERY
-    searchOpen.value = true
-    void loadAllServices()
-  } else {
-    search.value = ''
-    closeSearch()
-  }
-}
-
-/** Typing anything else (or picking a service) exits the live filter. */
-watch(search, (value) => {
-  if (liveChip.value && value !== LIVE_QUERY) liveChip.value = false
-})
+/** 'Facebook Live' is a MAIN quick-filter chip (the 6th), just like the five
+ *  platforms — clicking it filters categories whose NAME contains the
+ *  'facebook live' keyword (the same rule the backend uses to resolve a
+ *  platform), so the Category dropdown and the Service list both line up. */
+const LIVE_PLATFORM = 'facebook live'
 
 /**
  * Category dropdown options. When a platform chip is active, only categories
@@ -146,20 +128,58 @@ const categoryOptions = computed(() => {
   ]
 })
 
+interface PlatformChip {
+  /** Value set on `platform` when the chip is active. */
+  key: string
+  /** Brand icon + tile shown on the chip (Facebook Live reuses the Facebook logo). */
+  icon: Platform
+  label: string
+  /** Shorter label for phone screens (the 3-column chip grid is narrow). */
+  short: string
+}
+
 /**
- * Platform chips shown in the header — one per platform that actually has
+ * Quick-filter chips shown in the header — one per platform that actually has
  * categories in the catalogue (curated, so chips never point at an empty
- * platform). Ordered like a real SMM panel: Facebook, TikTok, … The generic
- * "other" bucket is omitted — it has no meaningful icon/label to show.
+ * platform), plus the always-visible 'Facebook Live' chip. Ordered like a
+ * real SMM panel: Facebook, TikTok, Instagram, YouTube, Telegram, Facebook
+ * Live. The generic "other" bucket is omitted — it has no meaningful
+ * icon/label to show.
  */
-const platformChips = computed(() => {
+const platformChips = computed<PlatformChip[]>(() => {
   const present = new Set(store.categories.map((c) => c.platform))
-  const order: Platform[] = ['facebook', 'tiktok', 'instagram', 'youtube', 'telegram']
-  return order.filter((p) => p !== 'other' && present.has(p))
+  const order: Array<[Platform, string]> = [
+    ['facebook', 'Facebook'],
+    ['tiktok', 'TikTok'],
+    ['instagram', 'Instagram'],
+    ['youtube', 'YouTube'],
+    ['telegram', 'Telegram'],
+  ]
+  const SHORT_LABEL: Record<Platform, string> = {
+    facebook: 'FB',
+    tiktok: 'TT',
+    instagram: 'IG',
+    youtube: 'YT',
+    telegram: 'TG',
+    other: '',
+  }
+  const chips: PlatformChip[] = order
+    .filter(([p]) => present.has(p))
+    .map(([p, label]) => ({
+      key: p,
+      icon: p,
+      label,
+      short: SHORT_LABEL[p] || label,
+    }))
+  // Facebook Live is a main category too — always shown (the keyword filter
+  // matches category NAMES, so it works even before platform inference).
+  chips.push({ key: LIVE_PLATFORM, icon: 'facebook', label: 'Facebook Live', short: 'FB Live' })
+  return chips
 })
 
 /** Label for a platform chip (falls back to the raw key). */
 function platformLabel(p: string): string {
+  if (p === LIVE_PLATFORM) return 'Facebook Live'
   return PLATFORM_META[p as Platform]?.label ?? p
 }
 
@@ -515,21 +535,9 @@ const searchDropdownServices = computed<Service[]>(() => {
     if (score > 0) scored.push({ service: s, score })
   }
   // Best matches first, then cheapest — a real SMM-panel-style search.
-  const ranked = scored
+  return scored
     .sort((a, b) => b.score - a.score || a.service.pricePerUnit - b.service.pricePerUnit)
     .map((s) => s.service)
-  // The Facebook Live chip narrows the ranked results to services that match
-  // BOTH facebook AND live aliases — so "Facebook Live Stream Views" shows
-  // up, but plain "Facebook Page Likes" never leaks into the live list.
-  if (liveChip.value) {
-    const fb = termTokens('facebook')
-    const lv = termTokens('live')
-    return ranked.filter((s) => {
-      const hay = searchHaystack(s)
-      return fb.some((t) => hay.includes(t)) && lv.some((t) => hay.includes(t))
-    })
-  }
-  return ranked
 })
 
 /** Rendered slice of the ranked results (keeps the DOM light on broad
@@ -581,9 +589,30 @@ const categoryRows = computed<Array<{ value: string; label: string }>>(() => {
   // panel never traps the user inside the current selection's filter.
   const q = categoryDirty.value ? categorySearch.value.trim().toLowerCase() : ''
   const matches = categoryOptions.value.filter(
-    (o) => o.value !== '' && (!q || o.label.toLowerCase().includes(q)),
+    (o) =>
+      o.value !== '' &&
+      (!q || o.label.toLowerCase().includes(q)) &&
+      // The favourites filter keeps only starred categories — it combines
+      // with the typeahead and the active platform chip's scoping.
+      (!favFilter.value || favoritesStore.isFavorite(o.value)),
   )
-  return [{ value: '', label: 'All categories' }, ...matches]
+  // 'All categories' is omitted while the favourites filter is active — the
+  // list is a pure favourites view and the toggle itself is the way out.
+  const rows = favFilter.value
+    ? matches
+    : [{ value: '', label: 'All categories' }, ...matches]
+  // On a fresh open (no typing) the CURRENTLY SELECTED category is pinned
+  // right after 'All categories' (or at the very top in favourites mode) so
+  // the user always sees their selection first — with its star button right
+  // there to favourite/unfavourite. Typing never reorders the list.
+  if (!categoryDirty.value && categoryId.value) {
+    const idx = rows.findIndex((r) => r.value === categoryId.value)
+    if (idx > 0) {
+      const [sel] = rows.splice(idx, 1)
+      rows.splice(favFilter.value ? 0 : 1, 0, sel)
+    }
+  }
+  return rows
 })
 
 /** Opens the category dropdown (trigger's focus/click event). */
@@ -595,6 +624,17 @@ function openCategoryPanel(): void {
   closeSearch()
 }
 
+/**
+ * Clicking the category field reopens the dropdown even when the field
+ * already has focus — picking a row keeps focus in the input (mousedown
+ * is prevented on the row), so a focused input never fires focus again and
+ * a second click would otherwise do nothing. An open panel stays open so
+ * typing to filter still works.
+ */
+function onCategoryFieldClick(): void {
+  if (!categoryOpen.value) openCategoryPanel()
+}
+
 /** Toggles the category dropdown from its chevron button — click again to hide.
  *  Opening also focuses the trigger so arrow-key/Enter navigation works
  *  immediately (the chevron's mousedown.prevent leaves focus where it was). */
@@ -604,6 +644,12 @@ function toggleCategoryPanel(): void {
     openCategoryPanel()
     categoryTriggerEl.value?.focus()
   }
+}
+
+/** Toggles the 'favourites only' filter inside the Category dropdown. */
+function toggleFavFilter(): void {
+  favFilter.value = !favFilter.value
+  categoryIndex.value = -1
 }
 
 /** Closes the category dropdown, restoring the selected label in the field. */
@@ -1115,7 +1161,7 @@ async function applyPrefill(): Promise<void> {
     if (
       detected !== 'other' &&
       (servicePlat === 'other' || servicePlat === detected) &&
-      platformChips.value.includes(detected as Platform)
+      platformChips.value.some((c) => c.key === detected)
     ) {
       platform.value = detected
     }
@@ -1169,54 +1215,31 @@ onMounted(async () => {
         <h1 class="font-display text-xl font-bold text-ink">Explore Services</h1>
       </div>
 
-      <!-- Platform quick filters + Facebook Live (replaces the wallet balance card) -->
-      <div class="flex flex-wrap items-center justify-end gap-2">
+      <!-- Platform quick filters — the five platforms plus Facebook Live
+           (replaces the wallet balance card). 3-column × 2-row grid on
+           phones, a single wrapping row on larger screens. -->
+      <div
+        class="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:justify-end"
+      >
         <button
-          v-for="p in platformChips"
-          :key="p"
+          v-for="chip in platformChips"
+          :key="chip.key"
           type="button"
-          :data-platform-chip="p"
-          class="flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition-all active:scale-95"
+          :data-platform-chip="chip.key"
+          :data-live-chip="chip.key === LIVE_PLATFORM ? '' : undefined"
+          class="flex min-w-0 items-center justify-center gap-1.5 rounded-xl border px-2 py-2 text-xs font-semibold transition-all active:scale-95 sm:justify-start sm:gap-2 sm:px-3 sm:py-2 sm:text-sm"
           :class="
-            platform === p
+            platform === chip.key
               ? 'border-brand-400/60 bg-brand-500/15 text-ink ring-1 ring-brand-400/40'
               : 'border-ink/10 bg-ink/5 text-ink/60 hover:border-brand-400/40 hover:text-ink'
           "
-          :aria-pressed="platform === p"
-          @click="selectPlatform(p)"
+          :aria-pressed="platform === chip.key"
+          @click="selectPlatform(chip.key)"
         >
-          <PlatformIcon :platform="p" size="xs" tile />
-          {{ platformLabel(p) }}
-        </button>
-
-        <!-- Facebook Live quick-filter chip — runs a "facebook live" search
-             that shows ONLY Facebook Live Stream services (no plain Facebook
-             services leak in). Always shown: it searches the WHOLE catalogue
-             by name/category, so it works even before platform inference. -->
-        <button
-          type="button"
-          data-live-chip
-          class="flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition-all active:scale-95"
-          :class="
-            liveChip
-              ? 'border-rose-400/60 bg-rose-500/15 text-ink ring-1 ring-rose-400/40'
-              : 'border-ink/10 bg-ink/5 text-ink/60 hover:border-rose-400/40 hover:text-ink'
-          "
-          :aria-pressed="liveChip"
-          @click="selectLiveChip"
-        >
-          <!-- Pulsing live dot when active -->
-          <span class="relative flex h-2 w-2">
-            <span
-              v-if="liveChip"
-              class="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75"
-            />
-            <span
-              class="relative inline-flex h-2 w-2 rounded-full"
-              :class="liveChip ? 'bg-rose-500' : 'bg-ink/30'"
-            />
-          </span>
-          Facebook Live
+          <PlatformIcon :platform="chip.icon" size="xs" tile />
+          <!-- Short label on phones (narrow grid), full label on sm+ -->
+          <span class="hidden truncate sm:inline">{{ chip.label }}</span>
+          <span class="truncate sm:hidden">{{ chip.short }}</span>
         </button>
       </div>
     </div>
@@ -1327,6 +1350,7 @@ onMounted(async () => {
                 spellcheck="false"
                 class="relative z-30 h-9.5 w-full rounded-lg border border-ink/10 bg-ink/5 pl-9 pr-9 text-sm text-ink placeholder:text-ink/30 transition-colors focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
                 @focus="openCategoryPanel"
+                @click="onCategoryFieldClick"
                 @input="onCategoryInput"
                 @keydown="onCategoryKeydown"
                 @keydown.esc="closeCategory"
@@ -1353,6 +1377,43 @@ onMounted(async () => {
                   v-if="categoryOpen"
                   class="absolute z-40 mt-2 w-full overflow-hidden rounded-2xl border border-ink/10 bg-card/95 shadow-glow backdrop-blur-xl"
                 >
+                  <!-- Favourites filter: narrows the list to starred categories.
+                       Sits OUTSIDE the scroll container so keyboard-highlight
+                       indices stay aligned with the visible rows below. -->
+                  <div class="flex items-center justify-between gap-2 border-b border-ink/10 px-3 py-2">
+                    <span class="text-[10px] font-semibold uppercase tracking-wider text-ink/35">
+                      Favourites
+                    </span>
+                    <button
+                      type="button"
+                      data-fav-filter
+                      :aria-pressed="favFilter"
+                      :title="favFilter ? 'Show all categories' : 'Show favourited categories only'"
+                      class="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all active:scale-95"
+                      :class="
+                        favFilter
+                          ? 'bg-amber-400/15 text-amber-500 ring-1 ring-amber-400/40'
+                          : 'bg-ink/5 text-ink/40 hover:bg-amber-400/10 hover:text-ink'
+                      "
+                      @mousedown.prevent
+                      @click="toggleFavFilter"
+                    >
+                      <Star
+                        class="h-3.5 w-3.5"
+                        :class="favFilter ? 'fill-amber-400 text-amber-400' : ''"
+                      />
+                      {{ favFilter ? 'Showing favourites only' : 'Show favourites only' }}
+                      <span
+                        v-if="favoritesStore.ids.length > 0"
+                        class="rounded-full px-1.5 py-0.5 text-[10px] font-bold"
+                        :class="
+                          favFilter ? 'bg-amber-400/20 text-amber-500' : 'bg-ink/10 text-ink/50'
+                        "
+                      >
+                        {{ favoritesStore.ids.length }}
+                      </span>
+                    </button>
+                  </div>
                   <div ref="categoryListEl" class="max-h-64 overflow-y-auto p-1.5">
                     <!-- Each row: the select button (tap to filter) plus a star
                          button (tap to favourite the category). The star sits
@@ -1416,7 +1477,17 @@ onMounted(async () => {
                     </div>
 
                     <p
-                      v-if="categoryRows.length === 1"
+                      v-if="favFilter && favoritesStore.ids.length === 0"
+                      class="px-3 py-6 text-center text-sm text-ink/40"
+                    >
+                      No favourites yet — tap the
+                      <Star class="mx-1 inline h-3.5 w-3.5 -translate-y-px text-amber-400" />
+                      star on a category to save it here.
+                    </p>
+                    <p
+                      v-else-if="
+                        favFilter ? categoryRows.length === 0 : categoryRows.length === 1
+                      "
                       class="px-3 py-6 text-center text-sm text-ink/40"
                     >
                       No categories match “{{ categorySearch.trim() }}”.
