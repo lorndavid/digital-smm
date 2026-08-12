@@ -30,7 +30,8 @@ function userName(order: Order): string {
 }
 
 function serviceName(order: Order): string {
-  return typeof order.service === 'object' ? order.service.name : 'Service'
+  const s = order.service
+  return s && typeof s === 'object' ? (s.name ?? 'Service') : 'Service'
 }
 
 // ---------------------------------------------------------------------------

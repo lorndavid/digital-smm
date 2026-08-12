@@ -1,4 +1,7 @@
 import { createHmac, randomUUID } from 'node:crypto'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import dns from 'node:dns'
 import { expect, test, type APIRequestContext, type APIResponse } from '@playwright/test'
 
 /**
@@ -94,6 +97,42 @@ async function pickService(page: import('@playwright/test').Page, name: string):
   // and pick the row.
   await page.getByPlaceholder(/Select a service/).click()
   await page.getByRole('button', { name: new RegExp(name) }).click()
+}
+
+/**
+ * Hard-deletes a service directly in the throwaway browser-test database —
+ * the same way a provider re-sync purge can remove services that existing
+ * orders reference. The admin API refuses this ("orders exist — disable it
+ * instead"), so the regression test must go through the same DB path the
+ * provider sync uses. Connects to the newest digitalsmm_browsertest_* DB.
+ */
+async function deleteServiceInDb(serviceId: string): Promise<void> {
+  const uriLine = readFileSync(resolve(process.cwd(), '../backend/.env'), 'utf8')
+    .split(/\r?\n/)
+    .find((l) => l.startsWith('MONGODB_URI='))
+  expect(uriLine).toBeTruthy()
+  const uri = uriLine!.slice('MONGODB_URI='.length)
+  // Pin DNS servers — same fix as backend/src/config/database.ts (Atlas SRV
+  // lookups fail on some Windows/ISP networks otherwise).
+  dns.setServers(['1.1.1.1', '8.8.8.8'])
+  const { MongoClient, ObjectId } = await import('mongodb')
+  const client = new MongoClient(uri, { serverSelectionTimeoutMS: 15000 })
+  try {
+    await client.connect()
+    const admin = client.db().admin()
+    const { databases } = await admin.listDatabases()
+    const dbs = (databases as Array<{ name: string }>)
+      .map((d) => d.name)
+      .filter((name) => name.startsWith('digitalsmm_browsertest_'))
+      .sort()
+    expect(dbs.length).toBeGreaterThan(0)
+    // Newest test DB is the one the current webServer booted.
+    const db = client.db(dbs[dbs.length - 1])
+    const del = await db.collection('services').deleteOne({ _id: new ObjectId(serviceId) })
+    expect(del.deletedCount).toBe(1)
+  } finally {
+    await client.close()
+  }
 }
 
 test.beforeEach(async ({ page, request }) => {
@@ -741,4 +780,99 @@ test('order again from the Orders list row prefills the Explore form', async ({
   )
   // 3000 × $0.90/1k = $2.70
   await expect(page.getByText('$2.70', { exact: true })).toBeVisible()
+})
+
+test('orders whose service was deleted render gracefully (no null crash)', async ({
+  page,
+  request,
+}) => {
+  // Regression: an order whose service ref is dangling (service removed from
+  // the catalogue — e.g. provider re-sync) must render the Orders list and
+  // the order detail WITHOUT crashing. `typeof null === 'object'` used to
+  // slip past the old `typeof order.service === 'object'` guards and throw
+  // "Cannot read properties of null (reading 'name')".
+  //
+  // IMPORTANT: the ordered service is created uniquely for THIS test and
+  // deleted at the end — parallel specs share the same throwaway DB, so a
+  // test must never delete a catalogue service other specs order.
+
+  // Funded user + admin session.
+  const { token, payment, webhookSecret } = await bootstrap(request)
+  await settleTopUp(request, payment, webhookSecret)
+  await page.addInitScript((t) => localStorage.setItem('digitalsmm_session_token', t), token)
+
+  const adminLogin = await request.post(`${BACKEND}/api/admin/auth/login`, {
+    data: {
+      email: process.env.SUPER_ADMIN_EMAIL ?? 'superadmin@digitalsmm.test',
+      password: process.env.SUPER_ADMIN_PASSWORD ?? 'SuperAdminTest!2026',
+    },
+  })
+  await ok(adminLogin, 'admin login')
+  const adminToken = (await adminLogin.json()).token as string
+  const adminHeaders = { authorization: `Bearer ${adminToken}` }
+
+  // Create a throwaway service only this test will order from.
+  const unique = `Regression E2E ${randomUUID().slice(0, 8)}`
+  const created = await request.post(`${BACKEND}/api/admin/services`, {
+    headers: adminHeaders,
+    data: {
+      name: unique,
+      type: 'Default',
+      pricePerUnit: 0.9,
+      min: 1,
+      max: 10000,
+      provider: 'mock',
+      isActive: true,
+    },
+  })
+  await ok(created, 'create throwaway service')
+  const serviceId = (await created.json())._id as string
+  expect(serviceId).toBeTruthy()
+
+  // Place an order for that service via the API (wallet-funded, $5 settled).
+  const order = await request.post(`${BACKEND}/api/orders`, {
+    headers: { authorization: `Bearer ${token}` },
+    data: {
+      serviceId,
+      link: 'https://www.tiktok.com/@regression-e2e',
+      quantity: 10,
+    },
+  })
+  await ok(order, 'place order')
+  const orderId = (await order.json())._id as string
+  expect(orderId).toBeTruthy()
+
+  // Delete the ordered service DIRECTLY in the DB — the same path a
+  // provider re-sync purge uses (the admin API refuses: "orders exist for
+  // this service"). This is exactly the dangling-ref scenario from the
+  // production crash.
+  await deleteServiceInDb(serviceId)
+
+  // Prove the dangling ref actually happened: the order's populated service
+  // must now be null (Mongoose populate of a missing ref). If this assertion
+  // fails, the test would pass vacuously without exercising the crash path.
+  const orderAfter = await request.get(`${BACKEND}/api/orders/${orderId}`, {
+    headers: { authorization: `Bearer ${token}` },
+  })
+  await ok(orderAfter, 'fetch order after delete')
+  expect((await orderAfter.json()).service).toBeNull()
+
+  // 1. The Orders list renders the order with a neutral fallback name — no
+  // page error, no crash. (The table row exists and shows the order number.)
+  await page.goto('/dashboard/orders')
+  await expect(page.getByRole('heading', { name: 'Orders' })).toBeVisible()
+  await expect(page.locator('tbody tr').first()).toBeVisible()
+  await expect(page.locator('tbody tr').first()).toContainText('#')
+  // The link + a status badge are present (status varies by mock delivery
+  // timing — what matters is the row renders at all).
+  await expect(page.locator('tbody tr').first()).toContainText('tiktok.com')
+  await expect(page.locator('tbody tr').first()).toContainText(/Processing|Completed|In progress|Paid|Partial/)
+
+  // 2. The order detail page also renders (hero + analytics), again without
+  // crashing on the dangling service ref.
+  await page.goto(`/dashboard/orders/${orderId}`)
+  await expect(
+    page.getByRole('heading', { name: new RegExp(`Order #`) }),
+  ).toBeVisible()
+  await expect(page.getByText('Quantity', { exact: true })).toBeVisible()
 })

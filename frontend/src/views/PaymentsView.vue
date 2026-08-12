@@ -13,7 +13,7 @@ import { paymentApi } from '@/api/payment.api'
 import { ApiRequestError } from '@/api/client'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToast } from '@/composables/useToast'
-import { formatDate, formatMoney, formatNumber } from '@/utils/format'
+import { formatDate, formatMoney, formatNumber, orderServiceName } from '@/utils/format'
 import {
   downloadPaymentReport,
   isInRange,
@@ -104,10 +104,7 @@ const summary = computed(() => {
 
 function serviceName(payment: Payment): string {
   const order = payment.order
-  if (order && typeof order === 'object' && typeof order.service === 'object') {
-    return order.service.name
-  }
-  return ''
+  return order && typeof order === 'object' ? orderServiceName(order.service, '') : ''
 }
 
 function orderNumber(payment: Payment): number | null {

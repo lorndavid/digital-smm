@@ -20,7 +20,7 @@ import {
 import { paymentApi, type PaymentStatusResponse } from '@/api/payment.api'
 import { usePaymentEvents, type PaymentLiveEvent } from '@/composables/usePaymentEvents'
 import { useToast } from '@/composables/useToast'
-import { formatMoney, formatNumber } from '@/utils/format'
+import { formatMoney, formatNumber, orderServiceName } from '@/utils/format'
 import { buildAbaDeepLink, isTouchDevice } from '@/utils/deepLink'
 import { detectPlatform, type DetectedPlatform } from '@/utils/linkValidation'
 import PlatformIcon from '@/components/ui/PlatformIcon.vue'
@@ -341,7 +341,7 @@ const banks = [
 
 function serviceName(): string {
   if (!order.value) return ''
-  return typeof order.value.service === 'object' ? order.value.service.name : 'Service'
+  return orderServiceName(order.value.service)
 }
 
 /** Platform of the ordered service — from its category or the pasted link. */

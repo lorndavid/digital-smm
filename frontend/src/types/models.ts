@@ -104,7 +104,8 @@ export interface Order {
   orderNumber: number
   providerOrderId: number | null
   user: string
-  service: Service | string
+  /** Populated service, or null when the service was removed from the catalogue. */
+  service: Service | string | null
   type: ServiceType
   link: string
   quantity: number

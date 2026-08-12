@@ -24,7 +24,7 @@ import BaseSpinner from '@/components/ui/BaseSpinner.vue'
 import BaseEmptyState from '@/components/ui/BaseEmptyState.vue'
 import PlatformIcon from '@/components/ui/PlatformIcon.vue'
 import { STATUS_SHORT_LABEL, STATUS_TONE } from '@/utils/constants'
-import { formatMoney, formatNumber, formatServiceId } from '@/utils/format'
+import { formatMoney, formatNumber, formatServiceId, orderServiceName } from '@/utils/format'
 import type { Order } from '@/types/models'
 
 const store = useOrdersStore()
@@ -54,7 +54,7 @@ const visibleOrders = computed(() => store.orders)
 const liveActive = computed(() => store.orders.some((o) => !TERMINAL.has(o.status)))
 
 function serviceName(order: Order): string {
-  return typeof order.service === 'object' ? order.service.name : 'Service'
+  return orderServiceName(order.service)
 }
 
 /** SMMWiz provider service id shown under the service name (e.g. '#1721'). */
@@ -85,7 +85,8 @@ function orderPlatform(order: Order): DetectedPlatform {
 }
 
 function serviceSupports(order: Order, flag: 'refill' | 'cancel'): boolean {
-  return typeof order.service === 'object' ? Boolean(order.service[flag]) : false
+  const s = order.service
+  return s && typeof s === 'object' ? Boolean(s[flag]) : false
 }
 
 function canCancelOrder(order: Order): boolean {

@@ -81,3 +81,16 @@ export function clamp(value: number, min: number, max: number): number {
 export function formatServiceId(value: number | null | undefined): string {
   return value ? `#${value}` : ''
 }
+
+/**
+ * Null-safe service display name for an order. The order's `service` ref can
+ * be `null` when the underlying service was removed from the catalogue (e.g.
+ * provider re-sync) — `typeof null === 'object'` makes naive guards crash on
+ * `.name`. Falls back to a neutral label.
+ */
+export function orderServiceName(
+  service: { name?: string } | string | null | undefined,
+  fallback = 'Service',
+): string {
+  return service && typeof service === 'object' && service.name ? service.name : fallback
+}

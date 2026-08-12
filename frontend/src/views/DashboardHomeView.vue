@@ -16,7 +16,7 @@ import BaseBadge from '@/components/ui/BaseBadge.vue'
 import BaseSkeleton from '@/components/ui/BaseSkeleton.vue'
 import BaseEmptyState from '@/components/ui/BaseEmptyState.vue'
 import { STATUS_TONE } from '@/utils/constants'
-import { formatMoney, formatNumber, formatRelative } from '@/utils/format'
+import { formatMoney, formatNumber, formatRelative, orderServiceName } from '@/utils/format'
 import type { Order, Service } from '@/types/models'
 
 const router = useRouter()
@@ -45,7 +45,7 @@ const completedOrders = computed(
 )
 
 function serviceName(order: Order): string {
-  return typeof order.service === 'object' ? order.service.name : 'Service'
+  return orderServiceName(order.service)
 }
 
 function openBuy(service: Service): void {
