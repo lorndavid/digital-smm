@@ -7,7 +7,11 @@
  * Requires SMMWIZ_API_KEY in backend/.env (SMM_PROVIDER=smmwiz). Rates are
  * written 1:1 from the provider — the storefront never marks prices up.
  * Existing services are updated in place; admin curation flags (isActive,
- * isFeatured, sortOrder) are preserved.
+ * isFeatured, sortOrder) are preserved. The catalogue is also RECONCILED to
+ * exactly this provider: services synced from any other provider are removed
+ * and stale services of this provider are soft-disabled (see
+ * syncProviderServices) — the storefront never serves another provider's
+ * inventory.
  */
 import 'dotenv/config'
 import { connectDatabase, disconnectDatabase } from '../src/config/database.js'

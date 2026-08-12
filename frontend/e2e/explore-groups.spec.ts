@@ -656,6 +656,9 @@ test('happy path: funded wallet places the order and redirects to it', async ({
 
   // Redirected to the new order's detail page.
   await page.waitForURL(/\/dashboard\/orders\/[a-f0-9]{24}$/)
+
+  // The SMMWiz service id is visible on the order detail (ID #… chip).
+  await expect(page.getByText(/ID #\d+/).first()).toBeVisible()
 })
 
 test('order again: prefills the Explore form from a previous order', async ({

@@ -39,9 +39,14 @@ function installProbes(page: Page): Probe {
     }
   })
   page.on('console', (msg) => {
-    if (msg.type() === 'error' && !EXTERNAL_OK.some((h) => msg.text().includes(h))) {
-      probe.consoleErrors.push(msg.text())
-    }
+    if (msg.type() !== 'error') return
+    const text = msg.text()
+    const locUrl = msg.location().url
+    // The network gate ignores external hosts (offline CI); the console gate
+    // must too — Chrome's console text omits the URL, so check it here.
+    if (EXTERNAL_OK.some((h) => text.includes(h) || locUrl.includes(h))) return
+    // Include the failing resource URL — Chrome's default text omits it.
+    probe.consoleErrors.push(`${text} @ ${locUrl}`)
   })
   page.on('pageerror', (err) => probe.pageErrors.push(String(err)))
   return probe

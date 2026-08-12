@@ -82,14 +82,20 @@ export class AdminService {
    * Existing services are updated in place; admin curation flags
    * (isActive, isFeatured, sortOrder) are preserved.
    *
-   * Syncs the env-configured provider (SMM_PROVIDER — 'smmwiz' in
-   * production, 'mock' in local/dev/browser-test so the storefront
-   * has data without a real API key).
+   * Reconciles the storefront catalogue to EXACTLY the configured
+   * provider (SMM_PROVIDER — 'smmwiz' in production, 'mock' in
+   * local/dev/browser-test so the storefront has data without a real
+   * API key): after a successful fetch, services that came from any
+   * other provider (e.g. legacy khmer-smm rows) and services of this
+   * provider that no longer exist in the fresh catalogue are removed.
+   * Manually created services (providerServiceId null) are never
+   * touched.
    */
   async syncProviderServices() {
     const providerKeys = [env.SMM_PROVIDER] as const
     let totalCreated = 0
     let totalUpdated = 0
+    let totalPurged = 0
     let totalServices = 0
 
     for (const key of providerKeys) {
@@ -179,6 +185,38 @@ export class AdminService {
           updated += result.matchedCount
         }
 
+        // 5. Reconcile: the configured provider is the single source of
+        // truth for the storefront catalogue.
+        //   - Services synced from ANY other provider (e.g. legacy khmer-smm
+        //     rows) are REMOVED — they can no longer be fulfilled and must
+        //     never be sold again.
+        //   - Services of this provider that have been removed upstream are
+        //     SOFT-DISABLED (isActive: false) instead of deleted, so the
+        //     storefront stops listing them but historical orders that
+        //     reference them keep their populated service name.
+        //   - Manually created services (providerServiceId null) are never
+        //     touched.
+        // Only reconcile when the fetch returned a non-empty catalogue — a
+        // transient 200-with-`[]` (or any empty mapping) must never wipe the
+        // storefront.
+        if (providerServices.length > 0) {
+          const freshIds = new Set(providerServices.map((ps) => ps.providerServiceId))
+          const purged = await ServiceModel.deleteMany({
+            // Foreign-provider rows: synced elsewhere, not this provider.
+            providerServiceId: { $ne: null },
+            provider: { $ne: provider.name },
+          })
+          const stale = await ServiceModel.updateMany(
+            {
+              // Stale rows of this provider, no longer in the fresh catalogue.
+              provider: provider.name,
+              providerServiceId: { $ne: null, $nin: [...freshIds] },
+            },
+            { $set: { isActive: false } },
+          )
+          totalPurged += (purged.deletedCount ?? 0) + (stale.modifiedCount ?? 0)
+        }
+
         totalCreated += created
         totalUpdated += updated
         totalServices += providerServices.length
@@ -192,6 +230,7 @@ export class AdminService {
       provider: 'all',
       created: totalCreated,
       updated: totalUpdated,
+      purged: totalPurged,
       total: totalServices,
     }
   }

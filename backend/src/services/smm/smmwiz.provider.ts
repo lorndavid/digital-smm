@@ -15,11 +15,14 @@ interface ApiErrorBody {
 }
 
 /**
- * smmwiz.com API v2 client.
+ * wizsmm.com API v2 client.
  *
  * Docs (see project guide):
- *  - POST https://smmwiz.com/api/v2 with form params: key + action
+ *  - POST https://wizsmm.com/api/v2 with form params: key + action
  *  - actions: services | add | status | refill | refill_status | cancel | balance
+ *
+ * Note: the live domain is wizsmm.com — smmwiz.com is a dead/legacy
+ * domain that rejects the current key (HTTP 401).
  *
  * All responses are JSON. Numeric fields arrive as strings, so they are
  * coerced at the boundary of this class.

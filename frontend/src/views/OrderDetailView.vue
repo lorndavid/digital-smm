@@ -24,7 +24,7 @@ import { usePaymentEvents, type PaymentLiveEvent } from '@/composables/usePaymen
 import { useToast } from '@/composables/useToast'
 import { STATUS_META } from '@/utils/constants'
 import { SERVICE_TYPE_LABEL } from '@/utils/constants'
-import { formatMoney, formatNumber, formatRelative } from '@/utils/format'
+import { formatMoney, formatNumber, formatRelative, formatServiceId } from '@/utils/format'
 import { detectPlatform, type DetectedPlatform } from '@/utils/linkValidation'
 import { buildOrderAgainQuery } from '@/utils/orderPrefill'
 import OrderStatusTimeline from '@/components/dashboard/OrderStatusTimeline.vue'
@@ -126,6 +126,9 @@ const analytics = computed(() => {
   ]
   if (o.charge > 0) items.push({ label: 'Provider charge', value: formatMoney(o.charge) })
   if (o.startCount > 0) items.push({ label: 'Start count', value: formatNumber(o.startCount) })
+  if (serviceInfo.value?.providerServiceId) {
+    items.push({ label: 'Service ID', value: formatServiceId(serviceInfo.value.providerServiceId) })
+  }
   if (o.providerOrderId) items.push({ label: 'Provider order', value: `#${o.providerOrderId}` })
   items.push({ label: 'Created', value: formatRelative(o.createdAt) })
   items.push({ label: 'Updated', value: formatRelative(o.updatedAt) })
@@ -495,6 +498,12 @@ onUnmounted(() => {
               <div class="flex flex-wrap items-center gap-2">
                 <h2 class="font-display truncate text-lg font-semibold text-ink">{{ serviceInfo?.name ?? 'Service' }}</h2>
                 <BaseBadge tone="brand">{{ serviceTypeLabel }}</BaseBadge>
+                <span
+                  v-if="serviceInfo?.providerServiceId"
+                  class="rounded-md bg-ink/5 px-2 py-0.5 font-mono text-[11px] font-medium text-ink/50"
+                >
+                  ID {{ formatServiceId(serviceInfo.providerServiceId) }}
+                </span>
               </div>
               <p class="mt-1 flex items-center gap-1 text-xs text-brand-300">
                 <ExternalLink class="h-3 w-3 shrink-0" />

@@ -75,3 +75,9 @@ export function formatUnitPrice(value: number | string | null | undefined, curre
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
 }
+
+/** Formats a provider (SMMWiz) service id as a compact '#12345' tag — empty
+ *  when the service has no provider id (e.g. locally created services). */
+export function formatServiceId(value: number | null | undefined): string {
+  return value ? `#${value}` : ''
+}

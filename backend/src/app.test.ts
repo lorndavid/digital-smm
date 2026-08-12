@@ -46,7 +46,7 @@ vi.mock('./config/env.js', () => ({
     SUPER_ADMIN_PASSWORD: undefined,
     CORS_ORIGINS: 'http://localhost:5173',
     SMM_PROVIDER: 'mock',
-    SMMWIZ_API_URL: 'https://smmwiz.com/api/v2',
+    SMMWIZ_API_URL: 'https://wizsmm.com/api/v2',
     SMMWIZ_API_KEY: 'test-key',
     PAYMENT_PROVIDER: 'mock',
     CUTLUY_API_URL: 'https://cutluy.com/v1',

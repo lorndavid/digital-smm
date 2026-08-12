@@ -34,7 +34,7 @@ import {
   PLATFORM_LABEL,
   type DetectedPlatform,
 } from '@/utils/linkValidation'
-import { formatMoney, formatNumber, formatUnitPrice } from '@/utils/format'
+import { formatMoney, formatNumber, formatServiceId, formatUnitPrice } from '@/utils/format'
 import { SERVICE_TYPE_LABEL, PLATFORM_META } from '@/utils/constants'
 import PlatformIcon from '@/components/ui/PlatformIcon.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -354,6 +354,11 @@ function categoryLabel(service: Service): string {
     return store.categories.find((c) => c._id === cat)?.name ?? 'General'
   }
   return 'General'
+}
+
+/** SMMWiz provider service id, rendered as a compact '#12345' tag. */
+function serviceId(service: Service): string {
+  return formatServiceId(service.providerServiceId)
 }
 
 /**
@@ -1304,6 +1309,9 @@ onMounted(async () => {
                       <span class="block truncate text-sm font-medium text-ink">{{ s.name }}</span>
                       <span class="mt-0.5 block truncate text-xs text-ink/40">
                         {{ categoryLabel(s) }} · {{ SERVICE_TYPE_LABEL[s.type] ?? s.type }}
+                        <span v-if="serviceId(s)" class="ml-1 font-mono text-ink/45">
+                          ID {{ serviceId(s) }}
+                        </span>
                       </span>
                     </span>
                     <span class="shrink-0 text-right">
@@ -1600,6 +1608,9 @@ onMounted(async () => {
                           </span>
                           <span class="mt-0.5 block truncate text-xs text-ink/40">
                             {{ categoryLabel(s) }} · {{ SERVICE_TYPE_LABEL[s.type] ?? s.type }}
+                            <span v-if="serviceId(s)" class="ml-1 font-mono text-ink/45">
+                              ID {{ serviceId(s) }}
+                            </span>
                           </span>
                         </span>
                         <span class="shrink-0 text-right">
@@ -1691,7 +1702,15 @@ onMounted(async () => {
                     <h3 class="font-display truncate text-base font-semibold text-ink">
                       {{ selected.name }}
                     </h3>
-                    <p class="mt-0.5 text-xs text-ink/45">{{ serviceTypeLabel }}</p>
+                    <p class="mt-0.5 flex items-center gap-2 text-xs text-ink/45">
+                      {{ serviceTypeLabel }}
+                      <span
+                        v-if="serviceId(selected)"
+                        class="rounded-md bg-ink/5 px-1.5 py-0.5 font-mono text-[11px] font-medium text-ink/50"
+                      >
+                        ID {{ serviceId(selected) }}
+                      </span>
+                    </p>
                   </div>
                 </div>
                 <div class="flex shrink-0 flex-col items-end gap-1.5">

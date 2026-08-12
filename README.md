@@ -4,7 +4,7 @@
 
 A production-ready, monorepo SaaS for buying social media growth — TikTok, Facebook,
 Instagram, YouTube and Telegram — with wallet top-ups, **Bakong KHQR payments** (mock for
-the MVP) and real-time order tracking via the [smmwiz.com](https://smmwiz.com) API v2.
+the MVP) and real-time order tracking via the [wizsmm.com](https://wizsmm.com) API v2.
 
 ---
 
@@ -26,7 +26,7 @@ root/
 | Backend   | Express 5, Mongoose 8, jose (Google id_token verification via public JWKS + local HS256 session tokens), Zod validation, Helmet, CORS, rate limiting |
 | Database  | MongoDB Atlas |
 | Payments  | `PaymentProvider` interface — **mock KHQR provider** now; swap in Bakong / ABA / ACLEDA / Wing later |
-| SMM       | `SmmProvider` interface — real smmwiz.com API v2 client + in-memory mock for local dev |
+| SMM       | `SmmProvider` interface — real wizsmm.com API v2 client + in-memory mock for local dev |
 
 ---
 
@@ -75,7 +75,7 @@ CORS_ORIGINS=http://localhost:5173,http://localhost:5174
 
 # SMM provider: "smmwiz" (real) or "mock" (no key needed)
 SMM_PROVIDER=smmwiz
-SMMWIZ_API_URL=https://smmwiz.com/api/v2
+SMMWIZ_API_URL=https://wizsmm.com/api/v2
 SMMWIZ_API_KEY=your_smmwiz_api_key
 
 # Payment provider: "mock" (no key), "cutluy" (real Bakong KHQR) or "abapayway"
@@ -248,9 +248,10 @@ shown on the Admins page, so a compromised super admin cannot silently hand out
 
 ---
 
-## SMM provider (smmwiz.com)
+## SMM provider (wizsmm.com)
 
-The backend implements the full **smmwiz.com API v2** guide:
+The backend implements the full **wizsmm.com API v2** guide (the live domain;
+smmwiz.com is a dead/legacy domain that rejects the current key):
 
 | Action | Endpoint used | Backend method |
 |--------|---------------|----------------|

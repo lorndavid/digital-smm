@@ -1,7 +1,7 @@
 import type { ServiceType } from '../types/index.js'
 
 /**
- * Contract for an SMM order provider (e.g. smmwiz.com API v2).
+ * Contract for an SMM order provider (e.g. wizsmm.com API v2).
  * New providers implement this interface and are registered in
  * `services/smm/provider.factory.ts`.
  */

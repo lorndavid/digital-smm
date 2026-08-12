@@ -20,7 +20,7 @@ How the pieces connect:
 ```
 Customer (5173) ──► Backend API (4000) ──► MongoDB Atlas
       │                     │
-      │                     ├─► smmwiz.com (SMM provider: real orders/prices)
+      │                     ├─► wizsmm.com (SMM provider: real orders/prices)
       │                     └─► CutLuy (Bakong KHQR payments)
 Admin (5174) ──► same API
 ```
@@ -44,7 +44,7 @@ keys, SMMWIZ + CUTLUY keys.
 Useful commands (run inside `backend/`):
 
 ```bash
-npm run sync:catalog       # re-fetch all services from the smmwiz API
+npm run sync:catalog       # re-fetch all services from the wizsmm API
 npm run create:super-admin # create a super admin account
 npm test                   # run the backend test suite
 npm run loadtest           # payment flow load test
@@ -125,7 +125,7 @@ Open **Orders** (dashboard → Orders):
 
 ### 3.2 Dashboard
 - Revenue (total + KHQR-paid), order/payment stats, provider balance.
-- A **sync catalog** action refreshes all services from the smmwiz API.
+- A **sync catalog** action refreshes all services from the wizsmm API.
 
 ### 3.3 Services (the most important page)
 - **Search / filter** services; every price column shows the **Rate / 1,000** semantics.
@@ -179,7 +179,7 @@ Open **Orders** (dashboard → Orders):
 | **Rate / 1,000** | `pricePerUnit` is the price per 1,000 units. Order total = `qty × rate ÷ 1000`. |
 | **Flat bundles** | `min=1, max=1` services are one-time packages — the rate is the price. |
 | **Delivery progress** | Provider's `remains` (units left to deliver) drives the progress bar: `(qty − remains) ÷ qty`. |
-| **Order-sync job** | Background job (`ENABLE_ORDER_SYNC_JOB`) polling smmwiz so statuses/counts stay fresh. |
+| **Order-sync job** | Background job (`ENABLE_ORDER_SYNC_JOB`) polling wizsmm so statuses/counts stay fresh. |
 | **Real-time payment** | Server-Sent Events push payment success to the page instantly. |
 | **KHQR providers** | CutLuy (live Bakong) is configured; mock/ABA also supported. |
 | **Wallet** | Customers can top up via KHQR or pay per order; orders debit the wallet after placement. |

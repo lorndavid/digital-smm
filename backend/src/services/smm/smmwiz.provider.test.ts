@@ -5,7 +5,7 @@ import { SmmWizProvider } from './smmwiz.provider.js'
 // so the test never touches .env validation.
 vi.mock('../../config/env.js', () => ({
   env: {
-    SMMWIZ_API_URL: 'https://smmwiz.com/api/v2',
+    SMMWIZ_API_URL: 'https://wizsmm.com/api/v2',
     SMMWIZ_API_KEY: 'test-key',
   },
   corsOrigins: [],
@@ -33,7 +33,7 @@ afterEach(() => {
 describe('SmmWizProvider', () => {
   it('posts form-encoded params including the API key and action', async () => {
     const getBody = stubFetch({ order: '23501' })
-    const provider = new SmmWizProvider('https://smmwiz.com/api/v2', 'key-123')
+    const provider = new SmmWizProvider('https://wizsmm.com/api/v2', 'key-123')
 
     const result = await provider.createOrder({
       service: 7,
@@ -52,7 +52,7 @@ describe('SmmWizProvider', () => {
 
   it('joins list fields (comments) with newlines', async () => {
     const getBody = stubFetch({ order: '42' })
-    const provider = new SmmWizProvider('https://smmwiz.com/api/v2', 'key-123')
+    const provider = new SmmWizProvider('https://wizsmm.com/api/v2', 'key-123')
 
     await provider.createOrder({
       service: 2,
@@ -66,7 +66,7 @@ describe('SmmWizProvider', () => {
 
   it('omits undefined optional fields', async () => {
     const getBody = stubFetch({ order: '42' })
-    const provider = new SmmWizProvider('https://smmwiz.com/api/v2', 'key-123')
+    const provider = new SmmWizProvider('https://wizsmm.com/api/v2', 'key-123')
 
     await provider.createOrder({ service: 1, link: 'https://x.com', quantity: 10 })
 
@@ -78,7 +78,7 @@ describe('SmmWizProvider', () => {
 
   it('throws when the provider returns an error body', async () => {
     stubFetch({ error: 'Incorrect order ID' })
-    const provider = new SmmWizProvider('https://smmwiz.com/api/v2', 'key-123')
+    const provider = new SmmWizProvider('https://wizsmm.com/api/v2', 'key-123')
 
     await expect(
       provider.createOrder({ service: 1, link: 'https://x.com', quantity: 10 }),
@@ -87,7 +87,7 @@ describe('SmmWizProvider', () => {
 
   it('coerces string numeric status fields', async () => {
     stubFetch({ order: '12', charge: '1.50', status: 'Completed', remains: '0', currency: 'USD' })
-    const provider = new SmmWizProvider('https://smmwiz.com/api/v2', 'key-123')
+    const provider = new SmmWizProvider('https://wizsmm.com/api/v2', 'key-123')
 
     const status = await provider.getOrderStatus(12)
     expect(status.charge).toBe(1.5)
@@ -109,7 +109,7 @@ describe('SmmWizProvider', () => {
         cancel: true,
       },
     ])
-    const provider = new SmmWizProvider('https://smmwiz.com/api/v2', 'key-123')
+    const provider = new SmmWizProvider('https://wizsmm.com/api/v2', 'key-123')
 
     const services = await provider.getServices()
     expect(services[0]).toMatchObject({

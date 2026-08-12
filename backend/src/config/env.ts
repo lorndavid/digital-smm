@@ -73,7 +73,9 @@ const envSchema = z.object({
 
   // SMM provider: 'smmwiz' (real API) or 'mock' (local, no key)
   SMM_PROVIDER: z.enum(['smmwiz', 'mock']).default('smmwiz'),
-  SMMWIZ_API_URL: z.url().default('https://smmwiz.com/api/v2'),
+  // The live API domain is wizsmm.com — smmwiz.com is a dead/legacy domain
+  // whose API rejects the current key (HTTP 401).
+  SMMWIZ_API_URL: z.url().default('https://wizsmm.com/api/v2'),
   SMMWIZ_API_KEY: z.string().optional(),
 
   // Payment provider: 'mock' (no key), 'cutluy' (real Bakong KHQR) or 'abapayway'

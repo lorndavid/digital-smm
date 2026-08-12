@@ -24,7 +24,7 @@ import BaseSpinner from '@/components/ui/BaseSpinner.vue'
 import BaseEmptyState from '@/components/ui/BaseEmptyState.vue'
 import PlatformIcon from '@/components/ui/PlatformIcon.vue'
 import { STATUS_SHORT_LABEL, STATUS_TONE } from '@/utils/constants'
-import { formatMoney, formatNumber } from '@/utils/format'
+import { formatMoney, formatNumber, formatServiceId } from '@/utils/format'
 import type { Order } from '@/types/models'
 
 const store = useOrdersStore()
@@ -55,6 +55,12 @@ const liveActive = computed(() => store.orders.some((o) => !TERMINAL.has(o.statu
 
 function serviceName(order: Order): string {
   return typeof order.service === 'object' ? order.service.name : 'Service'
+}
+
+/** SMMWiz provider service id shown under the service name (e.g. '#1721'). */
+function serviceId(order: Order): string {
+  const s = order.service
+  return formatServiceId(s && typeof s === 'object' ? s.providerServiceId : null)
 }
 
 function openDetail(order: Order): void {
@@ -303,7 +309,15 @@ onUnmounted(() => {
               <td class="px-3.5 py-2.5">
                 <span class="flex max-w-[220px] items-center gap-2">
                   <PlatformIcon :platform="orderPlatform(order)" size="xs" tile class="shrink-0" />
-                  <span class="truncate font-medium text-ink">{{ serviceName(order) }}</span>
+                  <span class="min-w-0">
+                    <span class="block truncate font-medium text-ink">{{ serviceName(order) }}</span>
+                    <span
+                      v-if="serviceId(order)"
+                      class="block truncate font-mono text-[11px] text-ink/40"
+                    >
+                      ID {{ serviceId(order) }}
+                    </span>
+                  </span>
                 </span>
               </td>
               <td class="px-3.5 py-2.5">
