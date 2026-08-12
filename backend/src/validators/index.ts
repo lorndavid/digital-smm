@@ -109,6 +109,11 @@ export const updateProfileBodySchema = z.object({
   avatarUrl: z.union([z.url(), z.literal('')]).optional(),
 })
 
+/** Favourited category ids (full-list replace, capped at a sane catalogue size). */
+export const favoriteCategoriesBodySchema = z.object({
+  categoryIds: z.array(z.string().min(1)).max(200),
+})
+
 // ---------------------------------------------------------------------------
 // Admin: services
 // ---------------------------------------------------------------------------

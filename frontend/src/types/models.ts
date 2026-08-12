@@ -182,6 +182,8 @@ export interface UserProfile {
   role: 'customer' | 'admin'
   isActive: boolean
   lastLoginAt: string | null
+  /** Category ids the customer favourited (Explore → Favourites). */
+  favoriteCategories?: string[]
 }
 
 export interface Profile {

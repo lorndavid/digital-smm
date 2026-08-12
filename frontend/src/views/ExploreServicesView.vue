@@ -11,6 +11,7 @@ import {
   Plus,
   RotateCcw,
   Search,
+  Star,
   Wallet,
   XCircle,
 } from '@lucide/vue'
@@ -20,6 +21,7 @@ import { ordersApi } from '@/api/orders.api'
 import { ApiRequestError } from '@/api/client'
 import { useServicesStore } from '@/stores/services.store'
 import { useWalletStore } from '@/stores/wallet.store'
+import { useFavoritesStore } from '@/stores/favorites.store'
 import { useToast } from '@/composables/useToast'
 import {
   serviceFields,
@@ -44,6 +46,7 @@ import type { Category, Platform, Service } from '@/types/models'
 
 const store = useServicesStore()
 const walletStore = useWalletStore()
+const favoritesStore = useFavoritesStore()
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
@@ -98,6 +101,33 @@ const selected = ref<Service | null>(null)
 
 /** Active platform chip ('facebook', 'tiktok', … — '' = all platforms). */
 const platform = ref('')
+
+/** 'Facebook Live' quick-filter chip — searches the WHOLE catalogue for live
+ *  stream services and, unlike the plain search, keeps ONLY services that
+ *  match BOTH "facebook" AND "live" aliases (no non-live Facebook services). */
+const liveChip = ref(false)
+const LIVE_QUERY = 'facebook live'
+
+/** Toggles the Facebook Live quick-filter. */
+function selectLiveChip(): void {
+  liveChip.value = !liveChip.value
+  if (liveChip.value) {
+    platform.value = ''
+    categoryId.value = ''
+    resetOrderFlow()
+    search.value = LIVE_QUERY
+    searchOpen.value = true
+    void loadAllServices()
+  } else {
+    search.value = ''
+    closeSearch()
+  }
+}
+
+/** Typing anything else (or picking a service) exits the live filter. */
+watch(search, (value) => {
+  if (liveChip.value && value !== LIVE_QUERY) liveChip.value = false
+})
 
 /**
  * Category dropdown options. When a platform chip is active, only categories
@@ -485,9 +515,21 @@ const searchDropdownServices = computed<Service[]>(() => {
     if (score > 0) scored.push({ service: s, score })
   }
   // Best matches first, then cheapest — a real SMM-panel-style search.
-  return scored
+  const ranked = scored
     .sort((a, b) => b.score - a.score || a.service.pricePerUnit - b.service.pricePerUnit)
     .map((s) => s.service)
+  // The Facebook Live chip narrows the ranked results to services that match
+  // BOTH facebook AND live aliases — so "Facebook Live Stream Views" shows
+  // up, but plain "Facebook Page Likes" never leaks into the live list.
+  if (liveChip.value) {
+    const fb = termTokens('facebook')
+    const lv = termTokens('live')
+    return ranked.filter((s) => {
+      const hay = searchHaystack(s)
+      return fb.some((t) => hay.includes(t)) && lv.some((t) => hay.includes(t))
+    })
+  }
+  return ranked
 })
 
 /** Rendered slice of the ranked results (keeps the DOM light on broad
@@ -619,14 +661,35 @@ function onCategoryKeydown(event: KeyboardEvent): void {
 }
 
 // Keep the highlighted category visible while navigating with arrow keys.
+// Only the select buttons carry [data-category-option] — the star buttons
+// (favourites) sit next to each row and must not shift the highlight index.
 watch(
   categoryIndex,
   (index) => {
     if (index < 0) return
-    categoryListEl.value?.querySelectorAll('button')[index]?.scrollIntoView({ block: 'nearest' })
+    categoryListEl.value
+      ?.querySelectorAll('button[data-category-option]')
+      [index]?.scrollIntoView({ block: 'nearest' })
   },
   { flush: 'post' },
 )
+
+/** Toggles a category in the customer's favourites (optimistic, server-synced). */
+function toggleFavorite(categoryId: string): void {
+  favoritesStore
+    .toggle(categoryId)
+    .then(() => {
+      const added = favoritesStore.isFavorite(categoryId)
+      toast.success(
+        added
+          ? 'Added to favourites'
+          : 'Removed from favourites',
+      )
+    })
+    .catch(() => {
+      toast.error('Could not update favourites')
+    })
+}
 
 /** Arrow up/down + Enter navigation for the search results dropdown. */
 function onSearchKeydown(event: KeyboardEvent): void {
@@ -994,6 +1057,25 @@ async function submit(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 /**
+ * Reads ?category=… from the route (set by the Favourites tab) and sets the
+ * browse filter to that category — the Service field stays empty so the user
+ * picks a service for the favourited category, exactly like a manual pick.
+ */
+async function applyCategoryQuery(): Promise<void> {
+  const q = route.query
+  const category = typeof q.category === 'string' ? q.category : ''
+  if (!category) return
+  // Categories resolve asynchronously — only act once the id matches a real
+  // category in the loaded catalogue.
+  const cat = store.categories.find((c) => c._id === category)
+  if (!cat) return
+  platform.value = ''
+  categoryId.value = cat._id
+  changeCategory()
+  categorySearch.value = cat.name
+}
+
+/**
  * Reads ?serviceId&link&quantity&params from the route and fills the whole
  * order form (service selected, category auto-set, fields populated), then
  * scrolls the pre-filled form into view.
@@ -1067,9 +1149,11 @@ onMounted(async () => {
   await Promise.allSettled([
     store.fetchCategories(),
     walletStore.fetchWallet(),
+    favoritesStore.fetch(),
     loadServices(),
     loadAllServices(),
   ])
+  await applyCategoryQuery()
   await applyPrefill()
 })
 </script>
@@ -1085,7 +1169,7 @@ onMounted(async () => {
         <h1 class="font-display text-xl font-bold text-ink">Explore Services</h1>
       </div>
 
-      <!-- Platform quick filters (replaces the wallet balance card) -->
+      <!-- Platform quick filters + Facebook Live (replaces the wallet balance card) -->
       <div class="flex flex-wrap items-center justify-end gap-2">
         <button
           v-for="p in platformChips"
@@ -1103,6 +1187,36 @@ onMounted(async () => {
         >
           <PlatformIcon :platform="p" size="xs" tile />
           {{ platformLabel(p) }}
+        </button>
+
+        <!-- Facebook Live quick-filter chip — runs a "facebook live" search
+             that shows ONLY Facebook Live Stream services (no plain Facebook
+             services leak in). Always shown: it searches the WHOLE catalogue
+             by name/category, so it works even before platform inference. -->
+        <button
+          type="button"
+          data-live-chip
+          class="flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition-all active:scale-95"
+          :class="
+            liveChip
+              ? 'border-rose-400/60 bg-rose-500/15 text-ink ring-1 ring-rose-400/40'
+              : 'border-ink/10 bg-ink/5 text-ink/60 hover:border-rose-400/40 hover:text-ink'
+          "
+          :aria-pressed="liveChip"
+          @click="selectLiveChip"
+        >
+          <!-- Pulsing live dot when active -->
+          <span class="relative flex h-2 w-2">
+            <span
+              v-if="liveChip"
+              class="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75"
+            />
+            <span
+              class="relative inline-flex h-2 w-2 rounded-full"
+              :class="liveChip ? 'bg-rose-500' : 'bg-ink/30'"
+            />
+          </span>
+          Facebook Live
         </button>
       </div>
     </div>
@@ -1240,30 +1354,66 @@ onMounted(async () => {
                   class="absolute z-40 mt-2 w-full overflow-hidden rounded-2xl border border-ink/10 bg-card/95 shadow-glow backdrop-blur-xl"
                 >
                   <div ref="categoryListEl" class="max-h-64 overflow-y-auto p-1.5">
-                    <button
+                    <!-- Each row: the select button (tap to filter) plus a star
+                         button (tap to favourite the category). The star sits
+                         outside the select button so clicks never nest. -->
+                    <div
                       v-for="(row, index) in categoryRows"
                       :key="row.value"
-                      type="button"
-                      :data-category-option="row.label"
-                      class="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-ink/5"
+                      class="flex items-center gap-1 rounded-xl transition-colors"
                       :class="
-                        categoryId === row.value
-                          ? 'bg-brand-500/15'
-                          : index === categoryIndex
+                        categoryId === row.value ? 'bg-brand-500/15' : 'hover:bg-ink/5'
+                      "
+                    >
+                      <button
+                        type="button"
+                        :data-category-option="row.label"
+                        class="flex min-w-0 flex-1 items-center gap-2 rounded-xl px-3 py-2.5 text-left"
+                        :class="
+                          index === categoryIndex
                             ? 'bg-ink/10 ring-1 ring-brand-400/40'
                             : ''
-                      "
-                      @mousedown.prevent
-                      @click="selectCategoryRow(row)"
-                    >
-                      <Check
-                        v-if="categoryId === row.value"
-                        class="h-3.5 w-3.5 shrink-0 text-brand-300"
-                      />
-                      <span class="min-w-0">
-                        <span class="block truncate text-sm font-medium text-ink">{{ row.label }}</span>
-                      </span>
-                    </button>
+                        "
+                        @mousedown.prevent
+                        @click="selectCategoryRow(row)"
+                      >
+                        <Check
+                          v-if="categoryId === row.value"
+                          class="h-3.5 w-3.5 shrink-0 text-brand-300"
+                        />
+                        <span class="min-w-0">
+                          <span class="block truncate text-sm font-medium text-ink">{{ row.label }}</span>
+                        </span>
+                      </button>
+                      <button
+                        v-if="row.value"
+                        type="button"
+                        :data-fav-category="row.value"
+                        :data-favorited="favoritesStore.isFavorite(row.value) ? 'true' : 'false'"
+                        :aria-label="
+                          favoritesStore.isFavorite(row.value)
+                            ? `Remove ${row.label} from favourites`
+                            : `Add ${row.label} to favourites`
+                        "
+                        :title="
+                          favoritesStore.isFavorite(row.value)
+                            ? 'Remove from favourites'
+                            : 'Add to favourites'
+                        "
+                        class="mr-1.5 shrink-0 rounded-lg p-2 text-ink/30 transition-all hover:bg-amber-400/10 hover:text-amber-400 active:scale-90"
+                        @mousedown.prevent
+                        @click.stop="toggleFavorite(row.value)"
+                      >
+                        <Star
+                          class="h-4 w-4"
+                          :class="
+                            favoritesStore.isFavorite(row.value)
+                              ? 'fill-amber-400 text-amber-400'
+                              : ''
+                          "
+                        />
+                      </button>
+                    </div>
 
                     <p
                       v-if="categoryRows.length === 1"

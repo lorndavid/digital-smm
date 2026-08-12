@@ -37,6 +37,14 @@ export class MockProvider implements SmmProvider {
       { providerServiceId: 14, name: 'Telegram Members', type: 'Default', category: 'Telegram', rate: 1.5, min: 50, max: 20000, refill: true, cancel: true },
       { providerServiceId: 15, name: 'Telegram Post Views', type: 'Default', category: 'Telegram', rate: 0.5, min: 100, max: 100000, refill: true, cancel: false },
       { providerServiceId: 16, name: 'Telegram Invites from Groups', type: 'Invites from Groups', category: 'Telegram', rate: 4, min: 10, max: 2000, refill: false, cancel: true },
+      // Live / stream services — mirror the real SMMWiz catalogue so the
+      // 'Facebook Live' quick filter and live-stream searches have data.
+      { providerServiceId: 17, name: 'Facebook Live Stream Views', type: 'Default', category: 'Facebook Live Stream', rate: 0.8, min: 100, max: 100000, refill: true, cancel: false },
+      { providerServiceId: 18, name: 'Facebook Live Stream Likes', type: 'Default', category: 'Facebook Live Stream', rate: 0.5, min: 50, max: 50000, refill: true, cancel: true },
+      { providerServiceId: 19, name: 'Facebook Live Stream Comments', type: 'Custom Comments', category: 'Facebook Live Stream', rate: 4, min: 10, max: 2000, refill: false, cancel: true },
+      { providerServiceId: 20, name: 'TikTok Live Stream Views', type: 'Default', category: 'TikTok Live Stream', rate: 0.6, min: 100, max: 100000, refill: true, cancel: false },
+      { providerServiceId: 21, name: 'TikTok Live Stream Likes', type: 'Default', category: 'TikTok Live Stream', rate: 0.4, min: 50, max: 50000, refill: true, cancel: true },
+      { providerServiceId: 22, name: 'YouTube Live Stream Views', type: 'Default', category: 'YouTube Live', rate: 0.9, min: 100, max: 200000, refill: true, cancel: false },
     ]
     return raw.map((s) => ({ ...s, type: s.type as ProviderService['type'] }))
   }

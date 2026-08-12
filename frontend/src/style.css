@@ -308,6 +308,25 @@ body {
   animation: scale-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Bank-logo marquee — each row holds two identical w-max copies and every
+   copy travels exactly ONE full width (-100%), so the identical second copy
+   slides into place with no visible jump at the loop reset. Direction comes
+   from the inline `--marquee-direction` variable, so the second row runs in
+   reverse (opposite motion). Pauses while hovered. */
+.animate-marquee {
+  animation: marquee 45s linear infinite;
+  animation-direction: var(--marquee-direction, normal);
+  will-change: transform;
+}
+@keyframes marquee {
+  to {
+    transform: translateX(-100%);
+  }
+}
+.group:hover .animate-marquee {
+  animation-play-state: paused;
+}
+
 /* Skeleton shimmer */
 .skeleton {
   position: relative;
@@ -375,7 +394,12 @@ body {
   }
   .animate-float,
   .animate-float-slow,
-  .animate-gradient {
+  .animate-gradient,
+  .animate-marquee {
     animation: none !important;
+  }
+  /* Static single row instead of the duplicated loop track. */
+  .animate-marquee.duplicate-copy {
+    display: none !important;
   }
 }

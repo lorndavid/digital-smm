@@ -16,6 +16,8 @@ const userSchema = new Schema(
     role: { type: String, enum: [...USER_ROLES], default: 'customer' },
     isActive: { type: Boolean, default: true },
     lastLoginAt: { type: Date, default: null },
+    /** Category ids the customer favourited for quick access (Explore → Favourites). */
+    favoriteCategories: { type: [String], default: [] },
   },
   { timestamps: true },
 )

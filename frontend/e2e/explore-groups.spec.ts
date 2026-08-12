@@ -13,9 +13,10 @@ import { expect, test, type APIRequestContext, type APIResponse } from '@playwri
  *   - ordering paid from the WALLET BALANCE (no QR) — with a clear
  *     "top up" prompt when the balance is not enough.
  *
- * The browser-test backend seeds the mock provider catalogue (16 services)
- * and test-bootstrap creates a fresh customer with an EMPTY wallet (the
- * $5 top-up stays pending until the test settles it via a signed webhook).
+ * The browser-test backend seeds the mock provider catalogue (22 services,
+ * including Facebook/TikTok/YouTube live-stream services) and test-bootstrap
+ * creates a fresh customer with an EMPTY wallet (the $5 top-up stays pending
+ * until the test settles it via a signed webhook).
  *
  * Requires the Playwright webServer stack (backend :4001, frontend :5199).
  * Run: npm run test:e2e -w frontend
@@ -140,9 +141,9 @@ test('live search shows a flat services-only list with no platform icons', async
   // Typing "facebook" lists the matching SERVICES as a clean flat list — no
   // category rows, no platform icons.
   await page.getByPlaceholder(/Search all services/).fill('facebook')
-  await expect(page.locator('[data-search-category]')).toHaveCount(0)
   await expect(page.locator('[data-search-service]').first()).toBeVisible()
-  await expect(page.locator('[data-search-service]')).toHaveCount(3) // FB Likes/Post/Video
+  // All 6 Facebook-named services (3 plain + 3 live-stream) surface.
+  await expect(page.locator('[data-search-service]')).toHaveCount(6)
 
   // Clicking a service still auto-picks it AND its category.
   await page.locator('[data-search-service]').filter({ hasText: 'Facebook Page Likes' }).click()
@@ -183,39 +184,48 @@ test('multi-word search matches across service name and category words', async (
   )
 })
 
-test('multi-word phrase like "facebook live stream" never comes up empty', async ({
+test('multi-word phrase like "facebook live stream" ranks live services first', async ({
   page,
 }) => {
-  // None of the mock services literally contain "live" or "stream", so a
-  // strict AND search would return ZERO results. The search matches ANY word
-  // against name/category/description — the Facebook services match via
-  // "facebook" and still surface, ranked above unrelated partial matches.
+  // The catalogue now HAS live-stream services. A strict AND match would still
+  // be safe, but the ranked any-word search leads with the full-scoring
+  // Facebook Live services (name AND category contain the words) while the
+  // plain Facebook services (score via "facebook" only) trail behind.
   await page.getByPlaceholder(/Search all services/).fill('facebook live stream')
+  await expect(page.getByRole('button', { name: /Facebook Live Stream Views/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Facebook Live Stream Likes/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Facebook Live Stream Comments/ })).toBeVisible()
   await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toBeVisible()
   await expect(page.getByRole('button', { name: /Facebook Post Likes/ })).toBeVisible()
   await expect(page.getByRole('button', { name: /Facebook Video Views/ })).toBeVisible()
-  // Only Facebook services rank (score via "facebook") — no unrelated noise.
-  await expect(page.locator('[data-search-service]')).toHaveCount(3)
-  await expect(page.locator('[data-search-service]').first()).toContainText('Facebook')
+  // The best matches (full phrase) lead the ranked list.
+  await expect(page.locator('[data-search-service]').first()).toContainText(
+    'Facebook Live Stream',
+  )
   await expect(page.getByText(/result/)).toBeVisible()
 
   // Clicking a result still auto-picks the service + its category.
-  await page.getByRole('button', { name: /Facebook Page Likes/ }).click()
-  await expect(page.getByRole('heading', { name: 'Facebook Page Likes', level: 3 })).toBeVisible()
-  await expect(page.getByPlaceholder(/Search or select a category/)).toHaveValue('Facebook')
+  await page.getByRole('button', { name: /Facebook Live Stream Views/ }).click()
+  await expect(page.getByRole('heading', { name: 'Facebook Live Stream Views', level: 3 })).toBeVisible()
+  await expect(page.getByPlaceholder(/Search or select a category/)).toHaveValue(
+    'Facebook Live Stream',
+  )
 })
 
 test('multi-word phrase like "tiktok live stream" surfaces TikTok services', async ({
   page,
 }) => {
-  // Same any-word matching for TikTok: only the "tiktok" word matches the
-  // mock catalogue, yet every TikTok service still surfaces in the dropdown.
+  // Any-word matching still surfaces every TikTok service, with the live
+  // stream ones (name + category score) leading the ranked list.
   await page.getByPlaceholder(/Search all services/).fill('tiktok live stream')
   await expect(page.getByRole('button', { name: /TikTok Followers/ })).toBeVisible()
   await expect(
     page.getByRole('button', { name: /TikTok Views \(High Retention\)/ }),
   ).toBeVisible()
-  await expect(page.locator('[data-search-service]').first()).toContainText('TikTok')
+  await expect(page.getByRole('button', { name: /TikTok Live Stream Views/ })).toBeVisible()
+  await expect(page.locator('[data-search-service]').first()).toContainText(
+    'TikTok Live Stream',
+  )
 
   // Clicking a result still auto-picks the service + its category.
   await page.getByRole('button', { name: /TikTok Followers/ }).click()
@@ -226,9 +236,9 @@ test('multi-word phrase like "tiktok live stream" surfaces TikTok services', asy
 test('unknown phrases show a helpful no-results tip instead of an empty panel', async ({
   page,
 }) => {
-  // "live stream" alone matches nothing in the mock catalogue — the dropdown
+  // A nonsense phrase matches nothing in the mock catalogue — the dropdown
   // must still render guidance, never an invisible empty panel.
-  await page.getByPlaceholder(/Search all services/).fill('live stream')
+  await page.getByPlaceholder(/Search all services/).fill('zzzzz no such service')
   await expect(page.getByText(/No results found for/)).toBeVisible()
   await expect(page.getByText(/Try a keyword like/)).toBeVisible()
 })
@@ -282,6 +292,87 @@ test('service field: click opens the grouped catalogue; Enter picks the highligh
   await expect(field).not.toHaveValue('')
 })
 
+test('Facebook Live chip: one click shows ONLY facebook live-stream services', async ({
+  page,
+}) => {
+  // The header has the 6th feature: a Facebook Live quick-filter chip.
+  const liveChip = page.locator('[data-live-chip]')
+  await expect(liveChip).toBeVisible()
+
+  // Click it → the search box is filled with the "facebook live" keyword and
+  // the live dropdown opens with ONLY live-stream services (no plain Facebook
+  // page/post/video services leak in).
+  await liveChip.click()
+  await expect(liveChip).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByPlaceholder(/Search all services/)).toHaveValue('facebook live')
+
+  await expect(page.getByRole('button', { name: /Facebook Live Stream Views/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Facebook Live Stream Likes/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Facebook Live Stream Comments/ })).toBeVisible()
+  // Exactly the 3 Facebook Live services — nothing else.
+  await expect(page.locator('[data-search-service]')).toHaveCount(3)
+  await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /TikTok Live Stream Views/ })).toHaveCount(0)
+
+  // Toggle off: chip unpressed, search cleared, dropdown closed.
+  await liveChip.click()
+  await expect(liveChip).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.getByPlaceholder(/Search all services/)).toHaveValue('')
+  await expect(page.locator('[data-search-service]')).toHaveCount(0)
+
+  // Toggle back on and click a live result — auto-picks the service + its
+  // category. Picking a service exits the chip (the search now holds the
+  // service name, not the "facebook live" keyword).
+  await liveChip.click()
+  await expect(liveChip).toHaveAttribute('aria-pressed', 'true')
+  await page.getByRole('button', { name: /Facebook Live Stream Views/ }).click()
+  await expect(
+    page.getByRole('heading', { name: 'Facebook Live Stream Views', level: 3 }),
+  ).toBeVisible()
+  await expect(page.getByPlaceholder(/Search or select a category/)).toHaveValue(
+    'Facebook Live Stream',
+  )
+  await expect(liveChip).toHaveAttribute('aria-pressed', 'false')
+})
+
+test('favourites: star a category, browse it from the Favourites tab, remove it', async ({
+  page,
+}) => {
+  // Open the category dropdown — every category row has a star button.
+  const category = page.getByPlaceholder(/Search or select a category/)
+  await category.click()
+  await expect(page.locator('[data-category-option="Facebook"]')).toBeVisible()
+
+  // Star the Facebook category — the star flips to filled. The star is a
+  // sibling of the row's select button, so scope it through the row.
+  const facebookRow = page.locator('[data-category-option="Facebook"]').locator('..')
+  const fbStar = facebookRow.locator('[data-fav-category]')
+  await expect(fbStar).toHaveAttribute('data-favorited', 'false')
+  await fbStar.click()
+  await expect(fbStar).toHaveAttribute('data-favorited', 'true')
+  await expect(facebookRow.getByRole('button', { name: /Remove Facebook from favourites/ })).toBeVisible()
+
+  // The Favourites tab shows the category card with a count badge.
+  await page.goto('/dashboard/favorites')
+  await expect(page.locator('h1').filter({ hasText: 'Favourites' })).toBeVisible()
+  await expect(page.getByText('Facebook').first()).toBeVisible()
+  await expect(page.getByText('1 favourite')).toBeVisible()
+
+  // Clicking the card jumps to Explore with the category auto-set and the
+  // Service field empty (no service pre-selected, no order form).
+  await page.locator('[data-favorite-category]').first().click()
+  await page.waitForURL(/\/dashboard\/services\?category=/)
+  await expect(page.getByPlaceholder(/Search or select a category/)).toHaveValue('Facebook')
+  await expect(page.getByPlaceholder(/Select a service/)).toHaveValue('')
+  await expect(page.locator('[data-order-form]')).toHaveCount(0)
+
+  // Back to Favourites — removing the star empties the tab.
+  await page.goto('/dashboard/favorites')
+  await page.locator('[data-unfavorite]').click()
+  await expect(page.getByText('No favourites yet')).toBeVisible()
+  await expect(page.getByRole('button', { name: /Explore Services/ })).toBeVisible()
+})
+
 test('platform chips scope the service dropdown to that platform only', async ({
   page,
 }) => {
@@ -316,7 +407,7 @@ test('platform chip narrows the Category combobox to matching categories', async
   const category = page.getByPlaceholder(/Search or select a category/)
   // No chip → every platform's categories are listed (plus All).
   await category.click()
-  await expect(page.locator('[data-category-option]')).toHaveCount(6) // All + 5 platforms
+  await expect(page.locator('[data-category-option]')).toHaveCount(9) // All + 8 categories
 
   // Click Facebook → only categories whose name mentions facebook remain.
   await page.locator('[data-platform-chip="facebook"]').click()
@@ -324,6 +415,7 @@ test('platform chip narrows the Category combobox to matching categories', async
   await expect(page.locator('[data-category-option]')).toHaveText([
     'All categories',
     'Facebook',
+    'Facebook Live Stream',
   ])
 
   // Switch to TikTok → the list narrows to TikTok categories.
@@ -332,6 +424,7 @@ test('platform chip narrows the Category combobox to matching categories', async
   await expect(page.locator('[data-category-option]')).toHaveText([
     'All categories',
     'TikTok',
+    'TikTok Live Stream',
   ])
 })
 

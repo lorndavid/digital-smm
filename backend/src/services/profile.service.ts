@@ -25,6 +25,22 @@ export class ProfileService {
     if (!user) throw new ApiError(404, 'User not found')
     return user
   }
+
+  /** Favourited category ids for a customer. */
+  async getFavoriteCategories(userId: string) {
+    const user = await userRepository.findById(userId)
+    if (!user) throw new ApiError(404, 'User not found')
+    return { categoryIds: user.favoriteCategories ?? [] }
+  }
+
+  /** Replaces the customer's favourite category ids (full-list sync). */
+  async setFavoriteCategories(userId: string, categoryIds: string[]) {
+    const user = await userRepository.update(userId, {
+      favoriteCategories: [...new Set(categoryIds)],
+    })
+    if (!user) throw new ApiError(404, 'User not found')
+    return { categoryIds: user.favoriteCategories }
+  }
 }
 
 export const profileService = new ProfileService()

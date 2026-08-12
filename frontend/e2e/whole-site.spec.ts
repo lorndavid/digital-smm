@@ -242,6 +242,7 @@ test.describe('signed-in dashboard routes render cleanly', () => {
   for (const route of [
     { path: '/dashboard', heading: 'h1' },
     { path: '/dashboard/services', heading: 'h1', text: 'Explore Services' },
+    { path: '/dashboard/favorites', heading: 'h1', text: 'Favourites' },
     { path: '/dashboard/orders', heading: 'h1', text: 'Orders' },
     { path: '/dashboard/wallet', heading: 'h1', text: 'Wallet' },
     { path: '/dashboard/payments', heading: 'h1', text: 'Payments' },

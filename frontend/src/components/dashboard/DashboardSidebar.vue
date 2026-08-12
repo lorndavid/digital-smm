@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router'
 import {
+  Heart,
   LayoutDashboard,
   LayoutGrid,
   LogOut,
@@ -21,6 +22,7 @@ const authStore = useAuthStore()
 const nav = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { to: '/dashboard/services', label: 'Explore Services', icon: LayoutGrid, exact: false },
+  { to: '/dashboard/favorites', label: 'Favourites', icon: Heart, exact: false },
   { to: '/dashboard/orders', label: 'Orders', icon: Package, exact: false },
   { to: '/dashboard/wallet', label: 'Wallet', icon: Wallet, exact: false },
   { to: '/dashboard/payments', label: 'Payments', icon: Receipt, exact: false },
