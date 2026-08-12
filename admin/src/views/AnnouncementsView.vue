@@ -120,7 +120,7 @@ onMounted(() => void load())
   <div class="w-full space-y-5">
     <div class="flex flex-wrap items-center justify-between gap-4">
       <div>
-        <h1 class="font-display text-2xl font-bold text-(--a-text)">Announcements</h1>
+        <h1 class="font-display text-xl font-bold text-(--a-text)">Announcements</h1>
         <p class="mt-1 text-sm text-(--a-muted)">Publish notices shown on the customer dashboard.</p>
       </div>
       <BaseButton @click="openCreate"><Plus class="h-4 w-4" /> New announcement</BaseButton>

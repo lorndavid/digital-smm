@@ -115,7 +115,7 @@ onMounted(() => {
   <div class="w-full space-y-5">
     <div class="flex flex-wrap items-center justify-between gap-4">
       <div>
-        <h1 class="font-display text-2xl font-bold text-(--a-text)">Payments</h1>
+        <h1 class="font-display text-xl font-bold text-(--a-text)">Payments</h1>
         <p class="mt-1 text-sm text-(--a-muted)">Every KHQR transaction. ({{ total }} payments)</p>
       </div>
       <BaseButton variant="outline" :loading="exporting" @click="exportCsv">
@@ -139,13 +139,13 @@ onMounted(() => {
           v-model="search"
           type="text"
           placeholder="Search reference…"
-          class="h-11 w-full rounded-xl border border-(--a-border) bg-(--a-soft) pl-10 pr-4 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none"
+          class="h-9.5 w-full rounded-lg border border-(--a-border) bg-(--a-soft) pl-9 pr-3.5 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none"
           @keyup.enter="applySearch"
         />
       </div>
       <select
         v-model="status"
-        class="h-11 rounded-xl border border-(--a-border) bg-(--a-soft) px-4 text-sm text-(--a-text) focus:border-brand-400/60 focus:outline-none [&>option]:bg-(--a-option-bg)"
+        class="h-9.5 rounded-lg border border-(--a-border) bg-(--a-soft) px-3.5 text-sm text-(--a-text) focus:border-brand-400/60 focus:outline-none [&>option]:bg-(--a-option-bg)"
         @change="page = 1; void load()"
       >
         <option v-for="opt in filterOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>

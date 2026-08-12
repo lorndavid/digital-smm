@@ -41,7 +41,7 @@ async function continueWithGoogle(): Promise<void> {
       class="animate-gradient pointer-events-none absolute -top-40 left-1/2 h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-gradient-to-r from-brand-600/40 via-brand-500/20 to-secondary-500/30 blur-[110px]"
     />
 
-    <div class="relative grid w-full max-w-4xl overflow-hidden rounded-3xl glass-strong shadow-glow lg:grid-cols-2">
+    <div class="relative grid w-full max-w-4xl overflow-hidden rounded-2xl glass-strong shadow-glow lg:grid-cols-2">
       <!-- Brand panel -->
       <div class="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-brand-500/10 to-secondary-500/10 p-10 lg:flex dark:from-brand-600/40 dark:to-night-soft/40">
         <div class="bg-grid pointer-events-none absolute inset-0 opacity-30" />
@@ -49,7 +49,7 @@ async function continueWithGoogle(): Promise<void> {
           <BrandLogo />
         </div>
         <div class="relative">
-          <h2 class="font-display text-2xl font-bold text-ink">
+          <h2 class="font-display text-xl font-bold text-ink">
             The smartest way to <span class="text-gradient">grow in Cambodia</span>
           </h2>
           <ul class="mt-6 space-y-3 text-sm text-ink/70">

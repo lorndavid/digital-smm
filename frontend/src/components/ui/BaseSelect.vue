@@ -17,12 +17,12 @@ const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 
 <template>
   <label class="block">
-    <span v-if="label" class="mb-1.5 block text-sm font-medium text-ink/80">{{ label }}</span>
+    <span v-if="label" class="mb-1 block text-[13px] font-medium text-ink/80">{{ label }}</span>
     <div class="relative">
       <select
         :value="modelValue"
         :disabled="disabled"
-        class="h-11 w-full appearance-none rounded-xl border bg-soft px-4 pr-10 text-sm text-ink transition-colors focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30 disabled:opacity-50 [&>option]:bg-card"
+        class="h-9.5 w-full appearance-none rounded-lg border bg-soft px-3.5 pr-9 text-sm text-ink transition-colors focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30 disabled:opacity-50 [&>option]:bg-card"
         :class="error ? 'border-rose-400/60' : 'border-ink/10'"
         @change="emit('update:modelValue', ($event.target as HTMLSelectElement).value)"
       >

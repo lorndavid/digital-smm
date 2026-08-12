@@ -9,17 +9,17 @@ const announcements = useAnnouncementsStore()
 </script>
 
 <template>
-  <div class="glass rounded-2xl p-6 shadow-card">
+  <div class="glass rounded-xl p-5 shadow-card">
     <div class="flex items-center gap-2">
       <Megaphone class="h-4 w-4 text-brand-300" />
-      <h3 class="font-display text-base font-semibold text-ink">Announcements</h3>
+      <h3 class="font-display text-sm font-semibold text-ink">Announcements</h3>
     </div>
 
-    <div v-if="announcements.loading" class="mt-4 space-y-3">
-      <BaseSkeleton v-for="n in 2" :key="n" class="h-16 w-full" />
+    <div v-if="announcements.loading" class="mt-3 space-y-3">
+      <BaseSkeleton v-for="n in 2" :key="n" class="h-14 w-full" />
     </div>
 
-    <div v-else-if="announcements.items.length" class="mt-4 space-y-3">
+    <div v-else-if="announcements.items.length" class="mt-3 space-y-3">
       <div
         v-for="announcement in announcements.items"
         :key="announcement._id"

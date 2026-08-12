@@ -58,11 +58,11 @@ onMounted(() => void load())
 </script>
 
 <template>
-  <div class="w-full space-y-6">
-    <div class="flex flex-wrap items-center justify-between gap-4">
+  <div class="w-full space-y-5">
+    <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h1 class="font-display text-2xl font-bold text-(--a-text)">Dashboard</h1>
-        <p class="mt-1 text-sm text-(--a-muted)">Platform overview and key metrics.</p>
+        <h1 class="font-display text-xl font-bold text-(--a-text)">Dashboard</h1>
+        <p class="mt-0.5 text-sm text-(--a-muted)">Platform overview and key metrics.</p>
       </div>
       <BaseButton :loading="syncing" @click="syncServices">
         <RefreshCcw class="h-4 w-4" /> Sync services from provider
@@ -77,48 +77,48 @@ onMounted(() => void load())
 
     <template v-else-if="stats">
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div class="glass rounded-2xl p-5 shadow-card">
+        <div class="glass rounded-xl p-4 shadow-card">
           <div class="flex items-center justify-between">
-            <p class="text-sm text-(--a-muted)">Users</p>
-            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500/20 text-brand-300"><Users class="h-5 w-5" /></div>
+            <p class="text-[13px] text-(--a-muted)">Users</p>
+            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500/20 text-brand-300"><Users class="h-4 w-4" /></div>
           </div>
-          <p class="font-display mt-2 text-2xl font-bold text-(--a-text)">{{ formatNumber(stats.users.total) }}</p>
-          <p class="mt-1 text-xs text-emerald-300">{{ formatNumber(stats.users.active) }} active</p>
+          <p class="font-display mt-1.5 text-xl font-bold text-(--a-text)">{{ formatNumber(stats.users.total) }}</p>
+          <p class="mt-0.5 text-xs text-emerald-300">{{ formatNumber(stats.users.active) }} active</p>
         </div>
 
-        <div class="glass rounded-2xl p-5 shadow-card">
+        <div class="glass rounded-xl p-4 shadow-card">
           <div class="flex items-center justify-between">
-            <p class="text-sm text-(--a-muted)">Orders</p>
-            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/20 text-sky-300"><Package class="h-5 w-5" /></div>
+            <p class="text-[13px] text-(--a-muted)">Orders</p>
+            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-500/20 text-sky-300"><Package class="h-4 w-4" /></div>
           </div>
-          <p class="font-display mt-2 text-2xl font-bold text-(--a-text)">{{ formatNumber(stats.orders.total) }}</p>
-          <p class="mt-1 text-xs text-(--a-muted-2)">lifetime orders</p>
+          <p class="font-display mt-1.5 text-xl font-bold text-(--a-text)">{{ formatNumber(stats.orders.total) }}</p>
+          <p class="mt-0.5 text-xs text-(--a-muted-2)">lifetime orders</p>
         </div>
 
-        <div class="glass rounded-2xl p-5 shadow-card">
+        <div class="glass rounded-xl p-4 shadow-card">
           <div class="flex items-center justify-between">
-            <p class="text-sm text-(--a-muted)">Revenue</p>
-            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-300"><DollarSign class="h-5 w-5" /></div>
+            <p class="text-[13px] text-(--a-muted)">Revenue</p>
+            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-300"><DollarSign class="h-4 w-4" /></div>
           </div>
-          <p class="font-display mt-2 text-2xl font-bold text-(--a-text)">{{ formatMoney(revenue) }}</p>
-          <p class="mt-1 text-xs text-(--a-muted-2)">{{ formatMoney(paidRevenue) }} paid via KHQR</p>
+          <p class="font-display mt-1.5 text-xl font-bold text-(--a-text)">{{ formatMoney(revenue) }}</p>
+          <p class="mt-0.5 text-xs text-(--a-muted-2)">{{ formatMoney(paidRevenue) }} paid via KHQR</p>
         </div>
 
-        <div class="glass rounded-2xl p-5 shadow-card">
+        <div class="glass rounded-xl p-4 shadow-card">
           <div class="flex items-center justify-between">
-            <p class="text-sm text-(--a-muted)">Catalog</p>
-            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-300"><Boxes class="h-5 w-5" /></div>
+            <p class="text-[13px] text-(--a-muted)">Catalog</p>
+            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/20 text-amber-300"><Boxes class="h-4 w-4" /></div>
           </div>
-          <p class="font-display mt-2 text-2xl font-bold text-(--a-text)">{{ formatNumber(stats.services.total) }}</p>
-          <p class="mt-1 text-xs text-(--a-muted-2)">{{ formatNumber(stats.services.active) }} active · {{ stats.categories }} categories</p>
+          <p class="font-display mt-1.5 text-xl font-bold text-(--a-text)">{{ formatNumber(stats.services.total) }}</p>
+          <p class="mt-0.5 text-xs text-(--a-muted-2)">{{ formatNumber(stats.services.active) }} active · {{ stats.categories }} categories</p>
         </div>
       </div>
 
-      <div class="grid gap-6 lg:grid-cols-2">
+      <div class="grid gap-5 lg:grid-cols-2">
         <!-- Status breakdown -->
-        <div class="glass rounded-2xl p-6 shadow-card">
-          <h2 class="font-display text-base font-semibold text-(--a-text)">Orders by status</h2>
-          <div class="mt-4 space-y-3">
+        <div class="glass rounded-xl p-5 shadow-card">
+          <h2 class="font-display text-sm font-semibold text-(--a-text)">Orders by status</h2>
+          <div class="mt-3 space-y-2.5">
             <div
               v-for="row in stats.statusBreakdown"
               :key="row._id"
@@ -134,9 +134,9 @@ onMounted(() => void load())
         </div>
 
         <!-- Financials -->
-        <div class="glass rounded-2xl p-6 shadow-card">
-          <h2 class="font-display text-base font-semibold text-(--a-text)">Financials</h2>
-          <div class="mt-4 space-y-3 text-sm">
+        <div class="glass rounded-xl p-5 shadow-card">
+          <h2 class="font-display text-sm font-semibold text-(--a-text)">Financials</h2>
+          <div class="mt-3 space-y-2.5 text-sm">
             <div class="flex items-center justify-between">
               <span class="flex items-center gap-2 text-(--a-muted)"><Banknote class="h-4 w-4 text-brand-300" /> Paid order payments</span>
               <span class="font-semibold text-(--a-text)">{{ formatMoney(stats.paymentTotals.order?.total ?? 0) }}</span>

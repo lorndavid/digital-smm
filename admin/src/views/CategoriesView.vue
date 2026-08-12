@@ -164,7 +164,7 @@ onMounted(() => void load())
   <div class="w-full space-y-5">
     <div class="flex flex-wrap items-center justify-between gap-4">
       <div>
-        <h1 class="font-display text-2xl font-bold text-(--a-text)">Categories</h1>
+        <h1 class="font-display text-xl font-bold text-(--a-text)">Categories</h1>
         <p class="mt-1 text-sm text-(--a-muted)">
           Group services by platform. Sort by service count to see what the storefront shows most.
         </p>
@@ -180,7 +180,7 @@ onMounted(() => void load())
           v-model="search"
           type="search"
           placeholder="Search categories…"
-          class="h-11 w-full rounded-xl border border-(--a-border) bg-(--a-soft) pl-10 pr-4 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
+          class="h-9.5 w-full rounded-lg border border-(--a-border) bg-(--a-soft) pl-9 pr-3.5 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
         />
       </div>
 

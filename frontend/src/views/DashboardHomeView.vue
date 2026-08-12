@@ -72,23 +72,23 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="w-full space-y-8">
+  <div class="w-full space-y-6">
     <!-- Welcome card -->
     <div
-      class="animate-gradient relative overflow-hidden rounded-3xl bg-gradient-to-r from-brand-500/10 via-brand-400/5 to-secondary-500/10 p-8 shadow-card sm:p-10 dark:from-brand-700/80 dark:via-brand-600/70 dark:to-secondary-600/50 dark:shadow-glow"
+      class="animate-gradient relative overflow-hidden rounded-2xl bg-gradient-to-r from-brand-500/10 via-brand-400/5 to-secondary-500/10 p-6 shadow-card sm:p-7 dark:from-brand-700/80 dark:via-brand-600/70 dark:to-secondary-600/50 dark:shadow-glow"
     >
       <div class="bg-grid pointer-events-none absolute inset-0 opacity-20" />
-      <div class="relative flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
+      <div class="relative flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <p class="text-sm text-ink/70">Welcome back,</p>
-          <h1 class="font-display mt-1 text-2xl font-bold text-ink sm:text-3xl">
+          <p class="text-[13px] text-ink/70">Welcome back,</p>
+          <h1 class="font-display mt-0.5 text-xl font-bold text-ink sm:text-2xl">
             {{ firstName }} 👋
           </h1>
-          <p class="mt-2 max-w-md text-sm text-ink/75">
+          <p class="mt-1 max-w-md text-sm text-ink/75">
             Ready to grow today? Pick a service, order instantly from your wallet balance.
           </p>
         </div>
-        <div class="flex flex-wrap gap-3">
+        <div class="flex flex-wrap gap-2">
           <BaseButton variant="secondary" @click="router.push('/dashboard/services')">
             <Sparkles class="h-4 w-4" /> Explore Services
           </BaseButton>
@@ -128,13 +128,13 @@ onMounted(async () => {
     </div>
 
     <!-- Two-column content: main feed + side panel -->
-    <div class="grid gap-8 lg:grid-cols-3">
+    <div class="grid gap-5 lg:grid-cols-3">
       <!-- Left: recent orders + featured services -->
-      <div class="min-w-0 space-y-8 lg:col-span-2">
+      <div class="min-w-0 space-y-6 lg:col-span-2">
         <!-- Recent orders -->
         <div>
-          <div class="mb-4 flex items-center justify-between">
-            <h2 class="font-display text-lg font-semibold text-ink">Recent orders</h2>
+          <div class="mb-3 flex items-center justify-between">
+            <h2 class="font-display text-base font-semibold text-ink">Recent orders</h2>
             <button
               class="inline-flex items-center gap-1 text-sm font-medium text-brand-300 transition-colors hover:text-brand-200"
               @click="router.push('/dashboard/orders')"
@@ -162,7 +162,7 @@ onMounted(async () => {
               <li
                 v-for="order in ordersStore.orders"
                 :key="order._id"
-                class="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-ink/[0.03]"
+                class="flex items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-ink/[0.03]"
               >
                 <div class="min-w-0">
                   <p class="truncate text-sm font-medium text-ink">{{ serviceName(order) }}</p>
@@ -183,8 +183,8 @@ onMounted(async () => {
 
         <!-- Featured services -->
         <div>
-          <div class="mb-4 flex items-center justify-between">
-            <h2 class="font-display text-lg font-semibold text-ink">Featured services</h2>
+          <div class="mb-3 flex items-center justify-between">
+            <h2 class="font-display text-base font-semibold text-ink">Featured services</h2>
             <button
               class="inline-flex items-center gap-1 text-sm font-medium text-brand-300 transition-colors hover:text-brand-200"
               @click="router.push('/dashboard/services')"
@@ -215,16 +215,16 @@ onMounted(async () => {
       </div>
 
       <!-- Right: announcements + quick actions -->
-      <div class="min-w-0 space-y-8">
+      <div class="min-w-0 space-y-6">
         <AnnouncementsPanel />
 
-        <div class="glass rounded-2xl p-6 shadow-card">
-          <h3 class="font-display text-base font-semibold text-ink">Quick actions</h3>
-          <div class="mt-4 space-y-2">
+        <div class="glass rounded-xl p-5 shadow-card">
+          <h3 class="font-display text-sm font-semibold text-ink">Quick actions</h3>
+          <div class="mt-3 space-y-2">
             <button
               v-for="action in quickActions"
               :key="action.label"
-              class="group flex w-full items-center gap-3 rounded-xl border border-ink/10 bg-soft px-3.5 py-2.5 text-sm font-medium text-ink/75 transition-all hover:border-brand-400/40 hover:text-ink"
+              class="group flex w-full items-center gap-2.5 rounded-lg border border-ink/10 bg-soft px-3 py-2 text-[13px] font-medium text-ink/75 transition-all hover:border-brand-400/40 hover:text-ink"
               @click="router.push(action.to)"
             >
               <component :is="action.icon" class="h-4 w-4 text-brand-300 transition-transform group-hover:scale-110" />
@@ -232,7 +232,7 @@ onMounted(async () => {
               <ArrowRight class="ml-auto h-3.5 w-3.5 text-ink/25 transition-transform group-hover:translate-x-0.5 group-hover:text-brand-300" />
             </button>
           </div>
-          <p class="mt-4 border-t border-ink/10 pt-4 text-xs leading-relaxed text-ink/40">
+          <p class="mt-3 border-t border-ink/10 pt-3 text-xs leading-relaxed text-ink/40">
             Tip: top up your wallet and services are paid instantly from your balance.
           </p>
         </div>

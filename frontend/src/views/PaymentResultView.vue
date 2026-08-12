@@ -54,7 +54,7 @@ function primaryCta(): void {
             : 'bg-gradient-to-br from-rose-400 to-rose-600 shadow-[0_0_60px_-8px_rgba(244,63,94,0.7)]'
         "
       >
-        <svg v-if="isSuccess" viewBox="0 0 52 52" class="h-12 w-12">
+        <svg v-if="isSuccess" viewBox="0 0 52 52" class="h-10 w-10">
           <path
             class="checkmark"
             fill="none"
@@ -65,10 +65,10 @@ function primaryCta(): void {
             stroke-linejoin="round"
           />
         </svg>
-        <X v-else class="h-12 w-12 text-ink" />
+        <X v-else class="h-10 w-10 text-ink" />
       </div>
 
-      <h1 class="font-display mt-6 text-3xl font-bold text-ink">
+      <h1 class="font-display mt-4 text-2xl font-bold text-ink">
         {{ isSuccess ? 'Thank you! 🎉' : 'Payment not completed' }}
       </h1>
       <p class="mx-auto mt-3 max-w-sm text-ink/55">

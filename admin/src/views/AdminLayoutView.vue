@@ -101,26 +101,26 @@ const pageTitle = computed(() => {
 <template>
   <div class="flex min-h-screen">
     <!-- Desktop sidebar -->
-    <div class="fixed inset-y-0 left-0 z-40 hidden w-64 lg:block">
-      <aside class="flex h-full w-64 flex-col border-r border-(--a-border) bg-(--a-sidebar) backdrop-blur-xl">
-        <div class="flex h-16 items-center gap-2.5 border-b border-(--a-border) px-5">
-          <img :src="logoUrl" alt="DigitalSMM" class="block h-9 w-auto object-contain" />
-          <span class="font-display text-lg font-bold text-(--a-text)">
+    <div class="fixed inset-y-0 left-0 z-40 hidden w-60 lg:block">
+      <aside class="flex h-full w-60 flex-col border-r border-(--a-border) bg-(--a-sidebar) backdrop-blur-xl">
+        <div class="flex h-14 items-center gap-2 border-b border-(--a-border) px-4">
+          <img :src="logoUrl" alt="DigitalSMM" class="block h-7 w-auto object-contain" />
+          <span class="font-display text-base font-bold text-(--a-text)">
             Digital<span class="text-gradient">SMM</span>
-            <span class="text-xs font-semibold text-(--a-muted-2)">ADMIN</span>
+            <span class="text-[10px] font-semibold text-(--a-muted-2)">ADMIN</span>
           </span>
         </div>
 
-        <nav class="flex-1 space-y-5 overflow-y-auto px-3 py-5">
-          <div v-for="group in navGroups" :key="group.title" class="space-y-1">
-            <p class="px-3 pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-(--a-muted-3)">
+        <nav class="flex-1 space-y-4 overflow-y-auto px-2.5 py-3">
+          <div v-for="group in navGroups" :key="group.title" class="space-y-0.5">
+            <p class="px-2.5 pb-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-(--a-muted-3)">
               {{ group.title }}
             </p>
             <router-link
               v-for="item in group.items"
               :key="item.to"
               :to="item.to"
-              class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all"
+              class="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-all"
               :class="
                 isActive(item)
                   ? 'bg-gradient-to-r from-brand-500/15 to-transparent text-brand-300'
@@ -128,11 +128,11 @@ const pageTitle = computed(() => {
               "
               v-show="visible(item)"
             >
-              <component :is="item.icon" class="h-[18px] w-[18px]" />
+              <component :is="item.icon" class="h-4 w-4" />
               {{ item.label }}
               <span
                 v-if="item.superOnly"
-                class="ml-auto rounded-md bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-brand-300"
+                class="ml-auto rounded-md bg-brand-500/15 px-1.5 py-0.5 text-[9px] font-semibold text-brand-300"
               >
                 ROOT
               </span>
@@ -140,12 +140,12 @@ const pageTitle = computed(() => {
           </div>
         </nav>
 
-        <div class="border-t border-(--a-border) p-4">
+        <div class="border-t border-(--a-border) p-3">
           <button
-            class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-(--a-muted) transition-colors hover:bg-(--a-soft) hover:text-(--a-text)"
+            class="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium text-(--a-muted) transition-colors hover:bg-(--a-soft) hover:text-(--a-text)"
             @click="signOut"
           >
-            <LogOut class="h-[18px] w-[18px]" /> Sign out
+            <LogOut class="h-4 w-4" /> Sign out
           </button>
         </div>
       </aside>
@@ -156,32 +156,32 @@ const pageTitle = computed(() => {
       <div v-if="mobileOpen" class="fixed inset-0 z-50 lg:hidden">
         <div class="absolute inset-0 bg-night/80 backdrop-blur-sm" @click="mobileOpen = false" />
         <div class="absolute inset-y-0 left-0">
-          <aside class="flex h-full w-72 flex-col border-r border-(--a-border) bg-(--a-sidebar) backdrop-blur-xl">
-            <div class="flex h-16 items-center justify-between border-b border-(--a-border) px-5">
-              <span class="flex items-center gap-2.5">
-                <img :src="logoUrl" alt="DigitalSMM" class="block h-8 w-auto object-contain" />
-                <span class="font-display text-lg font-bold text-(--a-text)">
+          <aside class="flex h-full w-64 flex-col border-r border-(--a-border) bg-(--a-sidebar) backdrop-blur-xl">
+            <div class="flex h-14 items-center justify-between border-b border-(--a-border) px-4">
+              <span class="flex items-center gap-2">
+                <img :src="logoUrl" alt="DigitalSMM" class="block h-7 w-auto object-contain" />
+                <span class="font-display text-base font-bold text-(--a-text)">
                   Digital<span class="text-gradient">SMM</span>
-                  <span class="text-xs font-semibold text-(--a-muted-2)">ADMIN</span>
+                  <span class="text-[10px] font-semibold text-(--a-muted-2)">ADMIN</span>
                 </span>
               </span>
               <button class="text-(--a-muted)" @click="mobileOpen = false"><X class="h-5 w-5" /></button>
             </div>
-            <nav class="flex-1 space-y-5 overflow-y-auto px-3 py-5">
-              <div v-for="group in navGroups" :key="group.title" class="space-y-1">
-                <p class="px-3 pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-(--a-muted-3)">
+            <nav class="flex-1 space-y-4 overflow-y-auto px-2.5 py-3">
+              <div v-for="group in navGroups" :key="group.title" class="space-y-0.5">
+                <p class="px-2.5 pb-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-(--a-muted-3)">
                   {{ group.title }}
                 </p>
                 <router-link
                   v-for="item in group.items"
                   :key="item.to"
                   :to="item.to"
-                  class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium"
+                  class="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium"
                   :class="isActive(item) ? 'bg-brand-500/15 text-brand-300' : 'text-(--a-muted)'"
                   v-show="visible(item)"
                   @click="mobileOpen = false"
                 >
-                  <component :is="item.icon" class="h-[18px] w-[18px]" />
+                  <component :is="item.icon" class="h-4 w-4" />
                   {{ item.label }}
                 </router-link>
               </div>
@@ -192,9 +192,9 @@ const pageTitle = computed(() => {
     </Transition>
 
     <!-- Content -->
-    <div class="flex min-w-0 flex-1 flex-col lg:pl-64">
-      <header class="glass-strong sticky top-0 z-30 flex h-16 items-center justify-between border-b border-(--a-border) px-4 lg:px-8">
-        <button class="flex h-10 w-10 items-center justify-center rounded-xl text-(--a-text-soft) lg:hidden" @click="mobileOpen = true">
+    <div class="flex min-w-0 flex-1 flex-col lg:pl-60">
+      <header class="glass-strong sticky top-0 z-30 flex h-14 items-center justify-between border-b border-(--a-border) px-4 lg:px-6">
+        <button class="flex h-9 w-9 items-center justify-center rounded-lg text-(--a-text-soft) lg:hidden" @click="mobileOpen = true">
           <Menu class="h-5 w-5" />
         </button>
         <div class="hidden text-sm text-(--a-muted) lg:block">
@@ -233,7 +233,7 @@ const pageTitle = computed(() => {
           </button>
         </div>
       </header>
-      <main class="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+      <main class="flex-1 px-4 py-5 sm:px-5 lg:px-6">
         <RouterView />
       </main>
     </div>

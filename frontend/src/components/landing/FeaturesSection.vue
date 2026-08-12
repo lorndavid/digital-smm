@@ -17,93 +17,87 @@ const platforms = [
 const features = [
   {
     icon: Clock3,
-    title: 'Fast Delivery',
+    title: 'Fast delivery',
     description: 'Orders start within minutes and most complete in under 30 minutes.',
   },
   {
     icon: Headphones,
-    title: '24/7 Support',
+    title: '24/7 support',
     description: 'Our Cambodia-based team answers around the clock, on Telegram and email.',
   },
   {
     icon: ShieldCheck,
-    title: 'Secure Payments',
+    title: 'Secure payments',
     description: 'Pay safely with Bakong KHQR, ABA, ACLEDA or Wing — your money is protected.',
   },
   {
     icon: LineChart,
-    title: 'Real-time Tracking',
+    title: 'Real-time tracking',
     description: 'Follow every order live: progress, remaining counts and delivery status.',
   },
   {
     icon: Wallet,
-    title: 'Affordable Prices',
-    description: 'Competitive rates starting at just $0.40 per 1,000 with volume discounts.',
+    title: 'Pay-as-you-go wallet',
+    description: 'Top up once and order anytime. No subscriptions, no hidden fees.',
   },
   {
     icon: Sparkles,
-    title: 'Premium Quality',
+    title: 'Premium quality',
     description: 'High-retention, refillable engagement that keeps your profiles authentic.',
   },
 ]
 </script>
 
 <template>
-  <section class="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
-    <div class="mx-auto max-w-2xl text-center">
-      <p class="text-sm font-semibold uppercase tracking-widest text-brand-300">Why DigitalSMM</p>
-      <h2 class="font-display mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-        Everything you need to <span class="text-gradient">grow</span>
-      </h2>
-      <p class="mt-4 text-ink/60">
-        A complete growth toolkit built for creators, brands and agencies in Cambodia.
-      </p>
-    </div>
-
-    <!-- Infinite carousel of supported platforms (TikTok · Facebook · YouTube …) -->
-    <div class="group relative mt-12 overflow-hidden" role="region" aria-label="Supported platforms">
-      <div class="platform-track flex w-max items-center">
-        <!-- Spacing lives INSIDE each copy (pr-4) so both copies are exactly
-             equal width and translateX(-50%) loops seamlessly — a parent gap
-             would offset the seam by half a gap and visibly jump. -->
-        <template v-for="copy in 2" :key="copy">
-          <div class="flex items-center gap-4 pr-4" :aria-hidden="copy === 2 || undefined">
-            <div
-              v-for="p in platforms"
-              :key="p.key"
-              class="flex shrink-0 items-center gap-3 rounded-2xl border border-ink/10 bg-card/60 px-5 py-3 shadow-card backdrop-blur transition-colors group-hover:border-brand-400/30"
-            >
-              <PlatformIcon :platform="p.key" size="sm" tile />
-              <span class="whitespace-nowrap text-sm font-semibold text-ink/75">{{ p.label }}</span>
-            </div>
-          </div>
-        </template>
+  <section class="py-14 sm:py-18">
+    <div class="container-page">
+      <div class="mx-auto max-w-2xl text-center">
+        <p class="text-xs font-semibold uppercase tracking-widest text-primary">Why DigitalSMM</p>
+        <h2 class="font-display mt-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          Everything you need to <span class="text-gradient">grow</span>
+        </h2>
+        <p class="mt-2 text-sm text-muted-foreground">
+          A complete growth toolkit built for creators, brands and agencies in Cambodia.
+        </p>
       </div>
-      <!-- Soft edge fades so the loop never visibly clips. -->
-      <div
-        class="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-surface to-transparent"
-      />
-      <div
-        class="pointer-events-none absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-surface to-transparent"
-      />
-    </div>
 
-    <div class="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-      <div
-        v-for="(feature, index) in features"
-        :key="feature.title"
-        v-motion
-        :initial="{ opacity: 0, y: 28 }"
-        :visible="{ opacity: 1, y: 0, transition: { duration: 0.5, delay: index * 0.06 } }"
-        class="group glass rounded-2xl p-6 shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-brand-400/30 hover:shadow-glow"
-      >
-        <div
-          class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500/25 to-secondary-500/20 text-brand-300 transition-transform duration-300 group-hover:scale-110"
-        >
-          <component :is="feature.icon" class="h-6 w-6" />
+      <!-- Infinite carousel of supported platforms (TikTok · Facebook · YouTube …) -->
+      <div class="group relative mt-9 overflow-hidden" role="region" aria-label="Supported platforms">
+        <div class="platform-track flex w-max items-center">
+          <template v-for="copy in 2" :key="copy">
+            <div class="flex items-center gap-4 pr-4" :aria-hidden="copy === 2 || undefined">
+              <div
+                v-for="p in platforms"
+                :key="p.key"
+                class="flex shrink-0 items-center gap-2.5 rounded-xl border border-border bg-card px-4 py-2.5 shadow-sm transition-colors group-hover:border-primary/30"
+              >
+                <PlatformIcon :platform="p.key" size="sm" tile />
+                <span class="whitespace-nowrap text-sm font-semibold text-foreground/80">{{ p.label }}</span>
+              </div>
+            </div>
+          </template>
         </div>
-        <h3 class="font-display mt-5 text-lg font-semibold text-ink">{{ feature.title }}</h3>
-        <p class="mt-2 text-sm leading-relaxed text-ink/55">{{ feature.description }}</p>
+        <div class="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-background to-transparent" />
+        <div class="pointer-events-none absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-background to-transparent" />
+      </div>
+
+      <div class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div
+          v-for="(feature, index) in features"
+          :key="feature.title"
+          v-motion
+          :initial="{ opacity: 0, y: 24 }"
+          :visible="{ opacity: 1, y: 0, transition: { duration: 0.5, delay: index * 0.06 } }"
+          class="group rounded-xl border border-border bg-card p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-card"
+        >
+          <div
+            class="flex h-10 w-10 items-center justify-center rounded-lg border border-primary/15 bg-primary/5 text-primary transition-transform duration-300 group-hover:scale-105"
+          >
+            <component :is="feature.icon" class="h-5 w-5" />
+          </div>
+          <h3 class="font-display mt-4 text-base font-semibold text-foreground">{{ feature.title }}</h3>
+          <p class="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">{{ feature.description }}</p>
+        </div>
       </div>
     </div>
   </section>
@@ -130,7 +124,6 @@ const features = [
   .platform-track {
     animation: none;
   }
-  /* With the loop stopped, show a single copy instead of the duplicated pair. */
   .platform-track > :nth-child(2) {
     display: none;
   }

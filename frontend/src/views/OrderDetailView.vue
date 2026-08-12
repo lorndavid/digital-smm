@@ -433,7 +433,7 @@ onUnmounted(() => {
         </button>
         <div>
           <div class="flex flex-wrap items-center gap-2">
-            <h1 class="font-display text-2xl font-bold text-ink">
+            <h1 class="font-display text-xl font-bold text-ink">
               Order #{{ order?.orderNumber ?? '…' }}
             </h1>
             <BaseBadge v-if="statusMeta" :tone="order?.status === 'Completed' ? 'success' : order?.status === 'Cancelled' || order?.status === 'Refunded' || order?.status === 'Failed' ? 'danger' : 'info'" dot>
@@ -463,8 +463,8 @@ onUnmounted(() => {
 
     <!-- Loading -->
     <div v-if="loading && !order" class="space-y-4">
-      <BaseSkeleton class="h-36 w-full rounded-3xl" />
-      <BaseSkeleton class="h-72 w-full rounded-3xl" />
+      <BaseSkeleton class="h-32 w-full rounded-2xl" />
+      <BaseSkeleton class="h-64 w-full rounded-2xl" />
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
         <BaseSkeleton v-for="n in 6" :key="n" class="h-24 w-full rounded-2xl" />
       </div>
@@ -519,7 +519,7 @@ onUnmounted(() => {
           </div>
 
           <div class="flex shrink-0 flex-col items-start gap-2 sm:items-end">
-            <p class="font-display text-3xl font-bold text-ink">{{ formatMoney(order.totalPrice) }}</p>
+            <p class="font-display text-2xl font-bold text-ink">{{ formatMoney(order.totalPrice) }}</p>
             <p class="text-xs text-ink/40">Provider #{{ order.providerOrderId ?? '—' }}</p>
           </div>
         </div>

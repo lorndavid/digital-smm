@@ -1082,7 +1082,7 @@ onMounted(async () => {
     <!-- Header -->
     <div class="flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h1 class="font-display text-2xl font-bold text-ink">Explore Services</h1>
+        <h1 class="font-display text-xl font-bold text-ink">Explore Services</h1>
       </div>
 
       <!-- Platform quick filters (replaces the wallet balance card) -->
@@ -1133,7 +1133,7 @@ onMounted(async () => {
             v-model="search"
             type="search"
             placeholder="Search all services… e.g. Facebook Live Stream"
-            class="relative z-20 h-12 w-full rounded-xl border border-ink/10 bg-ink/5 pl-10 pr-4 text-sm text-ink placeholder:text-ink/30 transition-colors focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
+            class="relative z-20 h-9.5 w-full rounded-lg border border-ink/10 bg-ink/5 pl-9 pr-3.5 text-sm text-ink placeholder:text-ink/30 transition-colors focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
             @focus="searchOpen = true; closePanel(); closeCategory(); highlightedIndex = -1"
             @input="onSearchInput"
             @keydown="onSearchKeydown"
@@ -1211,7 +1211,7 @@ onMounted(async () => {
                 placeholder="Search or select a category…"
                 autocomplete="off"
                 spellcheck="false"
-                class="relative z-30 h-11 w-full rounded-xl border border-ink/10 bg-ink/5 pl-10 pr-10 text-sm text-ink placeholder:text-ink/30 transition-colors focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
+                class="relative z-30 h-9.5 w-full rounded-lg border border-ink/10 bg-ink/5 pl-9 pr-9 text-sm text-ink placeholder:text-ink/30 transition-colors focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
                 @focus="openCategoryPanel"
                 @input="onCategoryInput"
                 @keydown="onCategoryKeydown"
@@ -1292,7 +1292,7 @@ onMounted(async () => {
                 readonly
                 :aria-expanded="panelOpen"
                 placeholder="Select a service…"
-                class="relative z-30 h-11 w-full cursor-pointer rounded-xl border border-ink/10 bg-ink/5 pl-10 pr-10 text-sm text-ink placeholder:text-ink/30 transition-colors focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
+                class="relative z-30 h-9.5 w-full cursor-pointer rounded-lg border border-ink/10 bg-ink/5 pl-9 pr-9 text-sm text-ink placeholder:text-ink/30 transition-colors focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
                 @focus="openServicePanel"
                 @click="openServicePanel"
                 @keydown="onPanelKeydown"
@@ -1574,7 +1574,7 @@ onMounted(async () => {
             <div class="flex items-center gap-2">
               <button
                 type="button"
-                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-ink/10 bg-ink/5 text-ink/70 transition-all hover:border-brand-400/50 hover:text-ink active:scale-95 disabled:opacity-30"
+                class="flex h-9.5 w-9.5 shrink-0 items-center justify-center rounded-lg border border-ink/10 bg-ink/5 text-ink/70 transition-all hover:border-brand-400/50 hover:text-ink active:scale-95 disabled:opacity-30"
                 :disabled="(quantity ?? (selected?.min ?? 0)) <= (selected?.min ?? 0)"
                 aria-label="Decrease quantity"
                 @click="adjustQuantity(-1)"
@@ -1595,7 +1595,7 @@ onMounted(async () => {
               />
               <button
                 type="button"
-                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-ink/10 bg-ink/5 text-ink/70 transition-all hover:border-brand-400/50 hover:text-ink active:scale-95 disabled:opacity-30"
+                class="flex h-9.5 w-9.5 shrink-0 items-center justify-center rounded-lg border border-ink/10 bg-ink/5 text-ink/70 transition-all hover:border-brand-400/50 hover:text-ink active:scale-95 disabled:opacity-30"
                 :disabled="(quantity ?? 0) >= (selected?.max ?? 0)"
                 aria-label="Increase quantity"
                 @click="adjustQuantity(1)"
@@ -1644,7 +1644,7 @@ onMounted(async () => {
                   × {{ formatNumber(quantity ?? (selected.min > 0 ? selected.min : 1)) }} / 1,000
                 </span>
               </p>
-              <p class="mt-0.5 font-display text-3xl font-bold text-ink">
+              <p class="mt-0.5 font-display text-2xl font-bold text-ink">
                 {{ formatMoney(totalPrice) }}
               </p>
             </div>
@@ -1705,7 +1705,7 @@ onMounted(async () => {
       v-else
       class="flex w-full flex-col items-center justify-center rounded-2xl border border-dashed border-ink/10 px-6 py-16 text-center"
     >
-      <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-ink/5 text-ink/30">
+      <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-ink/5 text-ink/30">
         <Search class="h-6 w-6" />
       </div>
       <p class="mt-3 text-sm text-ink/40">Pick a service above to get started.</p>

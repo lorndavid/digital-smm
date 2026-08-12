@@ -305,7 +305,7 @@ function closeModal(): void {
         <div class="flex items-center gap-2">
           <button
             type="button"
-            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-ink/10 bg-ink/5 text-ink/70 transition-all hover:border-brand-400/50 hover:text-ink active:scale-95 disabled:opacity-30"
+            class="flex h-9.5 w-9.5 shrink-0 items-center justify-center rounded-lg border border-ink/10 bg-ink/5 text-ink/70 transition-all hover:border-brand-400/50 hover:text-ink active:scale-95 disabled:opacity-30"
             :disabled="(quantity ?? (service?.min ?? 0)) <= (service?.min ?? 0)"
             aria-label="Decrease quantity"
             @click="adjustQuantity(-1)"
@@ -324,7 +324,7 @@ function closeModal(): void {
           />
           <button
             type="button"
-            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-ink/10 bg-ink/5 text-ink/70 transition-all hover:border-brand-400/50 hover:text-ink active:scale-95 disabled:opacity-30"
+            class="flex h-9.5 w-9.5 shrink-0 items-center justify-center rounded-lg border border-ink/10 bg-ink/5 text-ink/70 transition-all hover:border-brand-400/50 hover:text-ink active:scale-95 disabled:opacity-30"
             :disabled="(quantity ?? 0) >= (service?.max ?? 0)"
             aria-label="Increase quantity"
             @click="adjustQuantity(1)"
@@ -393,7 +393,7 @@ function closeModal(): void {
                 × {{ formatNumber(quantity ?? (service && service.min > 0 ? service.min : 1)) }} / 1,000
               </span>
             </p>
-            <p class="mt-0.5 font-display text-2xl font-bold text-ink">
+            <p class="mt-0.5 font-display text-xl font-bold text-ink">
               {{ formatMoney(totalPrice) }}
             </p>
           </div>

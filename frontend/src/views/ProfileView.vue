@@ -50,8 +50,8 @@ async function save(): Promise<void> {
 <template>
   <div class="mx-auto w-full max-w-3xl space-y-6">
     <div>
-      <h1 class="font-display text-2xl font-bold text-ink">Profile</h1>
-      <p class="mt-1 text-sm text-ink/50">Manage how you appear on DigitalSMM.</p>
+      <h1 class="font-display text-xl font-bold text-ink">Profile</h1>
+      <p class="mt-0.5 text-sm text-ink/50">Manage how you appear on DigitalSMM.</p>
     </div>
 
     <div v-if="loading" class="space-y-3">
@@ -59,29 +59,29 @@ async function save(): Promise<void> {
       <BaseSkeleton class="h-24 w-full" />
     </div>
 
-    <div v-else class="glass space-y-6 rounded-3xl p-6 shadow-card sm:p-8">
-      <div class="flex items-center gap-5">
+    <div v-else class="glass space-y-5 rounded-2xl p-5 shadow-card sm:p-6">
+      <div class="flex items-center gap-4">
         <div class="relative">
           <img
             v-if="avatarUrl"
             :src="avatarUrl"
             alt="Avatar"
-            class="h-20 w-20 rounded-2xl border border-ink/10 object-cover shadow-glow"
+            class="h-16 w-16 rounded-xl border border-ink/10 object-cover shadow-glow"
           />
           <div
             v-else
-            class="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-secondary-500 font-display text-2xl font-bold text-white"
+            class="flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-secondary-500 font-display text-xl font-bold text-white"
           >
             {{ (name || 'V').slice(0, 2).toUpperCase() }}
           </div>
           <div
-            class="absolute -bottom-2 -right-2 flex h-8 w-8 items-center justify-center rounded-full bg-brand-500 text-ink shadow-glow"
+            class="absolute -bottom-1.5 -right-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-brand-500 text-ink shadow-glow"
           >
-            <Camera class="h-4 w-4" />
+            <Camera class="h-3.5 w-3.5" />
           </div>
         </div>
         <div>
-          <p class="font-display text-lg font-semibold text-ink">{{ name || 'DigitalSMM User' }}</p>
+          <p class="font-display text-base font-semibold text-ink">{{ name || 'DigitalSMM User' }}</p>
           <p class="text-sm text-ink/45">{{ email }}</p>
           <p class="mt-1 text-xs text-ink/35">Email is managed by your Google account.</p>
         </div>

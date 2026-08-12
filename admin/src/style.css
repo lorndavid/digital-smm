@@ -79,6 +79,11 @@
   color-scheme: dark;
 }
 
+html {
+  /* Compact global scale shared with the storefront app. */
+  font-size: 15px;
+}
+
 body {
   background-color: var(--a-bg);
   color: var(--a-text);

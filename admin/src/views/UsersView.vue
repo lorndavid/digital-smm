@@ -62,7 +62,7 @@ onMounted(() => void load())
 <template>
   <div class="w-full space-y-5">
     <div>
-      <h1 class="font-display text-2xl font-bold text-(--a-text)">Users</h1>
+      <h1 class="font-display text-xl font-bold text-(--a-text)">Users</h1>
       <p class="mt-1 text-sm text-(--a-muted)">Manage account status. Roles are managed under Admins &amp; Roles. ({{ total }} users)</p>
     </div>
 
@@ -72,7 +72,7 @@ onMounted(() => void load())
         v-model="search"
         type="search"
         placeholder="Search by name or email…"
-        class="h-11 w-full rounded-xl border border-(--a-border) bg-(--a-soft) pl-10 pr-4 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
+        class="h-9.5 w-full rounded-lg border border-(--a-border) bg-(--a-soft) pl-9 pr-3.5 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
         @keyup.enter="page = 1; void load()"
       />
     </div>

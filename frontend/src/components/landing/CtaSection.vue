@@ -9,24 +9,29 @@ const authStore = useAuthStore()
 </script>
 
 <template>
-  <section id="contact" class="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
+  <section id="contact" class="container-page py-14 sm:py-18">
     <div
-      class="animate-gradient relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-brand-600 via-brand-500 to-secondary-500 p-10 text-center shadow-glow sm:p-16"
+      class="relative overflow-hidden rounded-2xl border border-border bg-card px-6 py-12 text-center shadow-card sm:px-12 sm:py-16"
     >
+      <!-- Subtle premium background -->
       <div class="bg-grid pointer-events-none absolute inset-0 opacity-20" />
+      <div
+        class="pointer-events-none absolute -top-24 left-1/2 h-64 w-[560px] -translate-x-1/2 rounded-full bg-gradient-to-r from-primary/15 via-primary/5 to-secondary-500/10 blur-3xl"
+      />
+
       <div class="relative mx-auto max-w-2xl">
-        <h2 class="font-display text-3xl font-bold tracking-tight text-white sm:text-5xl">
+        <h2 class="font-display text-2xl font-bold tracking-tight text-foreground sm:text-4xl">
           Ready to grow your social media?
         </h2>
-        <p v-if="authStore.isLoaded && authStore.isSignedIn" class="mt-4 text-white/85">
+        <p v-if="authStore.isLoaded && authStore.isSignedIn" class="mt-2.5 text-sm text-muted-foreground">
           Welcome back! Jump straight into your dashboard to track orders, top up your wallet
           and keep growing.
         </p>
-        <p v-else class="mt-4 text-white/85">
-          Join thousands of creators and agencies in Cambodia already growing with DigitalSMM.
+        <p v-else class="mt-2.5 text-sm text-muted-foreground">
+          Join creators and agencies across Cambodia already growing with DigitalSMM.
           Sign up in seconds with your Google account.
         </p>
-        <div class="mt-8 flex flex-wrap items-center justify-center gap-4">
+        <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
           <BaseButton
             size="lg"
             variant="secondary"
@@ -37,7 +42,7 @@ const authStore = useAuthStore()
           </BaseButton>
           <a
             href="mailto:support@digitalsmm.shop"
-            class="inline-flex h-12 items-center gap-2 rounded-xl border border-white/40 px-7 text-base font-semibold text-white transition-colors hover:bg-white/10"
+            class="inline-flex h-11 items-center gap-2 rounded-lg border border-border bg-background px-5 text-sm font-semibold text-foreground transition-colors hover:border-primary/40 hover:bg-muted"
           >
             <Mail class="h-4 w-4" /> Contact us
           </a>

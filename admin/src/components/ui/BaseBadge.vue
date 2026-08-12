@@ -24,7 +24,7 @@ const dotColors: Record<Tone, string> = {
 
 <template>
   <span
-    class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset"
+    class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset"
     :class="tones[tone]"
   >
     <span v-if="dot" class="h-1.5 w-1.5 rounded-full" :class="dotColors[tone]" />

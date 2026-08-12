@@ -37,34 +37,35 @@ function toggle(index: number): void {
 </script>
 
 <template>
-  <section id="faq" class="mx-auto max-w-3xl px-4 py-24 sm:px-6">
+  <section id="faq" class="container-page py-14 sm:py-18">
     <div class="text-center">
-      <p class="text-sm font-semibold uppercase tracking-widest text-brand-300">FAQ</p>
-      <h2 class="font-display mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+      <p class="text-xs font-semibold uppercase tracking-widest text-primary">FAQ</p>
+      <h2 class="font-display mt-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
         Questions? <span class="text-gradient">Answered.</span>
       </h2>
     </div>
 
-    <div class="mt-12 space-y-3">
+    <div class="mx-auto mt-8 max-w-3xl space-y-2">
       <div
         v-for="(faq, index) in faqs"
         :key="faq.q"
-        class="glass overflow-hidden rounded-2xl transition-all duration-300"
-        :class="openIndex === index ? 'border-brand-400/30 shadow-glow' : ''"
+        class="overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all duration-300"
+        :class="openIndex === index ? 'border-primary/30' : ''"
       >
         <button
-          class="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
+          class="flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left"
+          :aria-expanded="openIndex === index"
           @click="toggle(index)"
         >
-          <span class="text-sm font-semibold text-ink sm:text-base">{{ faq.q }}</span>
+          <span class="text-sm font-semibold text-foreground sm:text-base">{{ faq.q }}</span>
           <ChevronDown
-            class="h-5 w-5 shrink-0 text-ink/40 transition-transform duration-300"
-            :class="openIndex === index ? 'rotate-180 text-brand-300' : ''"
+            class="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-300"
+            :class="openIndex === index ? 'rotate-180 text-primary' : ''"
           />
         </button>
         <Transition name="accordion">
-          <div v-if="openIndex === index" class="px-6 pb-5">
-            <p class="text-sm leading-relaxed text-ink/60">{{ faq.a }}</p>
+          <div v-if="openIndex === index" class="px-5 pb-4">
+            <p class="text-sm leading-relaxed text-muted-foreground">{{ faq.a }}</p>
           </div>
         </Transition>
       </div>

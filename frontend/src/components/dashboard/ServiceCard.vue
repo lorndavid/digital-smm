@@ -39,7 +39,7 @@ function platformOf(service: Service) {
 
 <template>
   <div
-    class="group glass relative flex flex-col overflow-hidden rounded-2xl p-6 shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-brand-400/30 hover:shadow-glow"
+    class="group glass relative flex flex-col overflow-hidden rounded-xl p-4 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-400/30 hover:shadow-glow"
   >
     <div
       class="pointer-events-none absolute -right-14 -top-14 h-40 w-40 rounded-full bg-gradient-to-br opacity-10 blur-2xl transition-opacity duration-300 group-hover:opacity-20"
@@ -50,7 +50,7 @@ function platformOf(service: Service) {
       <div class="transition-transform duration-300 group-hover:scale-110">
         <PlatformIcon :platform="platformKey" size="md" tile />
       </div>
-      <div class="flex flex-col items-end gap-1.5">
+      <div class="flex flex-col items-end gap-1">
         <BaseBadge v-if="service.isFeatured" tone="warning">
           <Sparkles class="mr-1 h-3 w-3" /> Trending
         </BaseBadge>
@@ -61,20 +61,20 @@ function platformOf(service: Service) {
       </div>
     </div>
 
-    <h3 class="font-display mt-4 text-base font-semibold text-ink">{{ service.name }}</h3>
+    <h3 class="font-display mt-3 line-clamp-2 text-sm font-semibold text-ink">{{ service.name }}</h3>
     <p v-if="service.description" class="mt-1 line-clamp-2 text-xs leading-relaxed text-ink/45">
       {{ service.description }}
     </p>
 
-    <div class="mt-4 flex items-baseline gap-1">
-      <span class="font-display text-xl font-bold text-ink">
+    <div class="mt-3 flex items-baseline gap-1">
+      <span class="font-display text-lg font-bold text-ink">
         {{ formatMoney(service.pricePerUnit, service.currency) }}
       </span>
       <span v-if="service.type === 'Package' || service.type === 'Custom Comments Package' || (service.min === 1 && service.max === 1)" class="text-xs text-ink/40">/ package</span>
       <span v-else class="text-xs text-ink/40">/ 1,000</span>
     </div>
 
-    <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink/50">
+    <div class="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink/50">
       <span>Min {{ service.min.toLocaleString() }}</span>
       <span>Max {{ service.max.toLocaleString() }}</span>
       <span v-if="service.deliveryTime" class="inline-flex items-center gap-1">
@@ -85,6 +85,6 @@ function platformOf(service: Service) {
       </span>
     </div>
 
-    <BaseButton class="mt-5" block size="sm" @click="emit('buy', service)">Buy now</BaseButton>
+    <BaseButton class="mt-4" block size="sm" @click="emit('buy', service)">Buy now</BaseButton>
   </div>
 </template>

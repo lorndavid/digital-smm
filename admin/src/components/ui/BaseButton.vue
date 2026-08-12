@@ -28,8 +28,8 @@ const variantClasses: Record<Variant, string> = {
 
 const sizeClasses: Record<Size, string> = {
   sm: 'h-8 px-3 text-xs gap-1.5',
-  md: 'h-10 px-5 text-sm gap-2',
-  lg: 'h-12 px-7 text-base gap-2',
+  md: 'h-9 px-3.5 text-[13px] gap-1.5',
+  lg: 'h-11 px-5 text-sm gap-2',
 }
 
 const classes = computed(() => [

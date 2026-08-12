@@ -40,7 +40,7 @@ async function submit(): Promise<void> {
     <div class="pointer-events-none absolute -top-40 left-1/2 h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-gradient-to-r from-brand-600/40 via-brand-500/20 to-secondary-500/30 blur-[110px]" />
 
     <div class="relative w-full max-w-md">
-      <div class="glass-strong rounded-3xl p-8 shadow-glow sm:p-10">
+      <div class="glass-strong rounded-2xl p-6 shadow-glow sm:p-7">
         <div class="flex flex-col items-center text-center">
           <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-secondary-500 shadow-glow">
             <ShieldCheck class="h-7 w-7 text-(--a-text)" />
@@ -60,7 +60,7 @@ async function submit(): Promise<void> {
               required
               autocomplete="username"
               placeholder="admin@example.com"
-              class="h-11 w-full rounded-xl border border-(--a-border) bg-(--a-soft) pl-11 pr-4 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
+              class="h-9.5 w-full rounded-lg border border-(--a-border) bg-(--a-soft) pl-10 pr-3.5 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
             />
           </div>
           <div class="relative">
@@ -71,7 +71,7 @@ async function submit(): Promise<void> {
               required
               autocomplete="current-password"
               placeholder="Password"
-              class="h-11 w-full rounded-xl border border-(--a-border) bg-(--a-soft) pl-11 pr-4 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
+              class="h-9.5 w-full rounded-lg border border-(--a-border) bg-(--a-soft) pl-10 pr-3.5 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
             />
           </div>
 

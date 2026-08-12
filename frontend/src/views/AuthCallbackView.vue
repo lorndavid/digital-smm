@@ -89,7 +89,7 @@ onMounted(async () => {
         <BrandLogo />
       </div>
 
-      <div class="glass-strong mt-8 rounded-3xl p-8 text-center shadow-glow sm:p-10">
+      <div class="glass-strong mt-6 rounded-2xl p-6 text-center shadow-glow sm:p-7">
         <!-- Working -->
         <template v-if="state === 'working'">
           <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-500/15">

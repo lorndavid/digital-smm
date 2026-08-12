@@ -97,7 +97,7 @@ onMounted(() => void load())
   <div class="mx-auto w-full max-w-3xl space-y-5">
     <div class="flex flex-wrap items-center justify-between gap-4">
       <div>
-        <h1 class="font-display text-2xl font-bold text-(--a-text)">Settings</h1>
+        <h1 class="font-display text-xl font-bold text-(--a-text)">Settings</h1>
         <p class="mt-1 text-sm text-(--a-muted)">
           Platform key/value settings. Secrets (like the SMM API key) should stay in backend
           environment variables.

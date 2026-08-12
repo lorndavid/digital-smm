@@ -163,12 +163,12 @@ onMounted(() => void load())
 </script>
 
 <template>
-  <div class="w-full space-y-6">
+  <div class="w-full space-y-5">
     <!-- Header -->
-    <div class="flex flex-wrap items-end justify-between gap-4">
+    <div class="flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 class="font-display text-2xl font-bold text-ink">Payments</h1>
-        <p class="mt-1 text-sm text-ink/50">
+        <h1 class="font-display text-xl font-bold text-ink">Payments</h1>
+        <p class="mt-0.5 text-sm text-ink/50">
           Every KHQR transaction — top-ups and service orders. ({{ items.length }})
         </p>
       </div>
@@ -177,7 +177,7 @@ onMounted(() => void load())
       <div class="relative">
         <button
           type="button"
-          class="flex h-11 items-center gap-2 rounded-xl bg-gradient-to-br from-brand-500 to-secondary-500 px-4 text-sm font-semibold text-white shadow-glow transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+          class="flex h-9.5 items-center gap-2 rounded-lg bg-gradient-to-br from-brand-500 to-secondary-500 px-3.5 text-[13px] font-semibold text-white shadow-glow transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
           :disabled="exporting"
           @click="exportOpen = !exportOpen"
         >
@@ -227,7 +227,7 @@ onMounted(() => void load())
         v-for="chip in rangeChips"
         :key="chip.value"
         type="button"
-        class="rounded-full px-4 py-1.5 text-sm font-medium transition-all"
+        class="rounded-full px-3.5 py-1 text-[13px] font-medium transition-all"
         :class="
           range === chip.value
             ? 'bg-brand-500/15 text-brand-200 ring-1 ring-brand-400/40'
@@ -241,47 +241,47 @@ onMounted(() => void load())
 
     <!-- Summary cards -->
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <div class="summary-card glass rounded-2xl p-5 shadow-card">
+      <div class="summary-card glass rounded-xl p-4 shadow-card">
         <div class="flex items-center gap-2 text-ink/45">
-          <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-400/15 text-emerald-300">
-            <Wallet class="h-4 w-4" />
+          <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-400/15 text-emerald-300">
+            <Wallet class="h-3.5 w-3.5" />
           </span>
-          <span class="text-xs font-medium uppercase tracking-wide">Top-ups</span>
+          <span class="text-[11px] font-medium uppercase tracking-wide">Top-ups</span>
         </div>
-        <p class="mt-3 font-display text-2xl font-bold text-ink">{{ formatMoney(summary.topup) }}</p>
+        <p class="mt-2 font-display text-xl font-bold text-ink">{{ formatMoney(summary.topup) }}</p>
         <p class="mt-1 text-xs text-ink/40">{{ formatNumber(summary.settledTopups) }} settled top-ups</p>
       </div>
 
-      <div class="summary-card glass rounded-2xl p-5 shadow-card">
+      <div class="summary-card glass rounded-xl p-4 shadow-card">
         <div class="flex items-center gap-2 text-ink/45">
-          <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-500/15 text-brand-300">
-            <QrCode class="h-4 w-4" />
+          <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-500/15 text-brand-300">
+            <QrCode class="h-3.5 w-3.5" />
           </span>
-          <span class="text-xs font-medium uppercase tracking-wide">Service spend</span>
+          <span class="text-[11px] font-medium uppercase tracking-wide">Service spend</span>
         </div>
-        <p class="mt-3 font-display text-2xl font-bold text-ink">{{ formatMoney(summary.spend) }}</p>
+        <p class="mt-2 font-display text-xl font-bold text-ink">{{ formatMoney(summary.spend) }}</p>
         <p class="mt-1 text-xs text-ink/40">Paid from wallet &amp; KHQR orders</p>
       </div>
 
-      <div class="summary-card glass rounded-2xl p-5 shadow-card">
+      <div class="summary-card glass rounded-xl p-4 shadow-card">
         <div class="flex items-center gap-2 text-ink/45">
-          <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500/25 to-secondary-500/25 text-brand-200">
-            <Receipt class="h-4 w-4" />
+          <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-brand-500/25 to-secondary-500/25 text-brand-200">
+            <Receipt class="h-3.5 w-3.5" />
           </span>
-          <span class="text-xs font-medium uppercase tracking-wide">Total settled</span>
+          <span class="text-[11px] font-medium uppercase tracking-wide">Total settled</span>
         </div>
-        <p class="mt-3 font-display text-2xl font-bold text-ink">{{ formatMoney(summary.total) }}</p>
+        <p class="mt-2 font-display text-xl font-bold text-ink">{{ formatMoney(summary.total) }}</p>
         <p class="mt-1 text-xs text-ink/40">Top-ups + service spend</p>
       </div>
 
-      <div class="summary-card glass rounded-2xl p-5 shadow-card">
+      <div class="summary-card glass rounded-xl p-4 shadow-card">
         <div class="flex items-center gap-2 text-ink/45">
-          <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-ink/10 text-ink/70">
-            <CalendarRange class="h-4 w-4" />
+          <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-ink/10 text-ink/70">
+            <CalendarRange class="h-3.5 w-3.5" />
           </span>
-          <span class="text-xs font-medium uppercase tracking-wide">Transactions</span>
+          <span class="text-[11px] font-medium uppercase tracking-wide">Transactions</span>
         </div>
-        <p class="mt-3 font-display text-2xl font-bold text-ink">{{ formatNumber(summary.count) }}</p>
+        <p class="mt-2 font-display text-xl font-bold text-ink">{{ formatNumber(summary.count) }}</p>
         <p class="mt-1 text-xs text-ink/40">in the selected period</p>
       </div>
     </div>
@@ -306,7 +306,7 @@ onMounted(() => void load())
         class="relative flex gap-4 pb-6 pl-1"
       >
         <!-- Node -->
-        <div class="z-10 mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-ink/10 bg-card shadow-card">
+        <div class="z-10 mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-ink/10 bg-card shadow-card">
           <Wallet
             v-if="payment.purpose === 'topup'"
             class="h-4 w-4 text-secondary-300"
@@ -315,7 +315,7 @@ onMounted(() => void load())
         </div>
 
         <!-- Card -->
-        <div class="glass min-w-0 flex-1 rounded-2xl p-5 shadow-card transition-all duration-300 hover:border-brand-400/30">
+        <div class="glass min-w-0 flex-1 rounded-xl p-4 shadow-card transition-all duration-300 hover:border-brand-400/30">
           <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div class="min-w-0">
               <div class="flex flex-wrap items-center gap-2">

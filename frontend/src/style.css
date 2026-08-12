@@ -51,6 +51,38 @@
   --color-ink: var(--ink); /* primary text */
   --color-ink-soft: var(--ink-soft); /* secondary text */
   --color-line: var(--line); /* borders & dividers */
+
+  /* Landing semantic tokens (light-first, dark-aware) */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+}
+
+/* Landing semantic token values — light default, dark flips every token. */
+:root {
+  --background: #ffffff;
+  --foreground: #0b1220;
+  --muted: #f4f5f9;
+  --muted-foreground: #5b6475;
+  --border: #e7e9f0;
+  --primary: #6c3bff;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f5f9;
+}
+.dark {
+  --background: #0a0e1d;
+  --foreground: #f3f4f9;
+  --muted: #141a2e;
+  --muted-foreground: #98a1b8;
+  --border: #232b47;
+  --primary: #8f6bff;
+  --primary-foreground: #ffffff;
+  --secondary: #141a2e;
 }
 
 :root {
@@ -98,11 +130,14 @@
 /* Base                                                                */
 /* ------------------------------------------------------------------ */
 html {
+  /* Compact global scale: every rem-based size (text, spacing, controls)
+     shrinks ~6% so the whole UI feels like an app, not a landing template. */
+  font-size: 15px;
   scroll-behavior: smooth;
-  /* Fixed landing navbar = promo marquee (~2.25rem) + nav bar (4rem) — keep
+  /* Fixed landing navbar = promo marquee (~2.25rem) + nav bar (3.5rem) — keep
      in-page anchor jumps (#how-it-works, #faq, #contact, …) from hiding under
      the taller header. */
-  scroll-padding-top: 6.75rem;
+  scroll-padding-top: 6.5rem;
 }
 
 body {
@@ -291,4 +326,56 @@ body {
     transparent
   );
   animation: shimmer 1.6s infinite;
+}
+
+/* ------------------------------------------------------------------ */
+/* Landing page shared container                                       */
+/* ------------------------------------------------------------------ */
+.container-page {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 80rem;
+  padding-inline: 1rem;
+}
+@media (min-width: 640px) {
+  .container-page {
+    padding-inline: 1.5rem;
+  }
+}
+@media (min-width: 1024px) {
+  .container-page {
+    padding-inline: 2rem;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Reduced motion — snap animations, force motion states visible      */
+/* ------------------------------------------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  /* v-motion applies inline `opacity: 0` + transforms on mount; force them
+     fully visible instead of waiting for the (now-disabled) animation. */
+  [style*="opacity: 0"],
+  [style*="opacity:0"] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .marquee-track,
+  .platform-track {
+    animation: none !important;
+  }
+  .animate-float,
+  .animate-float-slow,
+  .animate-gradient {
+    animation: none !important;
+  }
 }

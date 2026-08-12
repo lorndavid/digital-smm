@@ -21,7 +21,7 @@ const emit = defineEmits<{ 'update:modelValue': [value: string | number] }>()
 
 <template>
   <label class="block">
-    <span v-if="label" class="mb-1.5 block text-sm font-medium text-ink/80">{{ label }}</span>
+    <span v-if="label" class="mb-1 block text-[13px] font-medium text-ink/80">{{ label }}</span>
     <input
       :value="modelValue"
       :type="type"
@@ -31,7 +31,7 @@ const emit = defineEmits<{ 'update:modelValue': [value: string | number] }>()
       :min="min"
       :max="max"
       :step="step"
-      class="h-11 w-full rounded-xl border bg-ink/5 px-4 text-sm text-ink placeholder:text-ink/30 transition-colors focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30 disabled:opacity-50"
+      class="h-9.5 w-full rounded-lg border bg-ink/5 px-3.5 text-sm text-ink placeholder:text-ink/30 transition-colors focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30 disabled:opacity-50"
       :class="error ? 'border-rose-400/60' : 'border-ink/10'"
       @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
     />

@@ -383,10 +383,10 @@ const waitingCopy = 'Waiting for payment…'
 
       <!-- Loading -->
       <div v-if="loading" class="mx-auto mt-16 w-full max-w-3xl space-y-4">
-        <BaseSkeleton class="h-40 w-full rounded-3xl" />
+        <BaseSkeleton class="h-36 w-full rounded-2xl" />
         <div class="grid gap-4 sm:grid-cols-2">
-          <BaseSkeleton class="h-64 w-full rounded-3xl" />
-          <BaseSkeleton class="h-64 w-full rounded-3xl" />
+          <BaseSkeleton class="h-56 w-full rounded-2xl" />
+          <BaseSkeleton class="h-56 w-full rounded-2xl" />
         </div>
       </div>
 
@@ -408,7 +408,7 @@ const waitingCopy = 'Waiting for payment…'
       <!-- Success state -->
       <div v-else-if="isPaid" class="mx-auto mt-16 w-full max-w-lg text-center">
         <div class="check-pop mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-[0_0_60px_-8px_rgba(52,211,153,0.8)]">
-          <svg viewBox="0 0 52 52" class="h-12 w-12">
+          <svg viewBox="0 0 52 52" class="h-10 w-10">
             <path
               class="checkmark"
               fill="none"
@@ -420,7 +420,7 @@ const waitingCopy = 'Waiting for payment…'
             />
           </svg>
         </div>
-        <h1 class="font-display mt-6 text-3xl font-bold text-ink">
+        <h1 class="font-display mt-4 text-2xl font-bold text-ink">
           Payment Successful 🎉
         </h1>
         <p class="mt-3 text-ink/60">
@@ -475,7 +475,7 @@ const waitingCopy = 'Waiting for payment…'
               <p class="text-ink/50 text-sm">Scan the KHQR code using any supported Cambodian banking app.</p>
             </div>
 
-            <div class="rounded-3xl border border-ink/10 bg-ink/5 p-6 backdrop-blur-md">
+            <div class="rounded-2xl border border-ink/10 bg-ink/5 p-5 backdrop-blur-md">
               <h3 class="text-sm font-semibold text-ink/40 uppercase tracking-wider mb-4">Summary</h3>
               
               <div v-if="isOrder && order" class="space-y-4 text-sm">
@@ -507,7 +507,7 @@ const waitingCopy = 'Waiting for payment…'
 
               <div class="mt-6 flex items-end justify-between border-t border-ink/10 pt-6">
                 <span class="text-ink/60">Total to pay</span>
-                <span class="font-display text-4xl font-black text-ink tracking-tight">
+                <span class="font-display text-3xl font-black text-ink tracking-tight">
                   {{ formatMoney(payment?.amount ?? 0) }}
                 </span>
               </div>
@@ -571,7 +571,7 @@ const waitingCopy = 'Waiting for payment…'
               </div>
 
               <!-- Card Body (White) -->
-              <div class="p-8 flex flex-col items-center">
+              <div class="p-6 flex flex-col items-center">
                 
                 <p class="text-[11px] font-bold tracking-widest text-gray-400 uppercase mb-1">Pay to Merchant</p>
                 <h3 class="text-xl font-bold text-gray-900 mb-6">CutLuy Application</h3>

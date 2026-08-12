@@ -132,7 +132,7 @@ onMounted(() => {
           </div>
           <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-2">
-              <h1 class="font-display text-2xl font-bold text-(--a-text)">{{ user.name || 'Unnamed user' }}</h1>
+              <h1 class="font-display text-xl font-bold text-(--a-text)">{{ user.name || 'Unnamed user' }}</h1>
               <BaseBadge tone="brand">{{ user.role === 'super_admin' ? 'super admin' : user.role }}</BaseBadge>
               <BaseBadge :tone="user.isActive ? 'success' : 'danger'" dot>
                 {{ user.isActive ? 'Active' : 'Disabled' }}

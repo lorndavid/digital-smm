@@ -31,7 +31,7 @@ defineProps<{
 
     <main class="mx-auto w-full max-w-3xl px-4 py-14 sm:px-6 sm:py-16">
       <p class="text-sm font-semibold uppercase tracking-widest text-brand-300">Legal</p>
-      <h1 class="font-display mt-3 text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+      <h1 class="font-display mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
         {{ title }}
       </h1>
       <p class="mt-3 text-sm text-ink/40">Last updated: {{ updated }}</p>

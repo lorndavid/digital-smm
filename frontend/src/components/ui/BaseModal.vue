@@ -32,15 +32,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           @click="closeOnBackdrop && emit('close')"
         />
         <div
-          class="animate-scale-in glass-strong relative max-h-[90vh] w-full overflow-y-auto rounded-3xl shadow-glow"
+          class="animate-scale-in glass-strong relative max-h-[90vh] w-full overflow-y-auto rounded-2xl shadow-glow"
           :class="maxWidth"
         >
           <div
             v-if="!hideHeader && (title || $slots.header)"
-            class="sticky top-0 z-10 flex items-center justify-between border-b border-ink/10 bg-card/80 px-6 py-4 backdrop-blur-xl"
+            class="sticky top-0 z-10 flex items-center justify-between border-b border-ink/10 bg-card/80 px-5 py-3 backdrop-blur-xl"
           >
             <slot name="header">
-              <h3 class="font-display text-lg font-semibold text-ink">{{ title }}</h3>
+              <h3 class="font-display text-base font-semibold text-ink">{{ title }}</h3>
             </slot>
             <button
               class="flex h-8 w-8 items-center justify-center rounded-lg text-ink/50 transition-colors hover:bg-ink/10 hover:text-ink"
@@ -50,7 +50,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               <X class="h-4 w-4" />
             </button>
           </div>
-          <div class="p-6">
+          <div class="p-5">
             <slot />
           </div>
         </div>

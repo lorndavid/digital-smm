@@ -130,8 +130,8 @@ onMounted(() => void load())
 <template>
   <div class="w-full space-y-5">
     <div>
-      <h1 class="font-display text-2xl font-bold text-(--a-text)">Orders</h1>
-      <p class="mt-1 text-sm text-(--a-muted)">Monitor and update order statuses. ({{ total }} orders)</p>
+      <h1 class="font-display text-xl font-bold text-(--a-text)">Orders</h1>
+      <p class="mt-0.5 text-sm text-(--a-muted)">Monitor and update order statuses. ({{ total }} orders)</p>
     </div>
 
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -141,13 +141,13 @@ onMounted(() => void load())
           v-model="search"
           type="search"
           placeholder="Search order number…"
-          class="h-11 w-full rounded-xl border border-(--a-border) bg-(--a-soft) pl-10 pr-4 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
+          class="h-9.5 w-full rounded-lg border border-(--a-border) bg-(--a-soft) pl-9 pr-3.5 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
           @keyup.enter="page = 1; void load()"
         />
       </div>
       <select
         v-model="status"
-        class="h-11 rounded-xl border border-(--a-border) bg-(--a-soft) px-4 text-sm text-(--a-text) focus:border-brand-400/60 focus:outline-none [&>option]:bg-(--a-option-bg)"
+        class="h-9.5 rounded-lg border border-(--a-border) bg-(--a-soft) px-3.5 text-sm text-(--a-text) focus:border-brand-400/60 focus:outline-none [&>option]:bg-(--a-option-bg)"
         @change="page = 1; void load()"
       >
         <option value="">All statuses</option>
@@ -163,17 +163,17 @@ onMounted(() => void load())
 
     <div v-else class="glass overflow-hidden rounded-2xl shadow-card">
       <div class="overflow-x-auto">
-        <table class="w-full text-left text-sm">
-          <thead class="border-b border-(--a-border) text-xs uppercase tracking-wider text-(--a-muted-2)">
+        <table class="w-full text-left text-[13px]">
+          <thead class="border-b border-(--a-border) text-[10px] uppercase tracking-wider text-(--a-muted-2)">
             <tr>
-              <th class="px-5 py-3 font-medium">Order</th>
-              <th class="px-5 py-3 font-medium">Customer</th>
-              <th class="px-5 py-3 font-medium">Service</th>
-              <th class="px-5 py-3 font-medium">Qty</th>
-              <th class="px-5 py-3 font-medium">Total</th>
-              <th class="px-5 py-3 font-medium">Status</th>
-              <th class="px-5 py-3 font-medium">Created</th>
-              <th class="px-5 py-3 text-right font-medium">Actions</th>
+              <th class="px-4 py-2.5 font-medium">Order</th>
+              <th class="px-4 py-2.5 font-medium">Customer</th>
+              <th class="px-4 py-2.5 font-medium">Service</th>
+              <th class="px-4 py-2.5 font-medium">Qty</th>
+              <th class="px-4 py-2.5 font-medium">Total</th>
+              <th class="px-4 py-2.5 font-medium">Status</th>
+              <th class="px-4 py-2.5 font-medium">Created</th>
+              <th class="px-4 py-2.5 text-right font-medium">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-(--a-border)">
@@ -183,15 +183,15 @@ onMounted(() => void load())
               class="cursor-pointer transition-colors hover:bg-(--a-hover)"
               @click="openDetail(order)"
             >
-              <td class="px-5 py-3.5 font-medium text-(--a-text)">#{{ order.orderNumber }}</td>
-              <td class="px-5 py-3.5 text-(--a-muted)">{{ userName(order) }}</td>
-              <td class="max-w-[220px] px-5 py-3.5">
+              <td class="px-4 py-2.5 font-medium text-(--a-text)">#{{ order.orderNumber }}</td>
+              <td class="px-4 py-2.5 text-(--a-muted)">{{ userName(order) }}</td>
+              <td class="max-w-[220px] px-4 py-2.5">
                 <p class="truncate text-(--a-muted)">{{ serviceName(order) }}</p>
                 <p v-if="order.link" class="truncate text-xs text-(--a-muted-3)">{{ order.link }}</p>
               </td>
-              <td class="px-5 py-3.5 text-(--a-muted)">{{ formatNumber(order.quantity) }}</td>
-              <td class="px-5 py-3.5 font-semibold text-(--a-text)">{{ formatMoney(order.totalPrice) }}</td>
-              <td class="px-5 py-3.5" @click.stop>
+              <td class="px-4 py-2.5 text-(--a-muted)">{{ formatNumber(order.quantity) }}</td>
+              <td class="px-4 py-2.5 font-semibold text-(--a-text)">{{ formatMoney(order.totalPrice) }}</td>
+              <td class="px-4 py-2.5" @click.stop>
                 <div class="flex items-center gap-2">
                   <BaseBadge :tone="STATUS_TONE[order.status] ?? 'neutral'" dot>
                     {{ STATUS_LABEL[order.status] ?? order.status }}
@@ -208,8 +208,8 @@ onMounted(() => void load())
                   </select>
                 </div>
               </td>
-              <td class="px-5 py-3.5 text-(--a-muted-2)">{{ formatDate(order.createdAt) }}</td>
-              <td class="px-5 py-3.5" @click.stop>
+              <td class="px-4 py-2.5 text-(--a-muted-2)">{{ formatDate(order.createdAt) }}</td>
+              <td class="px-4 py-2.5" @click.stop>
                 <div class="flex items-center justify-end">
                   <button
                     class="flex h-8 w-8 items-center justify-center rounded-lg text-(--a-muted) transition-colors hover:bg-brand-500/15 hover:text-brand-400"

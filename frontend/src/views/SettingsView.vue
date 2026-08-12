@@ -50,14 +50,14 @@ async function signOut(): Promise<void> {
 <template>
   <div class="mx-auto w-full max-w-3xl space-y-6">
     <div>
-      <h1 class="font-display text-2xl font-bold text-ink">Settings</h1>
-      <p class="mt-1 text-sm text-ink/50">Personalize your DigitalSMM experience.</p>
+      <h1 class="font-display text-xl font-bold text-ink">Settings</h1>
+      <p class="mt-0.5 text-sm text-ink/50">Personalize your DigitalSMM experience.</p>
     </div>
 
     <!-- Notifications -->
-    <div class="glass rounded-3xl p-6 shadow-card sm:p-8">
-      <h2 class="font-display text-base font-semibold text-ink">Notifications</h2>
-      <div class="mt-5 space-y-4">
+    <div class="glass rounded-2xl p-5 shadow-card sm:p-6">
+      <h2 class="font-display text-sm font-semibold text-ink">Notifications</h2>
+      <div class="mt-4 space-y-4">
         <div
           v-for="toggle in toggles"
           :key="toggle.label"
@@ -84,9 +84,9 @@ async function signOut(): Promise<void> {
     </div>
 
     <!-- Preferences -->
-    <div class="glass rounded-3xl p-6 shadow-card sm:p-8">
-      <h2 class="font-display text-base font-semibold text-ink">Preferences</h2>
-      <div class="mt-5 space-y-4">
+    <div class="glass rounded-2xl p-5 shadow-card sm:p-6">
+      <h2 class="font-display text-sm font-semibold text-ink">Preferences</h2>
+      <div class="mt-4 space-y-4">
         <BaseSelect
           v-model="language"
           label="Language"
@@ -131,8 +131,8 @@ async function signOut(): Promise<void> {
     </div>
 
     <!-- Danger zone -->
-    <div class="glass rounded-3xl border-rose-400/20 p-6 shadow-card sm:p-8">
-      <h2 class="font-display text-base font-semibold text-rose-200">Danger zone</h2>
+    <div class="glass rounded-2xl border-rose-400/20 p-5 shadow-card sm:p-6">
+      <h2 class="font-display text-sm font-semibold text-rose-200">Danger zone</h2>
       <p class="mt-1 text-xs text-ink/45">
         Signing out ends your current session on this device.
       </p>

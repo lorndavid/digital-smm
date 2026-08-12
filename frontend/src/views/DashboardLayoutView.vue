@@ -23,9 +23,9 @@ const mobileOpen = ref(false)
       </div>
     </Transition>
 
-    <div class="flex min-w-0 flex-1 flex-col lg:pl-64">
+    <div class="flex min-w-0 flex-1 flex-col lg:pl-60">
       <DashboardTopbar @toggle="mobileOpen = !mobileOpen" />
-      <main class="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+      <main class="flex-1 px-4 py-5 sm:px-5 lg:px-6">
         <RouterView />
       </main>
     </div>

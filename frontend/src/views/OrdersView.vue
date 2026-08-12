@@ -195,12 +195,12 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="w-full space-y-6">
+  <div class="w-full space-y-5">
     <!-- Header -->
     <div class="flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 class="font-display text-2xl font-bold text-ink">Orders</h1>
-        <p class="mt-1 text-sm text-ink/50">Track, cancel or refill your orders in real time.</p>
+        <h1 class="font-display text-xl font-bold text-ink">Orders</h1>
+        <p class="mt-0.5 text-sm text-ink/50">Track, cancel or refill your orders in real time.</p>
       </div>
       <div class="flex items-center gap-2">
         <span
@@ -230,7 +230,7 @@ onUnmounted(() => {
       <button
         v-for="filter in STATUS_FILTERS"
         :key="filter.value"
-        class="shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-all"
+        class="shrink-0 rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-all"
         :class="
           activeFilter === filter.value
             ? 'bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-glow'
@@ -257,19 +257,19 @@ onUnmounted(() => {
     <!-- Table -->
     <div v-else class="glass overflow-hidden rounded-2xl shadow-card">
       <div class="overflow-x-auto">
-        <table class="w-full min-w-[960px] text-left text-sm">
+        <table class="w-full min-w-[920px] text-left text-[13px]">
           <thead>
-            <tr class="border-b border-ink/10 text-[11px] uppercase tracking-wider text-ink/40">
-              <th class="px-5 py-3.5 font-medium">ID</th>
-              <th class="px-4 py-3.5 font-medium">Date</th>
-              <th class="px-4 py-3.5 font-medium">Link</th>
-              <th class="px-4 py-3.5 text-right font-medium">Charge</th>
-              <th class="px-4 py-3.5 text-right font-medium">Start count</th>
-              <th class="px-4 py-3.5 text-right font-medium">Quantity</th>
-              <th class="px-4 py-3.5 font-medium">Service</th>
-              <th class="px-4 py-3.5 font-medium">Status</th>
-              <th class="px-4 py-3.5 text-right font-medium">Remains</th>
-              <th class="px-5 py-3.5 text-right font-medium">Actions</th>
+            <tr class="border-b border-ink/10 text-[10px] uppercase tracking-wider text-ink/40">
+              <th class="px-4 py-2.5 font-medium">ID</th>
+              <th class="px-3.5 py-2.5 font-medium">Date</th>
+              <th class="px-3.5 py-2.5 font-medium">Link</th>
+              <th class="px-3.5 py-2.5 text-right font-medium">Charge</th>
+              <th class="px-3.5 py-2.5 text-right font-medium">Start count</th>
+              <th class="px-3.5 py-2.5 text-right font-medium">Quantity</th>
+              <th class="px-3.5 py-2.5 font-medium">Service</th>
+              <th class="px-3.5 py-2.5 font-medium">Status</th>
+              <th class="px-3.5 py-2.5 text-right font-medium">Remains</th>
+              <th class="px-4 py-2.5 text-right font-medium">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -279,45 +279,45 @@ onUnmounted(() => {
               class="group cursor-pointer border-b border-ink/[0.06] transition-colors last:border-b-0 hover:bg-ink/[0.03]"
               @click="openDetail(order)"
             >
-              <td class="px-5 py-3.5">
+              <td class="px-4 py-2.5">
                 <span class="font-mono text-xs font-semibold text-ink/70">#{{ order.orderNumber }}</span>
               </td>
-              <td class="whitespace-nowrap px-4 py-3.5 text-ink/60">
+              <td class="whitespace-nowrap px-3.5 py-2.5 text-ink/60">
                 {{ formatShortDate(order.createdAt) }}
               </td>
-              <td class="px-4 py-3.5">
+              <td class="px-3.5 py-2.5">
                 <span class="flex max-w-[180px] items-center gap-1.5 text-xs text-ink/55">
                   <ExternalLink class="h-3.5 w-3.5 shrink-0 text-ink/30" />
                   <span class="truncate">{{ order.link || '—' }}</span>
                 </span>
               </td>
-              <td class="px-4 py-3.5 text-right font-semibold tabular-nums text-ink">
+              <td class="px-3.5 py-2.5 text-right font-semibold tabular-nums text-ink">
                 {{ formatMoney(order.totalPrice) }}
               </td>
-              <td class="px-4 py-3.5 text-right tabular-nums text-ink/60">
+              <td class="px-3.5 py-2.5 text-right tabular-nums text-ink/60">
                 {{ order.startCount > 0 ? formatNumber(order.startCount) : '—' }}
               </td>
-              <td class="px-4 py-3.5 text-right font-medium tabular-nums text-ink">
+              <td class="px-3.5 py-2.5 text-right font-medium tabular-nums text-ink">
                 {{ formatNumber(order.quantity) }}
               </td>
-              <td class="px-4 py-3.5">
+              <td class="px-3.5 py-2.5">
                 <span class="flex max-w-[220px] items-center gap-2">
                   <PlatformIcon :platform="orderPlatform(order)" size="xs" tile class="shrink-0" />
                   <span class="truncate font-medium text-ink">{{ serviceName(order) }}</span>
                 </span>
               </td>
-              <td class="px-4 py-3.5">
+              <td class="px-3.5 py-2.5">
                 <BaseBadge :tone="STATUS_TONE[order.status] ?? 'neutral'" dot>
                   {{ STATUS_SHORT_LABEL[order.status] ?? order.status }}
                 </BaseBadge>
               </td>
-              <td class="px-4 py-3.5 text-right tabular-nums text-ink/60">
+              <td class="px-3.5 py-2.5 text-right tabular-nums text-ink/60">
                 {{ order.remains > 0 ? formatNumber(order.remains) : '—' }}
               </td>
-              <td class="px-5 py-3.5 text-right" @click.stop>
+              <td class="px-4 py-2.5 text-right" @click.stop>
                 <div class="flex items-center justify-end gap-0.5">
                   <button
-                    class="flex h-8 w-8 items-center justify-center rounded-lg text-ink/45 transition-colors hover:bg-brand-500/10 hover:text-brand-600 dark:hover:text-brand-300"
+                    class="flex h-7 w-7 items-center justify-center rounded-lg text-ink/45 transition-colors hover:bg-brand-500/10 hover:text-brand-600 dark:hover:text-brand-300"
                     :title="`Order again #${order.orderNumber}`"
                     aria-label="Order again"
                     @click="orderAgain(order)"
@@ -326,7 +326,7 @@ onUnmounted(() => {
                   </button>
                   <button
                     v-if="order.status === 'Pending Payment'"
-                    class="flex h-8 w-8 items-center justify-center rounded-lg text-ink/45 transition-colors hover:bg-brand-500/10 hover:text-brand-600 dark:hover:text-brand-300"
+                    class="flex h-7 w-7 items-center justify-center rounded-lg text-ink/45 transition-colors hover:bg-brand-500/10 hover:text-brand-600 dark:hover:text-brand-300"
                     :title="`Pay order #${order.orderNumber}`"
                     aria-label="Pay now"
                     :disabled="isBusy(order)"
@@ -337,7 +337,7 @@ onUnmounted(() => {
                   </button>
                   <button
                     v-if="canCancelOrder(order)"
-                    class="flex h-8 w-8 items-center justify-center rounded-lg text-ink/45 transition-colors hover:bg-rose-500/10 hover:text-rose-400 dark:hover:text-rose-300"
+                    class="flex h-7 w-7 items-center justify-center rounded-lg text-ink/45 transition-colors hover:bg-rose-500/10 hover:text-rose-400 dark:hover:text-rose-300"
                     :title="`Cancel order #${order.orderNumber}`"
                     aria-label="Cancel order"
                     :disabled="isBusy(order)"
@@ -348,7 +348,7 @@ onUnmounted(() => {
                   </button>
                   <button
                     v-if="canRefillOrder(order)"
-                    class="flex h-8 w-8 items-center justify-center rounded-lg text-ink/45 transition-colors hover:bg-emerald-500/10 hover:text-emerald-500 dark:hover:text-emerald-300"
+                    class="flex h-7 w-7 items-center justify-center rounded-lg text-ink/45 transition-colors hover:bg-emerald-500/10 hover:text-emerald-500 dark:hover:text-emerald-300"
                     :title="`Request refill for order #${order.orderNumber}`"
                     aria-label="Request refill"
                     :disabled="isBusy(order)"
@@ -367,7 +367,7 @@ onUnmounted(() => {
         </table>
       </div>
 
-      <div class="border-t border-ink/10 px-5 pb-4">
+      <div class="border-t border-ink/10 px-4 pb-3">
         <BasePagination
           :page="page"
           :total="store.total"

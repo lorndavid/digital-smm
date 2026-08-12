@@ -65,27 +65,27 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="w-full space-y-6">
+  <div class="w-full space-y-5">
     <div>
-      <h1 class="font-display text-2xl font-bold text-ink">Wallet</h1>
-      <p class="mt-1 text-sm text-ink/50">Top up with KHQR and track every transaction.</p>
+      <h1 class="font-display text-xl font-bold text-ink">Wallet</h1>
+      <p class="mt-0.5 text-sm text-ink/50">Top up with KHQR and track every transaction.</p>
     </div>
 
     <!-- Balance hero -->
     <div
-      class="animate-gradient relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-700/80 via-brand-600/60 to-secondary-600/40 p-8 shadow-glow"
+      class="animate-gradient relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-700/80 via-brand-600/60 to-secondary-600/40 p-6 shadow-glow"
     >
       <div class="bg-grid pointer-events-none absolute inset-0 opacity-20" />
-      <div class="relative flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
+      <div class="relative flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <div class="flex items-center gap-2 text-ink/70">
             <Wallet class="h-4 w-4" />
-            <span class="text-sm">Available balance</span>
+            <span class="text-[13px]">Available balance</span>
           </div>
-          <p class="font-display mt-2 text-4xl font-bold text-ink">
+          <p class="font-display mt-1 text-3xl font-bold text-ink">
             {{ formatMoney(store.wallet?.balance ?? 0) }}
           </p>
-          <div class="mt-3 flex gap-6 text-sm text-ink/75">
+          <div class="mt-2 flex gap-5 text-[13px] text-ink/75">
             <span>Top-ups: <b>{{ formatMoney(store.wallet?.totalTopUp ?? 0) }}</b></span>
             <span>Spent: <b>{{ formatMoney(store.wallet?.totalSpent ?? 0) }}</b></span>
           </div>
@@ -97,9 +97,9 @@ onMounted(() => {
     </div>
 
     <!-- Transactions -->
-    <div class="glass rounded-2xl shadow-card">
-      <div class="border-b border-ink/10 px-6 py-4">
-        <h2 class="font-display text-base font-semibold text-ink">Transaction history</h2>
+    <div class="glass rounded-xl shadow-card">
+      <div class="border-b border-ink/10 px-5 py-3">
+        <h2 class="font-display text-sm font-semibold text-ink">Transaction history</h2>
       </div>
 
       <div v-if="store.loading" class="space-y-3 p-6">
@@ -116,11 +116,11 @@ onMounted(() => {
         <li
           v-for="(tx, index) in transactions"
           :key="tx._id ?? index"
-          class="flex items-center justify-between gap-4 px-6 py-4"
+          class="flex items-center justify-between gap-4 px-5 py-3"
         >
           <div class="flex items-center gap-3">
             <div
-              class="flex h-9 w-9 items-center justify-center rounded-xl"
+              class="flex h-8 w-8 items-center justify-center rounded-lg"
               :class="tx.type === 'credit' ? 'bg-emerald-400/15 text-emerald-300' : 'bg-rose-400/15 text-rose-300'"
             >
               <ArrowDownLeft v-if="tx.type === 'credit'" class="h-4 w-4" />

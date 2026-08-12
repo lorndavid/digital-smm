@@ -146,7 +146,7 @@ onMounted(() => {
   <div class="w-full space-y-5">
     <div class="flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h1 class="font-display text-2xl font-bold text-(--a-text)">Admins &amp; Roles</h1>
+        <h1 class="font-display text-xl font-bold text-(--a-text)">Admins &amp; Roles</h1>
         <p class="mt-1 text-sm text-(--a-muted)">
           Super admin only — create admin accounts, promote existing users, and assign roles.
           Showing up to {{ total }} accounts.
@@ -163,7 +163,7 @@ onMounted(() => {
         v-model="search"
         type="search"
         placeholder="Search by email or name…"
-        class="h-11 w-full rounded-xl border border-(--a-border) bg-(--a-soft) pl-10 pr-4 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
+        class="h-9.5 w-full rounded-lg border border-(--a-border) bg-(--a-soft) pl-9 pr-3.5 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
         @keyup.enter="page = 1; void load()"
       />
     </div>
@@ -253,7 +253,7 @@ onMounted(() => {
             type="email"
             required
             placeholder="admin@example.com"
-            class="h-11 w-full rounded-xl border border-(--a-border) bg-(--a-soft) px-4 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
+            class="h-9.5 w-full rounded-lg border border-(--a-border) bg-(--a-soft) px-3.5 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
           />
         </div>
         <div>
@@ -262,7 +262,7 @@ onMounted(() => {
             v-model="form.name"
             type="text"
             placeholder="Admin name"
-            class="h-11 w-full rounded-xl border border-(--a-border) bg-(--a-soft) px-4 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
+            class="h-9.5 w-full rounded-lg border border-(--a-border) bg-(--a-soft) px-3.5 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
           />
         </div>
         <div>
@@ -275,7 +275,7 @@ onMounted(() => {
             required
             minlength="8"
             placeholder="••••••••"
-            class="h-11 w-full rounded-xl border border-(--a-border) bg-(--a-soft) px-4 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
+            class="h-9.5 w-full rounded-lg border border-(--a-border) bg-(--a-soft) px-3.5 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
           />
           <p class="mt-1.5 flex items-center gap-1.5 text-xs text-(--a-muted-3)">
             <KeyRound class="h-3 w-3" /> The password is hashed (scrypt) and stored in MongoDB — never stored in plaintext.
@@ -285,7 +285,7 @@ onMounted(() => {
           <label class="mb-1.5 block text-xs font-medium text-(--a-muted)">Role</label>
           <select
             v-model="form.role"
-            class="h-11 w-full rounded-xl border border-(--a-border) bg-(--a-sidebar) px-4 text-sm text-(--a-text) focus:border-brand-400/60 focus:outline-none"
+            class="h-9.5 w-full rounded-lg border border-(--a-border) bg-(--a-sidebar) px-3.5 text-sm text-(--a-text) focus:border-brand-400/60 focus:outline-none"
           >
             <option value="admin">Admin — full panel access, cannot manage admins</option>
             <option value="super_admin">Super admin — full access incl. admins &amp; roles</option>
