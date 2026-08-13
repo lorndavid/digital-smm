@@ -104,7 +104,7 @@ const pageTitle = computed(() => {
     <div class="fixed inset-y-0 left-0 z-40 hidden w-60 lg:block">
       <aside class="flex h-full w-60 flex-col border-r border-(--a-border) bg-(--a-sidebar) backdrop-blur-xl">
         <div class="flex h-14 items-center gap-2 border-b border-(--a-border) px-4">
-          <img :src="logoUrl" alt="DigitalSMM" class="block h-7 w-auto object-contain" />
+          <img :src="logoUrl" alt="DigitalSMM" class="block h-9 w-auto object-contain" />
           <span class="font-display text-base font-bold text-(--a-text)">
             Digital<span class="text-gradient">SMM</span>
             <span class="text-[10px] font-semibold text-(--a-muted-2)">ADMIN</span>
@@ -159,7 +159,7 @@ const pageTitle = computed(() => {
           <aside class="flex h-full w-64 flex-col border-r border-(--a-border) bg-(--a-sidebar) backdrop-blur-xl">
             <div class="flex h-14 items-center justify-between border-b border-(--a-border) px-4">
               <span class="flex items-center gap-2">
-                <img :src="logoUrl" alt="DigitalSMM" class="block h-7 w-auto object-contain" />
+                <img :src="logoUrl" alt="DigitalSMM" class="block h-9 w-auto object-contain" />
                 <span class="font-display text-base font-bold text-(--a-text)">
                   Digital<span class="text-gradient">SMM</span>
                   <span class="text-[10px] font-semibold text-(--a-muted-2)">ADMIN</span>

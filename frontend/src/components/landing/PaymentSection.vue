@@ -198,13 +198,14 @@ const bankRows: Array<Array<{ src: string; alt: string }>> = [
       </div>
     </div>
 
-    <!-- Cambodia bank logos — two opposing infinite marquee rows -->
-    <div class="group mt-14 sm:mt-16">
+    <!-- Cambodia bank logos — two opposing infinite marquee rows in their real
+         brand colors, constrained to the page container (never full-bleed). -->
+    <div class="container-page mt-14 sm:mt-16">
       <p class="text-center text-xs font-semibold uppercase tracking-widest text-muted-foreground">
         Accepted across Cambodia's leading banks
       </p>
       <div
-        class="mt-6 flex flex-col gap-8 overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]"
+        class="group mt-6 flex flex-col gap-8 overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]"
       >
         <div v-for="(row, rowIndex) in bankRows" :key="rowIndex" class="flex">
           <template v-for="copy in 2" :key="copy">
@@ -222,7 +223,7 @@ const bankRows: Array<Array<{ src: string; alt: string }>> = [
                 :title="bank.alt"
                 loading="eager"
                 decoding="async"
-                class="h-8 w-auto shrink-0 opacity-70 grayscale transition duration-300 hover:opacity-100 hover:grayscale-0 dark:brightness-150 dark:opacity-80"
+                class="h-9 w-auto shrink-0 transition-opacity duration-300 group-hover:opacity-70 hover:opacity-100"
               />
             </div>
           </template>

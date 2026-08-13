@@ -2,9 +2,9 @@
 import { computed } from 'vue'
 
 /**
- * Real platform brand logos (SVG paths, white fill) inside a platform-colored
- * gradient tile. Used across the storefront: service cards, platform chips,
- * buy modal and order rows.
+ * Real platform brand logos (SVG glyphs, current-color fill, no background).
+ * Used across the storefront: service cards, platform chips, buy modal and
+ * order rows. The icon inherits the surrounding text color and stays clean.
  */
 
 const props = withDefaults(
@@ -13,7 +13,7 @@ const props = withDefaults(
     platform: string
     /** Tailwind size class for the logo glyph. */
     size?: 'xs' | 'sm' | 'md' | 'lg'
-    /** Show the brand tile background (rounded gradient). */
+    /** Kept for API compatibility — tile backgrounds are no longer rendered. */
     tile?: boolean
     /** Extra classes for the tile wrapper. */
     tileClass?: string
@@ -40,17 +40,6 @@ const GLYPH: Record<string, string> = {
     'M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm0 2c1.89 0 3.63.65 5.03 1.73a9.95 9.95 0 0 0-2.3 2.83A15.5 15.5 0 0 0 13.5 12c0 1.95.36 3.78 1.03 5.44.54 1.3 1.28 2.34 2.2 3.11A9.98 9.98 0 0 1 12 22a9.98 9.98 0 0 1-4.73-1.45c.92-.77 1.66-1.81 2.2-3.11C9.14 15.78 9.5 13.95 9.5 12c0-1.95-.36-3.78-1.03-5.44a9.36 9.36 0 0 0-2.3-2.83A9.94 9.94 0 0 1 12 2zm0 2.68c-.6 1.4-1 3.02-1 4.32s.4 2.92 1 4.32c.6-1.4 1-3.02 1-4.32s-.4-2.92-1-4.32zM2.1 10.65c.58-.4 1.4-.9 2.4-1.33.36.86.78 1.87 1.18 2.68-.42.9-.86 1.95-1.24 2.83-.97-.42-1.77-.93-2.34-1.34a10.02 10.02 0 0 1 0-2.84zm15.4-1.33c1 .44 1.82.93 2.4 1.33.13.94.13 1.9 0 2.84-.57.41-1.37.92-2.34 1.34-.38-.88-.82-1.93-1.24-2.83.4-.81.82-1.82 1.18-2.68zM12 19.32c-.6-1.4-1-3.02-1-4.32s.4-2.92 1-4.32c.6 1.4 1 3.02 1 4.32s-.4 2.92-1 4.32z',
 }
 
-const TILE: Record<string, string> = {
-  tiktok: 'from-fuchsia-500 to-cyan-400',
-  facebook: 'from-[#1877F2] to-[#0a4fc0]',
-  instagram: 'from-[#F58529] via-[#DD2A7B] to-[#8134AF]',
-  youtube: 'from-[#FF0000] to-[#C40000]',
-  telegram: 'from-[#2AABEE] to-[#1b7fc4]',
-  twitter: 'from-slate-600 to-slate-900',
-  threads: 'from-slate-700 to-black',
-  other: 'from-slate-500 to-slate-600',
-}
-
 const GLYPH_SIZE: Record<string, string> = {
   xs: 'h-3.5 w-3.5',
   sm: 'h-4 w-4',
@@ -58,26 +47,11 @@ const GLYPH_SIZE: Record<string, string> = {
   lg: 'h-7 w-7',
 }
 
-const TILE_SIZE: Record<string, string> = {
-  xs: 'h-7 w-7 rounded-lg',
-  sm: 'h-8 w-8 rounded-lg',
-  md: 'h-10 w-10 rounded-xl',
-  lg: 'h-14 w-14 rounded-2xl',
-}
-
 const glyph = computed(() => GLYPH[props.platform] ?? GLYPH.other)
-const tile = computed(() => TILE[props.platform] ?? TILE.other)
 </script>
 
 <template>
-  <span v-if="tile" :class="[TILE_SIZE[size], 'inline-flex items-center justify-center bg-gradient-to-br shadow-lg', tile, tileClass]">
-    <svg viewBox="0 0 24 24" fill="currentColor" class="text-ink" :class="GLYPH_SIZE[size]">
-      <path :d="glyph" />
-    </svg>
-  </span>
-  <span v-else class="inline-flex text-current">
-    <svg viewBox="0 0 24 24" fill="currentColor" :class="[GLYPH_SIZE[size], tileClass]">
-      <path :d="glyph" />
-    </svg>
-  </span>
+  <svg viewBox="0 0 24 24" fill="currentColor" class="shrink-0 text-current" :class="[GLYPH_SIZE[size], tileClass]">
+    <path :d="glyph" />
+  </svg>
 </template>
