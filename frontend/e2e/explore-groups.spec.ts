@@ -84,19 +84,32 @@ async function settleTopUp(
   await ok(res, 'cutluy webhook')
 }
 
+/**
+ * The selectable service row button — search dropdown rows carry
+ * [data-search-service], grouped-catalogue rows carry [data-service-row].
+ *
+ * Every row now has a favourites star BESIDE it whose accessible name also
+ * contains the service name ("Add TikTok Followers to favourites"), so a
+ * name-based role locator is ambiguous — always scope through the row
+ * attribute and filter on the service name.
+ */
+function serviceRow(page: import('@playwright/test').Page, name: string) {
+  return page.locator('[data-search-service], [data-service-row]').filter({ hasText: name })
+}
+
 async function pickService(page: import('@playwright/test').Page, name: string): Promise<void> {
   const searchBox = page.getByPlaceholder(/Search all services/)
   const searchText = await searchBox.inputValue().catch(() => '')
   if (searchText.trim()) {
     // Typing opened the LIVE search dropdown — pick the result there
     // (one click auto-selects the service AND its category).
-    await page.getByRole('button', { name: new RegExp(name) }).click()
+    await serviceRow(page, name).click()
     return
   }
   // No search text: open the read-only Service field (grouped catalogue)
   // and pick the row.
   await page.getByPlaceholder(/Select a service/).click()
-  await page.getByRole('button', { name: new RegExp(name) }).click()
+  await serviceRow(page, name).click()
 }
 
 /**
@@ -156,7 +169,7 @@ test('search-all finds a service; selecting it shows details and the order form'
 
   // Clicking a result in the search dropdown picks it for ordering AND
   // auto-sets the Category dropdown to the service's category.
-  await page.getByRole('button', { name: /Facebook Page Likes/ }).click()
+  await serviceRow(page, 'Facebook Page Likes').click()
 
   // Details panel: name, average time, quantity range, rate.
   await expect(page.getByRole('heading', { name: 'Facebook Page Likes', level: 3 })).toBeVisible()
@@ -197,12 +210,12 @@ test('multi-word search ranks best matches first across name + category', async 
   // Likes only 'facebook' — so Post Likes leads and Page Likes trails behind
   // (ranked search: partial matches are included, best first).
   await page.getByPlaceholder(/Search all services/).fill('facebook post')
-  await expect(page.getByRole('button', { name: /Facebook Post Likes/ })).toBeVisible()
-  await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toBeVisible()
+  await expect(serviceRow(page, 'Facebook Post Likes')).toBeVisible()
+  await expect(serviceRow(page, 'Facebook Page Likes')).toBeVisible()
   await expect(page.locator('[data-search-service]').first()).toContainText('Facebook Post Likes')
 
   // Clicking the result still auto-picks the service and its category.
-  await page.getByRole('button', { name: /Facebook Post Likes/ }).click()
+  await serviceRow(page, 'Facebook Post Likes').click()
   await expect(page.getByRole('heading', { name: 'Facebook Post Likes', level: 3 })).toBeVisible()
   await expect(page.getByPlaceholder(/Search or select a category/)).toHaveValue('Facebook')
 })
@@ -214,10 +227,8 @@ test('multi-word search matches across service name and category words', async (
   // leads; 'TikTok Followers' only matches 'tiktok' (its category) so it
   // trails in the ranked list instead of disappearing.
   await page.getByPlaceholder(/Search all services/).fill('tiktok views')
-  await expect(
-    page.getByRole('button', { name: /TikTok Views \(High Retention\)/ }),
-  ).toBeVisible()
-  await expect(page.getByRole('button', { name: /TikTok Followers/ })).toBeVisible()
+  await expect(serviceRow(page, 'TikTok Views (High Retention)')).toBeVisible()
+  await expect(serviceRow(page, 'TikTok Followers')).toBeVisible()
   await expect(page.locator('[data-search-service]').first()).toContainText(
     'TikTok Views (High Retention)',
   )
@@ -231,12 +242,12 @@ test('multi-word phrase like "facebook live stream" ranks live services first', 
   // Facebook Live services (name AND category contain the words) while the
   // plain Facebook services (score via "facebook" only) trail behind.
   await page.getByPlaceholder(/Search all services/).fill('facebook live stream')
-  await expect(page.getByRole('button', { name: /Facebook Live Stream Views/ })).toBeVisible()
-  await expect(page.getByRole('button', { name: /Facebook Live Stream Likes/ })).toBeVisible()
-  await expect(page.getByRole('button', { name: /Facebook Live Stream Comments/ })).toBeVisible()
-  await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toBeVisible()
-  await expect(page.getByRole('button', { name: /Facebook Post Likes/ })).toBeVisible()
-  await expect(page.getByRole('button', { name: /Facebook Video Views/ })).toBeVisible()
+  await expect(serviceRow(page, 'Facebook Live Stream Views')).toBeVisible()
+  await expect(serviceRow(page, 'Facebook Live Stream Likes')).toBeVisible()
+  await expect(serviceRow(page, 'Facebook Live Stream Comments')).toBeVisible()
+  await expect(serviceRow(page, 'Facebook Page Likes')).toBeVisible()
+  await expect(serviceRow(page, 'Facebook Post Likes')).toBeVisible()
+  await expect(serviceRow(page, 'Facebook Video Views')).toBeVisible()
   // The best matches (full phrase) lead the ranked list.
   await expect(page.locator('[data-search-service]').first()).toContainText(
     'Facebook Live Stream',
@@ -244,7 +255,7 @@ test('multi-word phrase like "facebook live stream" ranks live services first', 
   await expect(page.getByText(/result/)).toBeVisible()
 
   // Clicking a result still auto-picks the service + its category.
-  await page.getByRole('button', { name: /Facebook Live Stream Views/ }).click()
+  await serviceRow(page, 'Facebook Live Stream Views').click()
   await expect(page.getByRole('heading', { name: 'Facebook Live Stream Views', level: 3 })).toBeVisible()
   await expect(page.getByPlaceholder(/Search or select a category/)).toHaveValue(
     'Facebook Live Stream',
@@ -257,17 +268,15 @@ test('multi-word phrase like "tiktok live stream" surfaces TikTok services', asy
   // Any-word matching still surfaces every TikTok service, with the live
   // stream ones (name + category score) leading the ranked list.
   await page.getByPlaceholder(/Search all services/).fill('tiktok live stream')
-  await expect(page.getByRole('button', { name: /TikTok Followers/ })).toBeVisible()
-  await expect(
-    page.getByRole('button', { name: /TikTok Views \(High Retention\)/ }),
-  ).toBeVisible()
-  await expect(page.getByRole('button', { name: /TikTok Live Stream Views/ })).toBeVisible()
+  await expect(serviceRow(page, 'TikTok Followers')).toBeVisible()
+  await expect(serviceRow(page, 'TikTok Views (High Retention)')).toBeVisible()
+  await expect(serviceRow(page, 'TikTok Live Stream Views')).toBeVisible()
   await expect(page.locator('[data-search-service]').first()).toContainText(
     'TikTok Live Stream',
   )
 
   // Clicking a result still auto-picks the service + its category.
-  await page.getByRole('button', { name: /TikTok Followers/ }).click()
+  await serviceRow(page, 'TikTok Followers').click()
   await expect(page.getByRole('heading', { name: 'TikTok Followers', level: 3 })).toBeVisible()
   await expect(page.getByPlaceholder(/Search or select a category/)).toHaveValue('TikTok')
 })
@@ -302,7 +311,7 @@ test('chevron buttons toggle their dropdowns open and closed', async ({ page }) 
 
 test('keyboard: arrow down + Enter picks the highlighted search result', async ({ page }) => {
   await page.getByPlaceholder(/Search all services/).fill('Facebook Page Likes')
-  await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toBeVisible()
+  await expect(serviceRow(page, 'Facebook Page Likes')).toBeVisible()
 
   // Arrow down highlights the first result; Enter auto-picks it.
   await page.keyboard.press('ArrowDown')
@@ -321,8 +330,8 @@ test('service field: click opens the grouped catalogue; Enter picks the highligh
   // opens instantly (no typing search here; search lives in the box above
   // and in the Category combobox).
   await field.click()
-  await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toBeVisible()
-  await expect(page.getByRole('button', { name: /TikTok Followers/ })).toBeVisible()
+  await expect(serviceRow(page, 'Facebook Page Likes')).toBeVisible()
+  await expect(serviceRow(page, 'TikTok Followers')).toBeVisible()
 
   // Arrow down highlights the first row; Enter picks it and fills the field.
   await page.keyboard.press('ArrowDown')
@@ -356,15 +365,15 @@ test('Facebook Live is a main chip: filters categories and services to facebook-
   // The Service dropdown shows ONLY facebook-live services — plain Facebook
   // page/post/video services and every other platform never leak in.
   await page.getByPlaceholder(/Select a service/).click()
-  await expect(page.getByRole('button', { name: /Facebook Live Stream Views/ })).toBeVisible()
-  await expect(page.getByRole('button', { name: /Facebook Live Stream Likes/ })).toBeVisible()
-  await expect(page.getByRole('button', { name: /Facebook Live Stream Comments/ })).toBeVisible()
-  await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: /TikTok Followers/ })).toHaveCount(0)
+  await expect(serviceRow(page, 'Facebook Live Stream Views')).toBeVisible()
+  await expect(serviceRow(page, 'Facebook Live Stream Likes')).toBeVisible()
+  await expect(serviceRow(page, 'Facebook Live Stream Comments')).toBeVisible()
+  await expect(serviceRow(page, 'Facebook Page Likes')).toHaveCount(0)
+  await expect(serviceRow(page, 'TikTok Followers')).toHaveCount(0)
   await expect(page.locator('[data-group-label="TikTok"]')).toHaveCount(0)
 
   // Picking a live service auto-sets its category (the chip stays active).
-  await page.getByRole('button', { name: /Facebook Live Stream Views/ }).click()
+  await serviceRow(page, 'Facebook Live Stream Views').click()
   await expect(
     page.getByRole('heading', { name: 'Facebook Live Stream Views', level: 3 }),
   ).toBeVisible()
@@ -396,7 +405,7 @@ test('favourites: star a category, browse it from the Favourites tab, remove it'
   await page.goto('/dashboard/favorites')
   await expect(page.locator('h1').filter({ hasText: 'Favourites' })).toBeVisible()
   await expect(page.getByText('Facebook').first()).toBeVisible()
-  await expect(page.getByText('1 favourite')).toBeVisible()
+  await expect(page.getByText('1 category')).toBeVisible()
 
   // Clicking the card jumps to Explore with the category auto-set and the
   // Service field empty (no service pre-selected, no order form).
@@ -507,8 +516,8 @@ test('platform chips scope the service dropdown to that platform only', async ({
   await expect(facebookChip).toHaveAttribute('aria-pressed', 'true')
 
   await page.getByPlaceholder(/Select a service/).click()
-  await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toBeVisible()
-  await expect(page.getByRole('button', { name: /TikTok Followers/ })).toHaveCount(0)
+  await expect(serviceRow(page, 'Facebook Page Likes')).toBeVisible()
+  await expect(serviceRow(page, 'TikTok Followers')).toHaveCount(0)
   await expect(page.locator('[data-group-label="TikTok"]')).toHaveCount(0)
 
   // Click TikTok → the active chip switches and the dropdown scopes to it.
@@ -518,8 +527,8 @@ test('platform chips scope the service dropdown to that platform only', async ({
   await expect(facebookChip).toHaveAttribute('aria-pressed', 'false')
 
   await page.getByPlaceholder(/Select a service/).click()
-  await expect(page.getByRole('button', { name: /TikTok Followers/ })).toBeVisible()
-  await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toHaveCount(0)
+  await expect(serviceRow(page, 'TikTok Followers')).toBeVisible()
+  await expect(serviceRow(page, 'Facebook Page Likes')).toHaveCount(0)
 })
 
 test('platform chip narrows the Category combobox to matching categories', async ({
@@ -575,15 +584,15 @@ test('clicking the Service field with a chosen service scopes to its category', 
   // services from other categories appear.
   await page.getByPlaceholder(/Select a service/).click()
   await expect(page.locator('[data-group-label="TikTok"]')).toBeVisible()
-  await expect(page.getByRole('button', { name: /TikTok Followers/ })).toBeVisible()
-  await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toHaveCount(0)
+  await expect(serviceRow(page, 'TikTok Followers')).toBeVisible()
+  await expect(serviceRow(page, 'Facebook Page Likes')).toHaveCount(0)
 
   // Clearing the category reveals the whole catalogue grouped again.
   await page.getByPlaceholder(/Select a service/).press('Escape')
   await page.getByPlaceholder(/Search or select a category/).click()
   await page.locator('[data-category-option="All categories"]').click()
   await page.getByPlaceholder(/Select a service/).click()
-  await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toBeVisible()
+  await expect(serviceRow(page, 'Facebook Page Likes')).toBeVisible()
 })
 
 test('a selected category scopes the service dropdown to that category only', async ({
@@ -597,8 +606,8 @@ test('a selected category scopes the service dropdown to that category only', as
   // grouped under its header — no other categories appear.
   await page.getByPlaceholder(/Select a service/).click()
   await expect(page.locator('[data-group-label="Facebook"]')).toBeVisible()
-  await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toBeVisible()
-  await expect(page.getByRole('button', { name: /TikTok Followers/ })).toHaveCount(0)
+  await expect(serviceRow(page, 'Facebook Page Likes')).toBeVisible()
+  await expect(serviceRow(page, 'TikTok Followers')).toHaveCount(0)
   await expect(page.locator('[data-group-label="TikTok"]')).toHaveCount(0)
 })
 
@@ -618,7 +627,7 @@ test('category group headers collapse and expand their services', async ({
   const fbGroup = page.locator('[data-group-label="Facebook"]')
   await expect(fbGroup).toBeVisible()
   await expect(fbGroup).toHaveAttribute('aria-expanded', 'true')
-  const fbRow = page.getByRole('button', { name: /Facebook Page Likes/ })
+  const fbRow = serviceRow(page, 'Facebook Page Likes')
   await expect(fbRow).toBeVisible()
 
   // Click the header → the group collapses and its services hide.
@@ -651,8 +660,8 @@ test('changing the category resets the service and order form', async ({ page })
 
   // The dropdown now shows only the new category's services.
   await page.getByPlaceholder(/Select a service/).click()
-  await expect(page.getByRole('button', { name: /Facebook Page Likes/ })).toBeVisible()
-  await expect(page.getByRole('button', { name: /TikTok Followers/ })).toHaveCount(0)
+  await expect(serviceRow(page, 'Facebook Page Likes')).toBeVisible()
+  await expect(serviceRow(page, 'TikTok Followers')).toHaveCount(0)
 })
 
 test('orders are paid from the wallet; empty balance prompts a top-up', async ({ page }) => {
@@ -726,16 +735,16 @@ test('order again: prefills the Explore form from a previous order', async ({
   await expect(page.getByPlaceholder(/Select a service/)).toHaveValue('TikTok Followers')
   await expect(page.getByPlaceholder(/Search or select a category/)).toHaveValue('TikTok')
 
-  // Link + quantity carried over.
-  await expect(page.getByLabel('Link to your page or post')).toHaveValue(
-    'https://www.tiktok.com/@e2e-user',
-  )
+  // Quantity carried over; the Link is intentionally EMPTY — every re-order
+  // is a fresh target, so the customer pastes the new URL themselves.
+  await expect(page.getByLabel('Link to your page or post')).toHaveValue('')
   await expect(page.locator('input[type="number"]')).toHaveValue('2500')
 
-  // The platform chip is auto-activated from the prefilled link.
+  // With no link prefilled there is nothing to auto-detect, so the platform
+  // chips stay neutral.
   await expect(page.locator('[data-platform-chip="tiktok"]')).toHaveAttribute(
     'aria-pressed',
-    'true',
+    'false',
   )
 
   // The charge reflects the carried quantity (2500 × $0.90/1k = $2.25).
@@ -769,14 +778,13 @@ test('order again from the Orders list row prefills the Explore form', async ({
   await expect(page.getByRole('heading', { name: 'TikTok Followers', level: 3 })).toBeVisible()
   await expect(page.getByPlaceholder(/Select a service/)).toHaveValue('TikTok Followers')
   await expect(page.getByPlaceholder(/Search or select a category/)).toHaveValue('TikTok')
-  await expect(page.getByLabel('Link to your page or post')).toHaveValue(
-    'https://www.tiktok.com/@e2e-user',
-  )
+  // Quantity carried over; the Link is intentionally EMPTY (fresh target).
+  await expect(page.getByLabel('Link to your page or post')).toHaveValue('')
   await expect(page.locator('input[type="number"]')).toHaveValue('3000')
-  // The platform chip is auto-activated from the prefilled link.
+  // No link prefilled → nothing to auto-detect, chips stay neutral.
   await expect(page.locator('[data-platform-chip="tiktok"]')).toHaveAttribute(
     'aria-pressed',
-    'true',
+    'false',
   )
   // 3000 × $0.90/1k = $2.70
   await expect(page.getByText('$2.70', { exact: true })).toBeVisible()

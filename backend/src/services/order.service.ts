@@ -8,6 +8,7 @@ import { OrderModel, type OrderDoc } from '../models/order.model.js'
 import { getSmmProvider } from './smm/provider.factory.js'
 import { walletService } from './wallet.service.js'
 import { emitPaymentStatus } from './payment/events.bus.js'
+import { emitOrderStatus } from './order/events.bus.js'
 import { ApiError } from '../utils/api-error.js'
 
 export interface OrderDraft {
@@ -39,6 +40,21 @@ const asList = (v: unknown): string[] | undefined => {
       .map((s) => s.trim())
       .filter(Boolean)
   return undefined
+}
+
+/** Pushes a status update for an order to its owner's SSE stream. */
+function publishOrderStatus(order: OrderDoc): void {
+  emitOrderStatus({
+    userId: order.user.toString(),
+    orderId: order._id.toString(),
+    orderNumber: order.orderNumber,
+    status: order.status,
+    remains: order.remains,
+    startCount: order.startCount,
+    charge: order.charge,
+    providerOrderId: order.providerOrderId,
+    updatedAt: new Date().toISOString(),
+  })
 }
 
 /**
@@ -291,6 +307,7 @@ export class OrderService {
         order.error = ''
         if (paymentId) order.payment = paymentId as Types.ObjectId
         await order.save()
+        publishOrderStatus(order)
         return order
       }
        const result = await getSmmProvider(service.provider).createOrder(providerInput)
@@ -299,6 +316,7 @@ export class OrderService {
       order.error = ''
       if (paymentId) order.payment = paymentId as Types.ObjectId
       await order.save()
+      publishOrderStatus(order)
     } catch (err) {
       // Payment settled but the provider could not place the order yet.
       // Keep the order 'Paid' (with the error set) so a later poll/webhook
@@ -306,6 +324,7 @@ export class OrderService {
       order.status = 'Paid'
       order.error = err instanceof Error ? err.message : 'Provider order placement failed'
       await order.save()
+      publishOrderStatus(order)
       throw err
     }
     return order
@@ -372,7 +391,7 @@ export class OrderService {
   ) {
     // Manual services are fulfilled by the shop owner — no provider call.
     if (isManualService(service)) {
-      return orderRepository.create({
+      const order = await orderRepository.create({
         orderNumber: await orderRepository.nextOrderNumber(),
         providerOrderId: null,
         user: userId as unknown as Types.ObjectId,
@@ -387,6 +406,8 @@ export class OrderService {
         status: 'Processing',
         payment: paymentId,
       })
+      publishOrderStatus(order)
+      return order
     }
 
     const result = await getSmmProvider(service.provider).createOrder(providerInput)
@@ -405,6 +426,7 @@ export class OrderService {
       status: 'Processing',
       payment: paymentId,
     })
+    publishOrderStatus(order)
     return order
   }
 
@@ -449,6 +471,7 @@ export class OrderService {
     const priorStatus = order.status
     order.status = 'Cancelled'
     await order.save()
+    publishOrderStatus(order)
 
     // Expire any still-pending payment so its QR can never be settled after
     // the order is cancelled, and no fresh QR can be generated for it.

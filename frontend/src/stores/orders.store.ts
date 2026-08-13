@@ -44,5 +44,26 @@ export const useOrdersStore = defineStore('orders', () => {
     return order
   }
 
-  return { orders, total, loading, error, fetchOrders, placeOrder, cancelOrder }
+  /**
+   * Merges a pushed SSE order-status update into the loaded list (no refetch).
+   * Returns the updated order, or null when the order isn't on the current
+   * page/filter (the next fetch will pick it up).
+   */
+  function applyOrderUpdate(patch: Partial<Order> & { _id: string }): Order | null {
+    const index = orders.value.findIndex((o) => o._id === patch._id)
+    if (index === -1) return null
+    orders.value[index] = { ...orders.value[index], ...patch, _id: patch._id }
+    return orders.value[index]
+  }
+
+  return {
+    orders,
+    total,
+    loading,
+    error,
+    fetchOrders,
+    placeOrder,
+    cancelOrder,
+    applyOrderUpdate,
+  }
 })

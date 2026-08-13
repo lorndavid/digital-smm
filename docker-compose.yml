@@ -84,9 +84,12 @@ services:
       CUTLUY_API_URL: https://cutluy.com/v1
       CUTLUY_API_KEY: ${CUTLUY_API_KEY:-}
       CUTLUY_WEBHOOK_SECRET: ${CUTLUY_WEBHOOK_SECRET:-}
-      # Background jobs
-      ENABLE_ORDER_SYNC_JOB: ${ENABLE_ORDER_SYNC_JOB:-false}
-      ORDER_SYNC_INTERVAL_MS: "60000"
+      # Background jobs — the order-sync job is ON by default so status/remains
+      # stay near-real-time; set ENABLE_ORDER_SYNC_JOB=false to disable.
+      ENABLE_ORDER_SYNC_JOB: ${ENABLE_ORDER_SYNC_JOB:-true}
+      # 15s provider sync → the dashboard's 5s polling shows near-real-time
+      # status/remains updates without hammering the wizsmm API.
+      ORDER_SYNC_INTERVAL_MS: "15000"
     ports:
       # Direct API access for local dev. When scaling replicas, use the
       # docker-compose.scale.yml override (see header) instead.

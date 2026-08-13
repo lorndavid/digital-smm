@@ -1,5 +1,5 @@
 import { apiClient } from './client'
-import type { Profile, UserProfile } from '@/types/models'
+import type { Profile, Service, UserProfile } from '@/types/models'
 
 /** Authenticated profile + wallet endpoints. */
 export const profileApi = {
@@ -25,5 +25,25 @@ export const profileApi = {
       categoryIds,
     })
     return data.categoryIds
+  },
+
+  /** Favourited services (ids + resolved docs) for the Favourites tab. */
+  async getFavoriteServices(): Promise<{ serviceIds: string[]; services: Service[] }> {
+    const { data } = await apiClient.get<{ serviceIds: string[]; services: Service[] }>(
+      '/profile/favorites/services',
+    )
+    return data
+  },
+
+  /** Replaces the customer's favourite service ids; returns the resolved list. */
+  async setFavoriteServices(serviceIds: string[]): Promise<{
+    serviceIds: string[]
+    services: Service[]
+  }> {
+    const { data } = await apiClient.put<{ serviceIds: string[]; services: Service[] }>(
+      '/profile/favorites/services',
+      { serviceIds },
+    )
+    return data
   },
 }

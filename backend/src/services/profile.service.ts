@@ -1,4 +1,5 @@
 import { userRepository } from '../repositories/user.repository.js'
+import { serviceRepository } from '../repositories/catalog.repository.js'
 import { ApiError } from '../utils/api-error.js'
 import { walletService } from './wallet.service.js'
 
@@ -40,6 +41,30 @@ export class ProfileService {
     })
     if (!user) throw new ApiError(404, 'User not found')
     return { categoryIds: user.favoriteCategories }
+  }
+
+  /**
+   * Favourited services for a customer — ids AND the resolved service docs
+   * (active only), so the Favourites tab renders instantly with one request
+   * instead of paging through the whole catalogue.
+   */
+  async getFavoriteServices(userId: string) {
+    const user = await userRepository.findById(userId)
+    if (!user) throw new ApiError(404, 'User not found')
+    const serviceIds = user.favoriteServices ?? []
+    return { serviceIds, services: await serviceRepository.findByIdsActive(serviceIds) }
+  }
+
+  /** Replaces the customer's favourite service ids (full-list sync). */
+  async setFavoriteServices(userId: string, serviceIds: string[]) {
+    const user = await userRepository.update(userId, {
+      favoriteServices: [...new Set(serviceIds)],
+    })
+    if (!user) throw new ApiError(404, 'User not found')
+    return {
+      serviceIds: user.favoriteServices,
+      services: await serviceRepository.findByIdsActive(user.favoriteServices ?? []),
+    }
   }
 }
 

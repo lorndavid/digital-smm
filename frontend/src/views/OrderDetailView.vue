@@ -13,6 +13,7 @@ import {
   RefreshCcw,
   RefreshCw,
   Repeat,
+  Star,
   Timer,
   TrendingUp,
   XCircle,
@@ -21,7 +22,9 @@ import {
 import { ordersApi } from '@/api/orders.api'
 import { paymentApi, type PaymentStatusResponse } from '@/api/payment.api'
 import { usePaymentEvents, type PaymentLiveEvent } from '@/composables/usePaymentEvents'
+import { useOrderEvents } from '@/composables/useOrderEvents'
 import { useToast } from '@/composables/useToast'
+import { useFavoritesStore } from '@/stores/favorites.store'
 import { STATUS_META } from '@/utils/constants'
 import { SERVICE_TYPE_LABEL } from '@/utils/constants'
 import { formatMoney, formatNumber, formatRelative, formatServiceId } from '@/utils/format'
@@ -39,6 +42,7 @@ import type { Order, Payment, Service } from '@/types/models'
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
+const favoritesStore = useFavoritesStore()
 
 const orderId = computed(() => String(route.params.id ?? ''))
 
@@ -50,6 +54,24 @@ const refreshing = ref(false)
 
 /** Statuses that never change again — live polling stops once all are terminal. */
 const TERMINAL = new Set(['Completed', 'Cancelled', 'Refunded', 'Failed'])
+
+/** Last status seen — live polls compare against it and alert on change. */
+let seenStatus: string | null = null
+
+/** Raises an alert when the order's status changed since the last poll. */
+function alertStatusChange(next: string): void {
+  if (seenStatus === null || seenStatus === next) return
+  const o = order.value
+  const num = o?.orderNumber ?? ''
+  if (next === 'Completed') {
+    toast.success(`Order #${num} is now Completed 🎉`)
+  } else if (['Cancelled', 'Refunded', 'Failed'].includes(next)) {
+    toast.warning(`Order #${num} changed: ${seenStatus} → ${next}`)
+  } else {
+    toast.info(`Order #${num} is now ${next}`)
+  }
+  seenStatus = next
+}
 
 // ---------------------------------------------------------------------------
 // Derived order info
@@ -149,6 +171,8 @@ async function load(): Promise<void> {
   error.value = ''
   try {
     order.value = await ordersApi.get(orderId.value)
+    // First fetch only records the baseline — never alert on the initial load.
+    seenStatus = order.value.status
     // Landing on an unpaid order → surface the QR straight away.
     if (order.value.status === 'Pending Payment' && !payment.value) void startPay()
   } catch (err) {
@@ -161,6 +185,7 @@ async function load(): Promise<void> {
 async function refreshSilently(): Promise<void> {
   try {
     order.value = await ordersApi.get(orderId.value)
+    alertStatusChange(order.value.status)
   } catch {
     /* non-fatal — polling continues */
   }
@@ -185,6 +210,8 @@ async function cancelOrder(): Promise<void> {
   actionId.value = order.value._id
   try {
     order.value = await ordersApi.cancel(order.value._id)
+    // Keep the baseline in sync so the next live poll doesn't re-alert.
+    seenStatus = order.value.status
     toast.success(`Order #${order.value.orderNumber} cancelled`)
   } catch (err) {
     toast.error(err instanceof Error ? err.message : 'Failed to cancel order')
@@ -218,6 +245,25 @@ function orderAgain(): void {
   const o = order.value
   if (!o) return
   void router.push({ name: 'services', query: buildOrderAgainQuery(o) })
+}
+
+/** Toggles this order's service in the customer's favourites (optimistic). */
+function toggleServiceFavorite(): void {
+  const s = serviceInfo.value
+  if (!s) return
+  favoritesStore
+    .toggleService(s._id)
+    .then(() => {
+      const added = favoritesStore.isServiceFavorite(s._id)
+      toast.success(
+        added
+          ? 'Service added to favourites'
+          : 'Service removed from favourites',
+      )
+    })
+    .catch(() => {
+      toast.error('Could not update favourites')
+    })
 }
 
 async function copyText(text: string, label: string): Promise<void> {
@@ -275,7 +321,12 @@ function celebrate(): void {
 
 function applySnapshot(snap: PaymentStatusResponse): void {
   payment.value = snap.payment
-  if (snap.order) order.value = snap.order
+  if (snap.order) {
+    order.value = snap.order
+    // Payment events already toast on success — keep the baseline in sync
+    // so the next live poll doesn't re-alert the same transition.
+    seenStatus = snap.order.status
+  }
   if (snap.payment.status === 'paid') onPaid()
 }
 
@@ -338,7 +389,8 @@ async function cancelPayment(): Promise<void> {
     // The backend also marks the order Cancelled — refresh so the page shows
     // the final state instead of a stale "Generate QR" button.
     order.value = snap.order ?? null
-    if (!order.value) await refreshSilently()
+    if (order.value) seenStatus = order.value.status
+    else await refreshSilently()
     toast.info('Payment cancelled')
   } catch (err) {
     toast.error(err instanceof Error ? err.message : 'Could not cancel payment')
@@ -397,16 +449,36 @@ function handleVisibilityChange(): void {
 
 let liveTimer: ReturnType<typeof setInterval> | null = null
 
+/**
+ * Live SSE: the backend pushes status/remains changes the moment the provider
+ * sync lands — the 5s polling is now only the safety net. Only events for the
+ * order on screen are applied; everything else is ignored.
+ */
+const orderEvents = useOrderEvents((event) => {
+  if (event.type !== 'order' || !event.orderId) return
+  if (!order.value || event.orderId !== order.value._id) return
+  if (event.status) order.value.status = event.status as Order['status']
+  if (event.remains !== undefined) order.value.remains = event.remains
+  if (event.startCount !== undefined) order.value.startCount = event.startCount
+  if (event.charge !== undefined) order.value.charge = event.charge
+  if (event.providerOrderId !== undefined) order.value.providerOrderId = event.providerOrderId
+  if (event.updatedAt) order.value.updatedAt = event.updatedAt
+  alertStatusChange(order.value.status)
+})
+
 watch(orderId, () => {
   order.value = null
   payment.value = null
   paymentSuccessShown.value = false
+  seenStatus = null
   stopClock()
   void load()
 })
 
 onMounted(() => {
   void load()
+  void favoritesStore.fetch()
+  orderEvents.start()
   // Live refresh: poll the order every 5s while it is still in flight.
   liveTimer = setInterval(() => {
     if (order.value && !isTerminal.value) void refreshSilently()
@@ -417,6 +489,7 @@ onMounted(() => {
 onUnmounted(() => {
   if (liveTimer) clearInterval(liveTimer)
   liveTimer = null
+  orderEvents.stop()
   stopClock()
   document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
@@ -497,6 +570,33 @@ onUnmounted(() => {
             <div class="min-w-0">
               <div class="flex flex-wrap items-center gap-2">
                 <h2 class="font-display truncate text-lg font-semibold text-ink">{{ serviceInfo?.name ?? 'Service' }}</h2>
+                <button
+                  v-if="serviceInfo"
+                  type="button"
+                  :data-fav-order-service="serviceInfo._id"
+                  :data-favorited="favoritesStore.isServiceFavorite(serviceInfo._id) ? 'true' : 'false'"
+                  :aria-label="
+                    favoritesStore.isServiceFavorite(serviceInfo._id)
+                      ? `Remove ${serviceInfo.name} from favourites`
+                      : `Add ${serviceInfo.name} to favourites`
+                  "
+                  :title="
+                    favoritesStore.isServiceFavorite(serviceInfo._id)
+                      ? 'Remove from favourites'
+                      : 'Save service to favourites'
+                  "
+                  class="shrink-0 rounded-lg p-1.5 text-ink/30 transition-all hover:bg-amber-400/10 hover:text-amber-400 active:scale-90"
+                  @click="toggleServiceFavorite"
+                >
+                  <Star
+                    class="h-4.5 w-4.5"
+                    :class="
+                      favoritesStore.isServiceFavorite(serviceInfo._id)
+                        ? 'fill-amber-400 text-amber-400'
+                        : ''
+                    "
+                  />
+                </button>
                 <BaseBadge tone="brand">{{ serviceTypeLabel }}</BaseBadge>
                 <span
                   v-if="serviceInfo?.providerServiceId"

@@ -92,8 +92,9 @@ ABAPAYWAY_MERCHANT_ID=payment_xxxx
 ABAPAYWAY_API_KEY=xxxx
 ABAPAYWAY_RETURN_URL=http://localhost:5173/dashboard/wallet
 
-ENABLE_ORDER_SYNC_JOB=false
-ORDER_SYNC_INTERVAL_MS=60000
+# 15s provider sync → near-real-time status/remains on the dashboard.
+ENABLE_ORDER_SYNC_JOB=true
+ORDER_SYNC_INTERVAL_MS=15000
 ```
 
 **`frontend/.env`** and **`admin/.env`**

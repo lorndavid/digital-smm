@@ -117,6 +117,13 @@ export const favoriteCategoriesBodySchema = z.object({
     .max(200),
 })
 
+/** Favourited service ids (full-list replace, capped at a sane catalogue size). */
+export const favoriteServicesBodySchema = z.object({
+  serviceIds: z
+    .array(z.string().regex(/^[a-f0-9]{24}$/i, 'Invalid service id'))
+    .max(200),
+})
+
 // ---------------------------------------------------------------------------
 // Admin: services
 // ---------------------------------------------------------------------------

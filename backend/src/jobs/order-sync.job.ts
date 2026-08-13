@@ -1,6 +1,7 @@
 import { env } from '../config/env.js'
 import { orderRepository } from '../repositories/order.repository.js'
 import { getSmmProvider } from '../services/smm/provider.factory.js'
+import { emitOrderStatus } from '../services/order/events.bus.js'
 import { logger } from '../utils/logger.js'
 
 const STATUS_MAP: Record<string, string> = {
@@ -57,14 +58,42 @@ export async function runOrderSync(): Promise<void> {
           changes.status = mapped
           if (mapped === 'Completed') changes.remains = 0
         }
-        if (info.remains !== undefined && Number.isFinite(info.remains)) changes.remains = info.remains
-        if (info.startCount !== undefined && Number.isFinite(info.startCount)) {
+        // Only write (and push) fields that ACTUALLY changed — a provider
+        // payload with the same remains/startCount/charge is a no-op, so we
+        // neither touch the DB nor spam the SSE stream every sync cycle.
+        if (
+          info.remains !== undefined &&
+          Number.isFinite(info.remains) &&
+          info.remains !== order.remains
+        ) {
+          changes.remains = info.remains
+        }
+        if (
+          info.startCount !== undefined &&
+          Number.isFinite(info.startCount) &&
+          info.startCount !== order.startCount
+        ) {
           changes.startCount = info.startCount
         }
-        if (info.charge !== undefined && Number.isFinite(info.charge)) changes.charge = info.charge
+        if (
+          info.charge !== undefined &&
+          Number.isFinite(info.charge) &&
+          info.charge !== order.charge
+        ) {
+          changes.charge = info.charge
+        }
 
         if (Object.keys(changes).length > 0) {
           await orderRepository.update(order._id.toString(), { $set: changes })
+          // Push the change to the customer's open SSE streams immediately —
+          // the dashboard's 5s polling is now only the safety net.
+          emitOrderStatus({
+            userId: order.user.toString(),
+            orderId: order._id.toString(),
+            orderNumber: order.orderNumber,
+            ...changes,
+            updatedAt: new Date().toISOString(),
+          })
           updated += 1
         }
       }

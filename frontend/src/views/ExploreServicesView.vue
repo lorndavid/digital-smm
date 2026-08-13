@@ -42,6 +42,7 @@ import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
 import BaseTextarea from '@/components/ui/BaseTextarea.vue'
 import BaseSkeleton from '@/components/ui/BaseSkeleton.vue'
+import BaseSpinner from '@/components/ui/BaseSpinner.vue'
 import type { Category, Platform, Service } from '@/types/models'
 
 const store = useServicesStore()
@@ -101,6 +102,10 @@ const categoryListEl = ref<HTMLElement | null>(null)
 const favFilter = ref(false)
 
 const selected = ref<Service | null>(null)
+
+/** True while a prefill (favourite click / order again) is being applied —
+ *  drives the loading animation until the order form is ready. */
+const prefillPending = ref(false)
 
 /** Active platform chip ('facebook', 'tiktok', … — '' = all platforms). */
 const platform = ref('')
@@ -742,6 +747,23 @@ function toggleFavorite(categoryId: string): void {
     })
 }
 
+/** Toggles a service in the customer's favourites (optimistic, server-synced). */
+function toggleServiceFavorite(serviceId: string): void {
+  favoritesStore
+    .toggleService(serviceId)
+    .then(() => {
+      const added = favoritesStore.isServiceFavorite(serviceId)
+      toast.success(
+        added
+          ? 'Service added to favourites'
+          : 'Service removed from favourites',
+      )
+    })
+    .catch(() => {
+      toast.error('Could not update favourites')
+    })
+}
+
 /** Arrow up/down + Enter navigation for the search results dropdown. */
 function onSearchKeydown(event: KeyboardEvent): void {
   const list = searchDropdownResults.value
@@ -1197,20 +1219,47 @@ async function applyPrefill(): Promise<void> {
 }
 
 onMounted(async () => {
-  await Promise.allSettled([
-    store.fetchCategories(),
+  // Gate the prefill on ONLY the fast requests it truly needs (categories +
+  // the first browse page). The full-catalogue pagination runs in parallel
+  // but must never delay the pre-filled order form — that is what made
+  // favourite/order-again navigation feel slow.
+  const categoriesPromise = store.fetchCategories()
+  const browsePromise = loadServices()
+  const fullLoad = Promise.allSettled([
+    categoriesPromise,
+    browsePromise,
     walletStore.fetchWallet(),
     favoritesStore.fetch(),
-    loadServices(),
     loadAllServices(),
   ])
+
+  // Only show the loader when there is actually something to prefill — a
+  // plain Explore visit must not flash it.
+  const hasPrefill =
+    typeof route.query.serviceId === 'string' || typeof route.query.category === 'string'
+  if (hasPrefill) prefillPending.value = true
+
+  await Promise.all([categoriesPromise, browsePromise])
   await applyCategoryQuery()
   await applyPrefill()
+  prefillPending.value = false
+
+  await fullLoad
 })
 </script>
 
 <template>
   <div class="w-full">
+    <!-- Indeterminate progress bar while a prefill (favourite / order again)
+         is being applied — instant visual feedback on arrival. -->
+    <div
+      v-if="prefillPending"
+      class="pointer-events-none fixed inset-x-0 top-0 z-[60] h-1 overflow-hidden bg-ink/5"
+      aria-hidden="true"
+    >
+      <div class="prefill-bar h-full w-1/3 rounded-full bg-gradient-to-r from-brand-500 via-secondary-500 to-brand-500" />
+    </div>
+
     <!-- Everything on one screen: Find your service → Service details → Order
          details — in a centered 70% column so the page stays readable. -->
     <div class="mx-auto w-full space-y-6 lg:w-[70%] xl:max-w-[1400px]">
@@ -1295,34 +1344,69 @@ onMounted(async () => {
                 <!-- Matching services (click to auto-pick + auto-set category) —
                      a clean flat list, no platform icons and no category rows. -->
                 <template v-if="searchDropdownResults.length">
-                  <button
+                  <div
                     v-for="(s, index) in searchDropdownResults"
                     :key="s._id"
-                    type="button"
-                    data-search-service
-                    class="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-ink/5"
-                    :class="index === highlightedIndex ? 'bg-ink/10 ring-1 ring-brand-400/40' : ''"
-                    @mousedown.prevent
-                    @click="selectServiceFromSearch(s)"
+                    class="flex items-center gap-1 rounded-xl transition-colors"
+                    :class="
+                      index === highlightedIndex
+                        ? 'bg-ink/10 ring-1 ring-brand-400/40'
+                        : 'hover:bg-ink/5'
+                    "
                   >
-                    <span class="min-w-0">
-                      <span class="block truncate text-sm font-medium text-ink">{{ s.name }}</span>
-                      <span class="mt-0.5 block truncate text-xs text-ink/40">
-                        {{ categoryLabel(s) }} · {{ SERVICE_TYPE_LABEL[s.type] ?? s.type }}
-                        <span v-if="serviceId(s)" class="ml-1 font-mono text-ink/45">
-                          ID {{ serviceId(s) }}
+                    <button
+                      type="button"
+                      data-search-service
+                      class="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left"
+                      @mousedown.prevent
+                      @click="selectServiceFromSearch(s)"
+                    >
+                      <span class="min-w-0">
+                        <span class="block truncate text-sm font-medium text-ink">{{ s.name }}</span>
+                        <span class="mt-0.5 block truncate text-xs text-ink/40">
+                          {{ categoryLabel(s) }} · {{ SERVICE_TYPE_LABEL[s.type] ?? s.type }}
+                          <span v-if="serviceId(s)" class="ml-1 font-mono text-ink/45">
+                            ID {{ serviceId(s) }}
+                          </span>
                         </span>
                       </span>
-                    </span>
-                    <span class="shrink-0 text-right">
-                      <span class="block text-xs font-semibold text-emerald-300">
-                        {{ formatUnitPrice(s.pricePerUnit, s.currency) }}
+                      <span class="shrink-0 text-right">
+                        <span class="block text-xs font-semibold text-emerald-300">
+                          {{ formatUnitPrice(s.pricePerUnit, s.currency) }}
+                        </span>
+                        <span class="block text-[10px] text-ink/35">
+                          {{ formatNumber(s.min) }}–{{ formatNumber(s.max) }}
+                        </span>
                       </span>
-                      <span class="block text-[10px] text-ink/35">
-                        {{ formatNumber(s.min) }}–{{ formatNumber(s.max) }}
-                      </span>
-                    </span>
-                  </button>
+                    </button>
+                    <button
+                      type="button"
+                      :data-fav-service="s._id"
+                      :data-favorited="favoritesStore.isServiceFavorite(s._id) ? 'true' : 'false'"
+                      :aria-label="
+                        favoritesStore.isServiceFavorite(s._id)
+                          ? `Remove ${s.name} from favourites`
+                          : `Add ${s.name} to favourites`
+                      "
+                      :title="
+                        favoritesStore.isServiceFavorite(s._id)
+                          ? 'Remove from favourites'
+                          : 'Add to favourites'
+                      "
+                      class="mr-1.5 shrink-0 rounded-lg p-2 text-ink/30 transition-all hover:bg-amber-400/10 hover:text-amber-400 active:scale-90"
+                      @mousedown.prevent
+                      @click.stop="toggleServiceFavorite(s._id)"
+                    >
+                      <Star
+                        class="h-4 w-4"
+                        :class="
+                          favoritesStore.isServiceFavorite(s._id)
+                            ? 'fill-amber-400 text-amber-400'
+                            : ''
+                        "
+                      />
+                    </button>
+                  </div>
                 </template>
 
                 <p
@@ -1582,19 +1666,22 @@ onMounted(async () => {
                         </span>
                       </button>
                       <template v-if="!isGroupCollapsed(group.label)">
-                        <button
+                        <div
                           v-for="s in group.items"
                           :key="s._id"
-                          type="button"
-                          data-service-row
-                          class="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-ink/5"
+                          class="flex items-center gap-1 rounded-xl transition-colors"
                           :class="
                             selected?._id === s._id
                               ? 'bg-brand-500/15'
                               : panelIndexById.get(s._id) === panelIndex
                                 ? 'bg-ink/10 ring-1 ring-brand-400/40'
-                                : ''
+                                : 'hover:bg-ink/5'
                           "
+                        >
+                        <button
+                          type="button"
+                          data-service-row
+                          class="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left"
                           @mousedown.prevent
                           @click="selectService(s)"
                         >
@@ -1622,6 +1709,34 @@ onMounted(async () => {
                           </span>
                         </span>
                       </button>
+                      <button
+                        type="button"
+                        :data-fav-service="s._id"
+                        :data-favorited="favoritesStore.isServiceFavorite(s._id) ? 'true' : 'false'"
+                        :aria-label="
+                          favoritesStore.isServiceFavorite(s._id)
+                            ? `Remove ${s.name} from favourites`
+                            : `Add ${s.name} to favourites`
+                        "
+                        :title="
+                          favoritesStore.isServiceFavorite(s._id)
+                            ? 'Remove from favourites'
+                            : 'Add to favourites'
+                        "
+                        class="mr-1.5 shrink-0 rounded-lg p-2 text-ink/30 transition-all hover:bg-amber-400/10 hover:text-amber-400 active:scale-90"
+                        @mousedown.prevent
+                        @click.stop="toggleServiceFavorite(s._id)"
+                      >
+                        <Star
+                          class="h-4 w-4"
+                          :class="
+                            favoritesStore.isServiceFavorite(s._id)
+                              ? 'fill-amber-400 text-amber-400'
+                              : ''
+                          "
+                        />
+                      </button>
+                      </div>
                       </template>
                     </template>
 
@@ -1713,7 +1828,33 @@ onMounted(async () => {
                     </p>
                   </div>
                 </div>
-                <div class="flex shrink-0 flex-col items-end gap-1.5">
+                <div class="flex shrink-0 items-center gap-2">
+                  <button
+                    type="button"
+                    :data-fav-selected-service="selected._id"
+                    :data-favorited="favoritesStore.isServiceFavorite(selected._id) ? 'true' : 'false'"
+                    :aria-label="
+                      favoritesStore.isServiceFavorite(selected._id)
+                        ? `Remove ${selected.name} from favourites`
+                        : `Add ${selected.name} to favourites`
+                    "
+                    :title="
+                      favoritesStore.isServiceFavorite(selected._id)
+                        ? 'Remove from favourites'
+                        : 'Add to favourites'
+                    "
+                    class="shrink-0 rounded-xl p-2.5 text-ink/35 transition-all hover:bg-amber-400/10 hover:text-amber-400 active:scale-90"
+                    @click.stop="toggleServiceFavorite(selected._id)"
+                  >
+                    <Star
+                      class="h-5 w-5"
+                      :class="
+                        favoritesStore.isServiceFavorite(selected._id)
+                          ? 'fill-amber-400 text-amber-400'
+                          : ''
+                      "
+                    />
+                  </button>
                   <span class="rounded-full bg-emerald-400/10 px-2.5 py-1 text-xs font-semibold text-emerald-300">
                     {{ formatUnitPrice(selected.pricePerUnit, selected.currency) }} / 1,000
                   </span>
@@ -1940,6 +2081,17 @@ onMounted(async () => {
       </div>
     </div>
 
+    <!-- Loading wait animation while the prefill is being applied -->
+    <div
+      v-else-if="prefillPending"
+      data-prefill-loading
+      class="flex w-full flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-ink/10 px-6 py-16 text-center"
+    >
+      <BaseSpinner class="h-8 w-8 text-brand-300" />
+      <p class="text-sm font-medium text-ink/60">Preparing your order…</p>
+      <p class="text-xs text-ink/35">Filling in your service and order details</p>
+    </div>
+
     <!-- Empty state before any service is picked -->
     <div
       v-else
@@ -1964,5 +2116,18 @@ onMounted(async () => {
 .drop-leave-to {
   opacity: 0;
   transform: translateY(-3px);
+}
+
+/* Indeterminate top progress bar shown while a prefill is being applied. */
+.prefill-bar {
+  animation: prefill-slide 1.1s ease-in-out infinite;
+}
+@keyframes prefill-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
 }
 </style>

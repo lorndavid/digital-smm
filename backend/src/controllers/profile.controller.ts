@@ -3,6 +3,7 @@ import { asyncHandler } from '../utils/async-handler.js'
 import { validate } from '../middleware/validate.middleware.js'
 import {
   favoriteCategoriesBodySchema,
+  favoriteServicesBodySchema,
   updateProfileBodySchema,
 } from '../validators/index.js'
 
@@ -29,6 +30,22 @@ export const profileController = {
         await profileService.setFavoriteCategories(
           req.userId as string,
           req.body.categoryIds as string[],
+        ),
+      )
+    }),
+  ],
+
+  getFavoriteServices: asyncHandler(async (req, res) => {
+    res.json(await profileService.getFavoriteServices(req.userId as string))
+  }),
+
+  setFavoriteServices: [
+    validate(favoriteServicesBodySchema),
+    asyncHandler(async (req, res) => {
+      res.json(
+        await profileService.setFavoriteServices(
+          req.userId as string,
+          req.body.serviceIds as string[],
         ),
       )
     }),

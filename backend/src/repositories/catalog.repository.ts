@@ -76,6 +76,20 @@ export class ServiceRepository extends BaseRepository<Service> {
     return this.findOne({ providerServiceId })
   }
 
+  /**
+   * Active services by ids, populated with their category — used to resolve a
+   * customer's favourited services in ONE query (no full-catalogue scan).
+   * Inactive/removed services are skipped so a card never points at a dead
+   * service.
+   */
+  async findByIdsActive(ids: string[]) {
+    if (ids.length === 0) return []
+    return ServiceModel.find({ _id: { $in: ids }, isActive: true })
+      .populate<{ category: CategoryDoc }>('category')
+      .sort({ sortOrder: 1, createdAt: -1 })
+      .exec()
+  }
+
   async listPublic(params: ListServicesParams) {
     const filter: FilterQuery<Service> = { isActive: true }
     if (params.category) filter.category = params.category

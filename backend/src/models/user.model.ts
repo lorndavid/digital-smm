@@ -18,6 +18,8 @@ const userSchema = new Schema(
     lastLoginAt: { type: Date, default: null },
     /** Category ids the customer favourited for quick access (Explore → Favourites). */
     favoriteCategories: { type: [String], default: [] },
+    /** Service ids the customer favourited for one-tap re-order (Explore → Favourites). */
+    favoriteServices: { type: [String], default: [] },
   },
   { timestamps: true },
 )

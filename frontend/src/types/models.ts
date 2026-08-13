@@ -185,6 +185,8 @@ export interface UserProfile {
   lastLoginAt: string | null
   /** Category ids the customer favourited (Explore → Favourites). */
   favoriteCategories?: string[]
+  /** Service ids the customer favourited (Explore → Favourites). */
+  favoriteServices?: string[]
 }
 
 export interface Profile {

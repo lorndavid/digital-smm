@@ -11,6 +11,8 @@ orderRoutes.use('/orders', authenticated)
 
 orderRoutes.post('/orders', checkoutLimiter, ...orderController.create)
 orderRoutes.get('/orders', ...orderController.list)
+// MUST be declared before '/orders/:id' so 'events' is not captured as an id.
+orderRoutes.get('/orders/events', ...orderController.events)
 orderRoutes.get('/orders/:id', orderController.getOne)
 orderRoutes.post('/orders/:id/cancel', orderController.cancel)
 orderRoutes.post('/orders/:id/refill', orderController.refill)

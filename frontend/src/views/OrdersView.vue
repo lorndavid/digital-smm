@@ -14,6 +14,7 @@ import { useOrdersStore } from '@/stores/orders.store'
 import { ordersApi } from '@/api/orders.api'
 import { paymentApi } from '@/api/payment.api'
 import { useToast } from '@/composables/useToast'
+import { useOrderEvents } from '@/composables/useOrderEvents'
 import { detectPlatform, type DetectedPlatform } from '@/utils/linkValidation'
 import { buildOrderAgainQuery } from '@/utils/orderPrefill'
 import BaseBadge from '@/components/ui/BaseBadge.vue'
@@ -129,13 +130,54 @@ function selectFilter(filter: string): void {
   void load()
 }
 
+/**
+ * OrderId → last seen status. Live refreshes compare against it and raise a
+ * toast whenever an order's status actually changes (the provider sync job
+ * drives these on the backend; this makes the change visible instantly).
+ */
+const statusSnapshot = new Map<string, string>()
+let baselineCaptured = false
+
+/** Raises an alert for one order whose status changed. */
+function alertStatusChange(prev: string, order: Order): void {
+  const from = STATUS_SHORT_LABEL[prev as Order['status']] ?? prev
+  const to = STATUS_SHORT_LABEL[order.status] ?? order.status
+  if (order.status === 'Completed') {
+    toast.success(`Order #${order.orderNumber} is now Completed 🎉`)
+  } else if (['Cancelled', 'Refunded', 'Failed'].includes(order.status)) {
+    toast.warning(`Order #${order.orderNumber} changed: ${from} → ${to}`)
+  } else {
+    toast.info(`Order #${order.orderNumber} is now ${to}`)
+  }
+}
+
+/** Raises an alert for every status that changed since the last poll. */
+function detectStatusChanges(orders: Order[]): void {
+  if (!baselineCaptured) {
+    // First load — just record the baseline; never alert on the initial fetch.
+    statusSnapshot.clear()
+    for (const o of orders) statusSnapshot.set(o._id, o.status)
+    baselineCaptured = true
+    return
+  }
+  for (const o of orders) {
+    const prev = statusSnapshot.get(o._id)
+    if (prev && prev !== o.status) {
+      alertStatusChange(prev, o)
+    }
+    statusSnapshot.set(o._id, o.status)
+  }
+}
+
 async function load(): Promise<void> {
   await store.fetchOrders(queryParams.value)
+  detectStatusChanges(store.orders)
 }
 
 /** Silent live refresh — no skeleton flash, no loading state. */
 async function refreshSilently(): Promise<void> {
   await store.fetchOrders(queryParams.value, true)
+  detectStatusChanges(store.orders)
 }
 
 async function refreshManually(): Promise<void> {
@@ -151,7 +193,9 @@ async function refreshManually(): Promise<void> {
 async function cancelOrder(order: Order): Promise<void> {
   actionId.value = order._id
   try {
-    await store.cancelOrder(order._id)
+    const updated = await store.cancelOrder(order._id)
+    // Keep the snapshot in sync so the next live poll doesn't re-alert.
+    statusSnapshot.set(order._id, updated.status)
     toast.success(`Order #${order.orderNumber} cancelled`)
   } catch (err) {
     toast.error(err instanceof Error ? err.message : 'Failed to cancel order')
@@ -187,17 +231,55 @@ async function payOrder(order: Order): Promise<void> {
 
 let liveTimer: ReturnType<typeof setInterval> | null = null
 
+/** Returning to the tab refreshes immediately — no waiting for the next poll. */
+function handleVisibilityChange(): void {
+  if (document.visibilityState === 'visible' && store.orders.length > 0) {
+    void refreshSilently()
+  }
+}
+
+/**
+ * Live SSE: the backend pushes order status/remains changes the moment the
+ * provider sync lands — the 5s polling is now only the safety net. Orders on
+ * the current page update in place and a toast fires on status change.
+ */
+const orderEvents = useOrderEvents((event) => {
+  if (event.type !== 'order' || !event.orderId) return
+  const prev = store.orders.find((o) => o._id === event.orderId)
+  if (!prev) return // not on the current page/filter — the next fetch picks it up
+  const updated = store.applyOrderUpdate({
+    _id: event.orderId,
+    ...(event.orderNumber ? { orderNumber: event.orderNumber } : {}),
+    ...(event.status ? { status: event.status as Order['status'] } : {}),
+    ...(event.remains !== undefined ? { remains: event.remains } : {}),
+    ...(event.startCount !== undefined ? { startCount: event.startCount } : {}),
+    ...(event.charge !== undefined ? { charge: event.charge } : {}),
+    ...(event.providerOrderId !== undefined ? { providerOrderId: event.providerOrderId } : {}),
+    ...(event.updatedAt ? { updatedAt: event.updatedAt } : {}),
+  })
+  if (!updated) return
+  if (prev.status !== updated.status) {
+    // Keep the snapshot in sync so the next poll doesn't re-alert.
+    statusSnapshot.set(updated._id, updated.status)
+    alertStatusChange(prev.status, updated)
+  }
+})
+
 onMounted(() => {
   void load()
+  orderEvents.start()
   // Live polling: refresh every 5s while any order is still in flight.
   liveTimer = setInterval(() => {
     if (liveActive.value) void refreshSilently()
   }, 5000)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
 onUnmounted(() => {
   if (liveTimer) clearInterval(liveTimer)
   liveTimer = null
+  orderEvents.stop()
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 </script>
 
