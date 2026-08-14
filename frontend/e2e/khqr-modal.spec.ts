@@ -130,7 +130,11 @@ test('wallet top-up opens the centered KHQR modal and auto-verifies payment', as
 
   // The balance reflects the settled $10.00 top-up (the bootstrap $5 payment
   // was never paid — only the modal's $10 was settled via the webhook).
-  await expect(page.getByText('$10.00', { exact: true })).toBeVisible({ timeout: 15_000 })
+  // Scoped to the wallet's main balance paragraph: other elements (topbar
+  // balance, stat cards, recent top-ups) may show the same amount.
+  await expect(page.getByRole('paragraph').filter({ hasText: /^\$10\.00$/ })).toBeVisible({
+    timeout: 15_000,
+  })
 })
 
 test('phone viewport: KHQR modal pops up as a bottom sheet', async ({ page, request }) => {

@@ -31,7 +31,15 @@ if (env.DNS_SERVERS.length > 0) {
  */
 export async function dropLegacyClerkUserIndexes(): Promise<void> {
   try {
-    const users = mongoose.connection.collection('users')
+    const db = mongoose.connection.db
+    if (!db) return
+    // On a fresh database (e.g. the throwaway browser-test DB) the users
+    // collection may not exist yet — listing its indexes would throw
+    // NamespaceNotFound (code 26) and spam the log with a stack trace.
+    // There is nothing to migrate in that case, so skip quietly.
+    const exists = await db.listCollections({ name: 'users' }, { nameOnly: true }).hasNext()
+    if (!exists) return
+    const users = db.collection('users')
     const indexes = await users.indexes()
     const stale = indexes.find((i) => i.name === 'clerkId_1' || (i.key && 'clerkId' in i.key))
     if (stale && stale.name) {

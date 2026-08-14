@@ -52,7 +52,23 @@ async function openModal(page: Page, amount = '$10'): Promise<void> {
   await expect(page.getByText('Top up wallet').first()).toBeVisible()
   await page.getByRole('button', { name: amount, exact: true }).click()
   await page.getByRole('button', { name: /Continue to payment/ }).click()
-  await expect(page.locator('img[alt="KHQR"]')).toBeVisible({ timeout: 15_000 })
+  // The QR renders as soon as the created payment carries its data URL.
+  // On timeout, dump page state instead of a bare "element(s) not found" so
+  // a flake is diagnosable (e.g. the top-up modal showing a create error).
+  try {
+    await expect(page.locator('img[alt="KHQR"]')).toBeVisible({ timeout: 15_000 })
+  } catch (err) {
+    const body = (await page.locator('body').innerText().catch(() => ''))
+      .split('\n')
+      .filter(Boolean)
+      .slice(0, 40)
+      .join(' | ')
+    throw new Error(
+      `KHQR never appeared after "Continue to payment".\nurl: ${page.url()}\nbody: ${
+        body || '(empty) — the payment-create request may have failed'
+      }`,
+    )
+  }
 }
 
 async function fireWebhook(

@@ -1,5 +1,5 @@
 import { createHmac, randomUUID } from 'node:crypto'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import dns from 'node:dns'
 import { expect, test, type APIRequestContext, type APIResponse } from '@playwright/test'
@@ -120,11 +120,22 @@ async function pickService(page: import('@playwright/test').Page, name: string):
  * provider sync uses. Connects to the newest digitalsmm_browsertest_* DB.
  */
 async function deleteServiceInDb(serviceId: string): Promise<void> {
-  const uriLine = readFileSync(resolve(process.cwd(), '../backend/.env'), 'utf8')
-    .split(/\r?\n/)
-    .find((l) => l.startsWith('MONGODB_URI='))
-  expect(uriLine).toBeTruthy()
-  const uri = uriLine!.slice('MONGODB_URI='.length)
+  // CI sets MONGODB_URI at the job level; locally it lives in backend/.env.
+  // backend/.env is gitignored, so CI must NOT read that file (ENOENT).
+  let uri = process.env.MONGODB_URI ?? ''
+  if (!uri) {
+    const envPath = resolve(process.cwd(), '../backend/.env')
+    if (existsSync(envPath)) {
+      const uriLine = readFileSync(envPath, 'utf8')
+        .split(/\r?\n/)
+        .find((l) => l.startsWith('MONGODB_URI='))
+      uri = uriLine ? uriLine.slice('MONGODB_URI='.length) : ''
+    }
+  }
+  expect(
+    uri,
+    'MONGODB_URI is required to hard-delete a service for the deleted-service regression test — set it in the environment (CI) or backend/.env (local)',
+  ).toBeTruthy()
   // Pin DNS servers — same fix as backend/src/config/database.ts (Atlas SRV
   // lookups fail on some Windows/ISP networks otherwise).
   dns.setServers(['1.1.1.1', '8.8.8.8'])
