@@ -68,4 +68,23 @@ router.beforeEach(async (to) => {
   return true
 })
 
+// Production SPA recovery: if a lazy route chunk can't be fetched, the tab is
+// almost certainly running a stale index.html from before the latest deploy
+// (Vite renames every chunk with a content hash). One reload pulls the fresh
+// build; the sessionStorage guard stops a genuinely broken chunk from looping.
+// Inert in dev, where HMR replaces modules in place.
+router.onError((error) => {
+  if (!import.meta.env.PROD) return
+  const message = String(error?.message ?? '')
+  if (
+    !/(Failed to fetch dynamically imported module|Loading chunk .* failed|Importing a module script failed)/.test(
+      message,
+    )
+  )
+    return
+  if (sessionStorage.getItem('digitalsmm:chunk-reloaded')) return
+  sessionStorage.setItem('digitalsmm:chunk-reloaded', '1')
+  window.location.reload()
+})
+
 export default router
