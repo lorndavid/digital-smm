@@ -15,6 +15,9 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
 
 const BACKEND = 'http://localhost:4001'
 
+/** External font hosts — ignored by the network/console gates (offline CI). */
+const EXTERNAL_OK = ['fonts.googleapis.com', 'fonts.gstatic.com']
+
 async function ok(res: Awaited<ReturnType<APIRequestContext['post']>>, what: string): Promise<void> {
   if (!res.ok()) throw new Error(`${what} failed: ${res.status()} ${await res.text().catch(() => '')}`)
 }
@@ -35,14 +38,36 @@ async function signIn(page: Page, token: string): Promise<void> {
 
 function watchErrors(page: Page): string[] {
   const errors: string[] = []
+  // Chrome mirrors a failed resource as a generic console "Failed to load
+  // resource" message that omits the URL — correlate it with benign 404s
+  // already seen by the response gate so external font-CDN flakes (offline
+  // CI / rate-limited gstatic) don't fail the suite.
+  let benign404s = 0
   page.on('pageerror', (err) => {
     errors.push(`PAGEERROR: ${err.message}\n${err.stack ?? ''}`)
   })
   page.on('console', (msg) => {
-    if (msg.type() === 'error') errors.push(`CONSOLE: ${msg.text()}`)
+    if (msg.type() !== 'error') return
+    const text = msg.text()
+    if (EXTERNAL_OK.some((h) => text.includes(h) || msg.location().url.includes(h))) return
+    if (
+      benign404s > 0 &&
+      /Failed to load resource: the server responded with a status of 4\d\d/.test(text)
+    ) {
+      benign404s -= 1
+      return
+    }
+    errors.push(`CONSOLE: ${text}`)
   })
   page.on('response', (res) => {
-    if (res.status() >= 400) errors.push(`HTTP ${res.status()}: ${res.url()}`)
+    if (res.status() >= 400) {
+      const url = res.url()
+      if (EXTERNAL_OK.some((h) => url.includes(h))) {
+        benign404s += 1
+        return
+      }
+      errors.push(`HTTP ${res.status()}: ${url}`)
+    }
   })
   return errors
 }
