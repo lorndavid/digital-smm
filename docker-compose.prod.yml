@@ -1,0 +1,50 @@
+# ============================================================
+# DigitalSMM — PRODUCTION backend (single container)
+#
+# Deploy on your VPS: Docker runs ONLY the backend API. MongoDB
+# lives on Atlas (cloud), frontend + admin live on Vercel, and
+# Cloudflare Tunnel exposes the API at api.digitalsmm.shop.
+#
+#   VPS:  Ubuntu + Docker + cloudflared
+#         └── backend container (this file)
+#         └── no MongoDB, no Redis, no nginx, no PM2
+#
+# Usage (run these on the VPS from the repo root):
+#   cp backend/.env.production.example backend/.env   # fill in real values
+#   chmod 600 backend/.env
+#   docker compose -f docker-compose.prod.yml config          # validate
+#   docker compose -f docker-compose.prod.yml build           # first build ~minutes on 1 vCPU
+#   docker compose -f docker-compose.prod.yml up -d
+#   docker compose -f docker-compose.prod.yml ps
+#   curl http://127.0.0.1:4000/api/health                     # local test BEFORE Cloudflare
+#
+# SECURITY: the API port binds to 127.0.0.1 ONLY — Cloudflare
+# Tunnel (cloudflared, running on the same host) is the only way
+# in. Docker-published ports bypass UFW, so never bind 0.0.0.0.
+# ============================================================
+name: digitalsmm-prod
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    # All runtime configuration comes from backend/.env (gitignored).
+    # See backend/.env.production.example for the full list.
+    env_file:
+      - ./backend/.env
+    ports:
+      - "127.0.0.1:4000:4000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s

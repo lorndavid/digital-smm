@@ -75,9 +75,10 @@ services:
       SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:-}
       SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD:-}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:5174}
-      # SMM provider
+      # SMM provider — the live API domain is wizsmm.com; smmwiz.com is a
+      # dead/legacy domain whose API rejects the current key (HTTP 401).
       SMM_PROVIDER: ${SMM_PROVIDER:-mock}
-      SMMWIZ_API_URL: https://smmwiz.com/api/v2
+      SMMWIZ_API_URL: ${SMMWIZ_API_URL:-https://wizsmm.com/api/v2}
       SMMWIZ_API_KEY: ${SMMWIZ_API_KEY:-}
       # Payment provider
       PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-mock}
