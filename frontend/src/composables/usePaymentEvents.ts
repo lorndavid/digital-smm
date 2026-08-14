@@ -166,24 +166,35 @@ export function usePaymentEvents(
   async function start(): Promise<void> {
     session += 1
     controller?.abort()
+    controller = null
     stopPolling()
     stopped = false
     connected.value = false
     error.value = ''
 
+    // Capture the session AT ENTRY. `start()` can be called again while this
+    // one is awaiting (the modal fires it from BOTH the open watcher and the
+    // reference watcher in the same flush). Reading the mutable `session`
+    // after the await would let two concurrent starts pass the guard and
+    // open TWO SSE streams — the first one would never be aborted (only the
+    // latest controller is stored), leaking a connection per modal open
+    // until Chromium's 6-connections-per-host pool fills and subsequent
+    // requests (payment/create) queue forever.
+    const mySession = session
     await fetchSnapshot()
-    if (stopped || session === 0) return
-    await openStream(session)
-    if (stopped) return
+    if (stopped || mySession !== session) return
+    await openStream(mySession)
+    if (stopped || mySession !== session) return
     // Safety net runs regardless of SSE state — a stalled stream can never
     // leave the page stuck on "pending".
-    startPolling(session)
+    startPolling(mySession)
   }
 
   function stop(): void {
     stopped = true
     session += 1
     controller?.abort()
+    controller = null
     stopPolling()
   }
 
