@@ -574,7 +574,7 @@ const waitingCopy = 'Waiting for payment…'
               <div class="p-6 flex flex-col items-center">
                 
                 <p class="text-[11px] font-bold tracking-widest text-gray-400 uppercase mb-1">Pay to Merchant</p>
-                <h3 class="text-xl font-bold text-gray-900 mb-6">CutLuy Application</h3>
+                <h3 class="text-xl font-bold text-gray-900 mb-6">DigitalSMM</h3>
 
                 <!-- Authentic Amount Display -->
                 <div class="text-center mb-6">

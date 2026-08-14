@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { ArrowDownLeft, ArrowUpRight, Plus, Wallet } from '@lucide/vue'
 import { useWalletStore } from '@/stores/wallet.store'
 import { paymentApi } from '@/api/payment.api'
@@ -11,17 +10,21 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseSkeleton from '@/components/ui/BaseSkeleton.vue'
 import BaseEmptyState from '@/components/ui/BaseEmptyState.vue'
+import KhqrPaymentModal from '@/components/payment/KhqrPaymentModal.vue'
 import { formatMoney, formatDate } from '@/utils/format'
-import type { WalletTransaction } from '@/types/models'
+import type { Payment, WalletTransaction } from '@/types/models'
 
 const store = useWalletStore()
-const router = useRouter()
 const toast = useToast()
 
 const topUpOpen = ref(false)
 const amount = ref<number | null>(null)
 const error = ref('')
 const submitting = ref(false)
+
+/** Active KHQR payment shown in the centered payment modal. */
+const activePayment = ref<Payment | null>(null)
+const khqrOpen = ref(false)
 
 const transactions = computed<WalletTransaction[]>(() => store.wallet?.transactions ?? [])
 
@@ -39,21 +42,44 @@ function validateAmount(): boolean {
   return true
 }
 
-/** Creates the top-up payment and opens the premium checkout page. */
+/** Creates the top-up payment and opens the KHQR in a centered modal — no
+ *  page navigation, so the customer stays on their wallet while they pay. */
 async function continueToPayment(): Promise<void> {
   if (!validateAmount()) return
+  // Guard against double-taps racing two payments (the KHQR modal would
+  // re-open over itself mid-flight).
+  if (submitting.value) return
   submitting.value = true
   error.value = ''
   try {
     const payment = await store.topUp(amount.value as number)
     topUpOpen.value = false
+    activePayment.value = payment
+    khqrOpen.value = true
     toast.success('Payment ready — scan the KHQR to top up')
-    await router.push(`/pay/${payment.referenceId}`)
   } catch (err) {
     error.value = err instanceof ApiRequestError ? err.message : 'Failed to create payment'
   } finally {
     submitting.value = false
   }
+}
+
+/** Payment settled — refresh the balance so the new credit shows instantly. */
+async function onPaid(payment: Payment): Promise<void> {
+  try {
+    await store.refreshWallet()
+    toast.success(`${formatMoney(payment.amount)} added to your wallet`)
+  } catch {
+    /* balance refreshes on next view mount if this fails */
+  }
+}
+
+/** Modal closed (after success auto-close, cancel, or manual close). */
+function onKhqrClose(): void {
+  khqrOpen.value = false
+  activePayment.value = null
+  // Refresh in case the customer paid on another tab / closed mid-scan.
+  void store.refreshWallet().catch(() => undefined)
 }
 
 const quickAmounts = [10, 25, 50, 100]
@@ -166,12 +192,21 @@ onMounted(() => {
         />
         <p class="flex items-center gap-2 text-xs text-ink/40">
           <Wallet class="h-4 w-4 text-secondary-400" />
-          You'll pay securely with Bakong KHQR on the next screen.
+          You'll pay securely with Bakong KHQR — a payment window opens right here.
         </p>
         <BaseButton class="w-full" size="lg" :loading="submitting" @click="continueToPayment">
           Continue to payment <ArrowUpRight class="h-4 w-4" />
         </BaseButton>
       </div>
     </BaseModal>
+
+    <!-- Centered KHQR payment window — live auto-verification, bank app
+         deep links, countdown + success state (standard Cambodian UX). -->
+    <KhqrPaymentModal
+      :open="khqrOpen"
+      :payment="activePayment"
+      @close="onKhqrClose"
+      @paid="onPaid"
+    />
   </div>
 </template>
