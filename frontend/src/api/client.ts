@@ -1,7 +1,11 @@
 import axios, { AxiosError } from 'axios'
 import { getAuthToken } from './session'
 
-const baseURL = import.meta.env.VITE_API_BASE_URL || '/api'
+// VITE_API_BASE_URL may be the bare host (https://api.digitalsmm.shop) or
+// already include /api. The app's request paths never carry the /api
+// prefix, so normalize it here: append /api unless it's already there.
+const rawBase = (import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/+$/, '')
+const baseURL = rawBase && !rawBase.endsWith('/api') ? `${rawBase}/api` : rawBase || '/api'
 
 export const apiClient = axios.create({
   baseURL,

@@ -115,8 +115,10 @@ auto-reload for stale-tab chunk errors after redeploys.
 
 4. **Environment Variables** (Production; add the same to Preview if you want previews to work):
    ```
-   VITE_API_BASE_URL=https://api.digitalsmm.shop
+   VITE_API_BASE_URL=https://api.digitalsmm.shop/api
    ```
+   > Must include the `/api` path — the app's request paths never carry it. The client also
+   > accepts the bare host (`https://api.digitalsmm.shop`) and appends `/api` itself.
    > `VITE_*` vars are baked at build time — changing them requires a re-deploy (Vercel does it automatically).
 
 5. **Deploy** → wait ~1–2 min → open the generated `*.vercel.app` URL and confirm it renders.
@@ -165,7 +167,7 @@ Wait for propagation (dnschecker.org), then https://digitalsmm.shop serves the a
 
 3. Environment Variables:
    ```
-   VITE_API_BASE_URL=https://api.digitalsmm.shop
+   VITE_API_BASE_URL=https://api.digitalsmm.shop/api
    ```
 4. **Deploy** → test the `*.vercel.app` URL (super admin email + password — seeded in Part 4).
 5. **Settings → Domains** → add `admin.digitalsmm.shop`.
@@ -346,8 +348,9 @@ ADMIN_JWT_EXPIRES_IN=12h
 SUPER_ADMIN_EMAIL=you@email.com
 SUPER_ADMIN_PASSWORD=<strong password — seeds the first super admin on boot>
 
-# CORS — Vercel origins (+ localhost for dev)
-CORS_ORIGINS=https://digitalsmm.shop,https://admin.digitalsmm.shop,http://localhost:5173,http://localhost:5174
+# CORS — Vercel origins (INCLUDE www — Vercel serves both apex and www,
+# and a browser on www.digitalsmm.shop sends that exact origin) + localhost for dev
+CORS_ORIGINS=https://digitalsmm.shop,https://www.digitalsmm.shop,https://admin.digitalsmm.shop,http://localhost:5173,http://localhost:5174
 
 # SMM provider (wizsmm real API)
 SMM_PROVIDER=smmwiz
@@ -545,7 +548,7 @@ free -h && df -h                                             # RAM + disk
 | Backend boot fails `querySrv ECONNREFUSED` | Set `DNS_SERVERS=1.1.1.1,8.8.8.8` in `backend/.env`, restart container |
 | Container exits immediately | `docker compose -f docker-compose.prod.yml logs --tail=200 backend` — check `MONGODB_URI`, JWT secrets (min 16 chars), Atlas allowlist |
 | Google sign-in `redirect_uri_mismatch` | Google Console redirect URI must be exactly `https://digitalsmm.shop/auth/callback` |
-| Frontend API 401s / won't reach backend | `VITE_API_BASE_URL` set on the Vercel project + redeployed |
+| Frontend API 404s on every call | `VITE_API_BASE_URL` must include `/api` (e.g. `https://api.digitalsmm.shop/api`) + redeployed |
 | CORS error in browser console | `CORS_ORIGINS` includes the exact origin, no trailing slash |
 | Webhook not arriving | CutLuy URL exactly `https://api.digitalsmm.shop/webhooks/cutluy`; secret matches; check backend logs for `[cutluy-webhook]` lines |
 | Backend can't reach Atlas from VPS | VPS IP added to Atlas Network Access; `DNS_SERVERS` set |

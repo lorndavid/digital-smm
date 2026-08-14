@@ -10,7 +10,11 @@ export interface PaymentLiveEvent {
   approvedAt?: string | null
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api'
+// VITE_API_BASE_URL may be the bare host (https://api.digitalsmm.shop) or
+// already include /api — the status/SSE paths below never carry the /api
+// prefix, so append it here unless it's already present.
+const rawBase = (import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/+$/, '')
+const API_BASE = rawBase && !rawBase.endsWith('/api') ? `${rawBase}/api` : rawBase || '/api'
 
 const TERMINAL = ['paid', 'expired', 'failed', 'refunded']
 

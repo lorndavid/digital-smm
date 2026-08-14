@@ -14,7 +14,11 @@ export interface OrderLiveEvent {
   updatedAt?: string
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api'
+// VITE_API_BASE_URL may be the bare host (https://api.digitalsmm.shop) or
+// already include /api — the SSE paths below never carry the /api prefix,
+// so append it here unless it's already present.
+const rawBase = (import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/+$/, '')
+const API_BASE = rawBase && !rawBase.endsWith('/api') ? `${rawBase}/api` : rawBase || '/api'
 
 /** Reconnect delay after a dropped stream. */
 const RECONNECT_MS = 5000
