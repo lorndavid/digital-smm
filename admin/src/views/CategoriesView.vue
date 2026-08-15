@@ -174,14 +174,17 @@ onMounted(() => void load())
 
     <!-- Filters -->
     <div class="glass grid gap-3 rounded-2xl p-4 shadow-card sm:grid-cols-2 lg:grid-cols-4">
-      <div class="relative">
-        <Search class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-(--a-muted-3)" />
-        <input
-          v-model="search"
-          type="search"
-          placeholder="Search categories…"
-          class="h-9.5 w-full rounded-lg border border-(--a-border) bg-(--a-soft) pl-9 pr-3.5 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
-        />
+      <div>
+        <label class="block text-xs font-medium text-(--a-muted-2) mb-1.5">Search</label>
+        <div class="relative">
+          <Search class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-(--a-muted-3)" />
+          <input
+            v-model="search"
+            type="search"
+            placeholder="Search categories…"
+            class="h-9.5 w-full rounded-lg border border-(--a-border) bg-(--a-soft) pl-9 pr-3.5 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
+          />
+        </div>
       </div>
 
       <BaseSelect
@@ -194,10 +197,12 @@ onMounted(() => void load())
         ]"
       />
 
-      <label class="flex items-center gap-2 self-end pb-3 text-sm text-(--a-text-soft)">
-        <input v-model="showEmpty" type="checkbox" class="h-4 w-4 accent-brand-500" />
-        Show empty categories
-      </label>
+      <div class="flex items-end pb-2">
+        <label class="flex items-center gap-2 text-sm text-(--a-text-soft) cursor-pointer select-none">
+          <input v-model="showEmpty" type="checkbox" class="h-4 w-4 accent-brand-500 rounded" />
+          <span>Show empty categories</span>
+        </label>
+      </div>
 
       <div class="flex items-end">
         <BaseButton variant="ghost" class="w-full" @click="resetFilters">

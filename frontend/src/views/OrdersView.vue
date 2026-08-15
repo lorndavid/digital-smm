@@ -384,7 +384,7 @@ onUnmounted(() => {
                 {{ formatMoney(order.totalPrice) }}
               </td>
               <td class="px-3.5 py-2.5 text-right tabular-nums text-ink/60">
-                {{ order.startCount > 0 ? formatNumber(order.startCount) : '—' }}
+                {{ order.startCount !== null && order.startCount !== undefined ? formatNumber(order.startCount) : '—' }}
               </td>
               <td class="px-3.5 py-2.5 text-right font-medium tabular-nums text-ink">
                 {{ formatNumber(order.quantity) }}
@@ -409,7 +409,7 @@ onUnmounted(() => {
                 </BaseBadge>
               </td>
               <td class="px-3.5 py-2.5 text-right tabular-nums text-ink/60">
-                {{ order.remains > 0 ? formatNumber(order.remains) : '—' }}
+                {{ order.remains !== null && order.remains !== undefined ? formatNumber(order.remains) : '—' }}
               </td>
               <td class="px-4 py-2.5 text-right" @click.stop>
                 <div class="flex items-center justify-end gap-0.5">

@@ -141,13 +141,27 @@ export class AdminService {
           )
         }
 
-        // 3. Read back slug → category id.
+        // 3. Read back slug → category id & fetch default profit percentage setting.
         const categoryDocs = names.size
           ? await CategoryModel.find({ slug: { $in: [...names].map(slugFor) } })
               .select('slug')
               .exec()
           : []
         const categoryIdBySlug = new Map(categoryDocs.map((c) => [c.slug, c._id.toString()]))
+
+        const defaultSetting = await SettingModel.findOne({ key: 'default_profit_percentage' }).exec()
+        const defaultProfitPercentage = typeof defaultSetting?.value === 'number'
+          ? defaultSetting.value
+          : (Number(defaultSetting?.value) || 0)
+
+        const existingServices = await ServiceModel.find({ provider: provider.name, providerServiceId: { $ne: null } })
+          .select('providerServiceId profitPercentage')
+          .exec()
+        const profitPctByProviderId = new Map<number, number>(
+          existingServices
+            .filter((s) => s.providerServiceId !== null && typeof s.profitPercentage === 'number')
+            .map((s) => [s.providerServiceId!, s.profitPercentage!]),
+        )
 
         // 4. Bulk-upsert services in chunks.
         let created = 0
@@ -159,6 +173,11 @@ export class AdminService {
             chunk.map((ps) => {
               const categorySlug = ps.category ? slugFor(ps.category) : undefined
               const categoryId = categorySlug ? categoryIdBySlug.get(categorySlug) : undefined
+              const existingPct = profitPctByProviderId.get(ps.providerServiceId)
+              const profitPct = existingPct !== undefined && existingPct > 0 ? existingPct : defaultProfitPercentage
+              const providerRate = Number(ps.rate) || 0
+              const pricePerUnit = Number((providerRate * (1 + profitPct / 100)).toFixed(6))
+
               return {
                 updateOne: {
                   filter: { providerServiceId: ps.providerServiceId, provider: provider.name },
@@ -167,7 +186,9 @@ export class AdminService {
                       name: ps.name,
                       type: ps.type,
                       category: categoryId ? new Types.ObjectId(categoryId) : null,
-                      pricePerUnit: ps.rate,
+                      providerRate,
+                      profitPercentage: profitPct,
+                      pricePerUnit,
                       min: ps.min,
                       max: ps.max,
                       refill: ps.refill,
@@ -247,12 +268,22 @@ export class AdminService {
     return SettingModel.findOne({ key }).exec()
   }
 
-  setSetting(key: string, value: unknown, description?: string) {
-    return SettingModel.findOneAndUpdate(
+  async setSetting(key: string, value: unknown, description?: string) {
+    const updated = await SettingModel.findOneAndUpdate(
       { key },
       { $set: { value, description: description ?? '' } },
       { new: true, upsert: true },
     ).exec()
+
+    if (key === 'default_profit_percentage') {
+      const pct = Number(value)
+      if (!isNaN(pct) && pct >= 0) {
+        const modified = await serviceRepository.bulkSetProfitPercentage({}, pct)
+        logger.info(`[admin.service] Applied default_profit_percentage (${pct}%) to ${modified} services`)
+      }
+    }
+
+    return updated
   }
 }
 

@@ -135,6 +135,8 @@ export const serviceBodySchema = z.object({
   categoryId: z.string().optional().nullable(),
   description: z.string().max(1000).default(''),
   image: z.string().default(''),
+  providerRate: z.number().min(0).optional(),
+  profitPercentage: z.number().min(0).optional(),
   pricePerUnit: z.number().min(0),
   currency: z.string().default('USD'),
   min: z.number().int().min(0).default(0),
@@ -154,6 +156,18 @@ export const bulkServiceStatusBodySchema = z
     ids: z.array(z.string().min(1)).max(500).optional(),
     categoryId: z.string().min(1).optional(),
     isActive: z.boolean(),
+  })
+  .refine((d) => (d.ids?.length ?? 0) > 0 || Boolean(d.categoryId), {
+    message: 'Provide at least one service id or a categoryId',
+    path: ['ids'],
+  })
+
+/** Bulk set profit percentage by ids and/or category. */
+export const bulkServiceProfitBodySchema = z
+  .object({
+    ids: z.array(z.string().min(1)).max(500).optional(),
+    categoryId: z.string().min(1).optional(),
+    profitPercentage: z.number().min(0),
   })
   .refine((d) => (d.ids?.length ?? 0) > 0 || Boolean(d.categoryId), {
     message: 'Provide at least one service id or a categoryId',

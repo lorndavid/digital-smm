@@ -22,6 +22,8 @@ process.env.SMM_PROVIDER = 'mock'
 // NODE_ENV must be non-production so the test-only dev routes mount.
 process.env.NODE_ENV = 'test'
 process.env.PORT = '4001'
+process.env.CUSTOMER_JWT_SECRET = process.env.CUSTOMER_JWT_SECRET || 'browser-test-customer-jwt-secret-32-chars-min'
+process.env.ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || 'browser-test-admin-jwt-secret-32-chars-min'
 // Freeze the mock at 'pending' forever — only a webhook can settle it.
 process.env.MOCK_PAYMENT_SCANNED_MS = '999999999'
 process.env.MOCK_PAYMENT_PAID_MS = '999999999'
@@ -45,7 +47,8 @@ const DB_NAME = `digitalsmm_browsertest_${Date.now()}`
 
 /** Rewrites MONGODB_URI to point at a throwaway database. */
 function throwawayUri(): string {
-  const u = new URL(process.env.MONGODB_URI ?? '')
+  const baseUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/digitalsmm'
+  const u = new URL(baseUri)
   u.pathname = `/${DB_NAME}`
   return u.toString()
 }

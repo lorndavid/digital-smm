@@ -55,19 +55,50 @@ export async function dropLegacyClerkUserIndexes(): Promise<void> {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let memoryServer: any = null
+
 /**
- * Establishes the MongoDB Atlas connection and wires up connection
- * lifecycle logging.
+ * Establishes the MongoDB connection with automatic in-memory fallback
+ * when local or remote MongoDB is unreachable.
  */
 export async function connectDatabase(): Promise<void> {
-  mongoose.connection.on('connected', () => logger.info('[db] MongoDB Atlas connected'))
-  mongoose.connection.on('error', (err) => logger.error('[db] MongoDB connection error', err))
+  let initialAttemptComplete = false
+
+  mongoose.connection.on('connected', () => logger.info('[db] MongoDB connected'))
+  mongoose.connection.on('error', (err) => {
+    if (!initialAttemptComplete) return
+    logger.error('[db] MongoDB connection error', err)
+  })
   mongoose.connection.on('disconnected', () => logger.warn('[db] MongoDB disconnected'))
 
-  await mongoose.connect(env.MONGODB_URI, {
-    serverSelectionTimeoutMS: 10_000,
-    maxPoolSize: 10,
-  })
+  try {
+    await mongoose.connect(env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 2000,
+      maxPoolSize: 10,
+    })
+    initialAttemptComplete = true
+  } catch (err) {
+    logger.warn(
+      `[db] Could not connect to primary MONGODB_URI (${env.MONGODB_URI}). ` +
+        'Starting zero-config in-memory MongoDB server...',
+    )
+    try {
+      const { MongoMemoryServer } = await import('mongodb-memory-server')
+      memoryServer = await MongoMemoryServer.create({
+        instance: { dbName: 'digitalsmm' },
+      })
+      const uri = memoryServer.getUri()
+      await mongoose.connect(uri, {
+        maxPoolSize: 10,
+      })
+      initialAttemptComplete = true
+      logger.info('[db] Connected to zero-config in-memory MongoDB server! No Docker or external DB required.')
+    } catch (fallbackErr) {
+      logger.error('[db] Failed to start in-memory MongoDB fallback', fallbackErr)
+      throw err
+    }
+  }
 
   // Keep new Google sign-ups working even on databases migrated from Clerk
   // (see dropLegacyClerkUserIndexes above). Idempotent — one cheap
@@ -77,6 +108,10 @@ export async function connectDatabase(): Promise<void> {
 
 export async function disconnectDatabase(): Promise<void> {
   await mongoose.disconnect()
+  if (memoryServer) {
+    await memoryServer.stop()
+    memoryServer = null
+  }
 }
 
 /** @returns true when a mongoose connection is currently open. */

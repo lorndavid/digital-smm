@@ -130,13 +130,21 @@ export class SmmWizProvider implements SmmProvider {
   }
 
   async getOrdersStatus(orderIds: number[]): Promise<Record<string, ProviderOrderStatus>> {
-    const raw = await this.request<Record<string, ProviderOrderStatus>>({
+    const raw = await this.request<Record<string, unknown>>({
       action: 'status',
       orders: orderIds.join(','),
     })
     const coerced: Record<string, ProviderOrderStatus> = {}
-    for (const [key, value] of Object.entries(raw)) {
-      coerced[key] = this.coerceOrderStatus(value)
+    if (raw && typeof raw === 'object') {
+      if ('status' in raw || 'remains' in raw || 'start_count' in raw) {
+        coerced[String(orderIds[0])] = this.coerceOrderStatus(raw)
+      } else {
+        for (const [key, value] of Object.entries(raw)) {
+          if (value && typeof value === 'object') {
+            coerced[key] = this.coerceOrderStatus(value as Record<string, unknown>)
+          }
+        }
+      }
     }
     return coerced
   }
@@ -177,15 +185,19 @@ export class SmmWizProvider implements SmmProvider {
   }
 
   /** Numeric status fields arrive as strings in the provider payload. */
-  private coerceOrderStatus(raw: ProviderOrderStatus): ProviderOrderStatus {
+  private coerceOrderStatus(input: unknown): ProviderOrderStatus {
+    const raw = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>
+    const startCountVal = raw.startCount ?? raw.start_count
+    const remainsVal = raw.remains
+    const chargeVal = raw.charge
     return {
       order: Number(raw.order) || 0,
-      charge: raw.charge !== undefined ? Number(raw.charge) : undefined,
-      startCount: raw.startCount !== undefined ? Number(raw.startCount) : undefined,
-      status: raw.status,
-      remains: raw.remains !== undefined ? Number(raw.remains) : undefined,
-      currency: raw.currency,
-      error: raw.error,
+      charge: chargeVal !== undefined && chargeVal !== null && chargeVal !== '' ? Number(chargeVal) : undefined,
+      startCount: startCountVal !== undefined && startCountVal !== null && startCountVal !== '' ? Number(startCountVal) : undefined,
+      status: String(raw.status ?? 'Pending'),
+      remains: remainsVal !== undefined && remainsVal !== null && remainsVal !== '' ? Number(remainsVal) : undefined,
+      currency: typeof raw.currency === 'string' ? raw.currency : undefined,
+      error: typeof raw.error === 'string' ? raw.error : undefined,
     }
   }
 }

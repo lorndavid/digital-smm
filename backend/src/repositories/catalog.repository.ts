@@ -247,6 +247,34 @@ export class ServiceRepository extends BaseRepository<Service> {
     return result.modifiedCount
   }
 
+  /**
+   * Bulk updates profit percentage for services matching a filter and recalculates pricePerUnit.
+   */
+  async bulkSetProfitPercentage(filter: Record<string, unknown>, profitPercentage: number): Promise<number> {
+    const services = await ServiceModel.find(filter).exec()
+    if (services.length === 0) return 0
+
+    const bulkOps = services.map((s) => {
+      const providerRate = s.providerRate && s.providerRate > 0 ? s.providerRate : s.pricePerUnit
+      const pricePerUnit = Number((providerRate * (1 + profitPercentage / 100)).toFixed(6))
+      return {
+        updateOne: {
+          filter: { _id: s._id },
+          update: {
+            $set: {
+              providerRate,
+              profitPercentage,
+              pricePerUnit,
+            },
+          },
+        },
+      }
+    })
+
+    const res = await ServiceModel.bulkWrite(bulkOps, { ordered: false })
+    return res.modifiedCount
+  }
+
   /** Creates or updates a service synced from the provider catalogue. */
   async upsertFromProvider(input: {
     providerServiceId: number

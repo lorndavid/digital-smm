@@ -20,6 +20,7 @@ import {
   adminLoginBodySchema,
   announcementBodySchema,
   bulkServiceStatusBodySchema,
+  bulkServiceProfitBodySchema,
   categoryBodySchema,
   createAdminBodySchema,
   orderStatusBodySchema,
@@ -106,6 +107,10 @@ export const adminController = {
     validate(serviceBodySchema),
     asyncHandler(async (req, res) => {
       const body = req.body
+      const providerRate = typeof body.providerRate === 'number' ? body.providerRate : body.pricePerUnit
+      const profitPercentage = typeof body.profitPercentage === 'number' ? body.profitPercentage : 0
+      const pricePerUnit = Number((providerRate * (1 + profitPercentage / 100)).toFixed(6))
+
       const service = await serviceRepository.create({
         name: body.name,
         type: body.type,
@@ -113,7 +118,9 @@ export const adminController = {
         category: body.categoryId ?? null,
         description: body.description,
         image: body.image,
-        pricePerUnit: body.pricePerUnit,
+        providerRate,
+        profitPercentage,
+        pricePerUnit,
         currency: body.currency,
         min: body.min,
         max: body.max,
@@ -136,8 +143,35 @@ export const adminController = {
       const update: Record<string, unknown> = { ...body }
       if ('categoryId' in body) update.category = body.categoryId ?? null
       delete update.categoryId
+
+      const existing = await serviceRepository.findById(req.params.id as string)
+      if (!existing) throw new ApiError(404, 'Service not found')
+
+      let providerRate =
+        typeof body.providerRate === 'number'
+          ? body.providerRate
+          : existing.providerRate > 0
+            ? existing.providerRate
+            : existing.pricePerUnit
+      let profitPercentage =
+        typeof body.profitPercentage === 'number' ? body.profitPercentage : existing.profitPercentage
+      let pricePerUnit =
+        typeof body.pricePerUnit === 'number' ? body.pricePerUnit : existing.pricePerUnit
+
+      if (typeof body.pricePerUnit === 'number' && !('profitPercentage' in body)) {
+        pricePerUnit = body.pricePerUnit
+        if (providerRate > 0) {
+          profitPercentage = Number((((pricePerUnit - providerRate) / providerRate) * 100).toFixed(2))
+        }
+      } else if ('providerRate' in body || 'profitPercentage' in body) {
+        pricePerUnit = Number((providerRate * (1 + profitPercentage / 100)).toFixed(6))
+      }
+
+      update.providerRate = providerRate
+      update.profitPercentage = profitPercentage
+      update.pricePerUnit = pricePerUnit
+
       const service = await serviceRepository.update(req.params.id as string, update)
-      if (!service) throw new ApiError(404, 'Service not found')
       res.json(service)
     }),
   ],
@@ -164,9 +198,6 @@ export const adminController = {
         categoryId?: string
         isActive: boolean
       }
-      // Defense in depth: never allow updateMany({}) — that would disable
-      // the ENTIRE catalog. Validation also rejects this case, but the
-      // controller must not trust a future refactor to keep that guarantee.
       if (!ids?.length && !categoryId) {
         throw new ApiError(400, 'Provide at least one service id or a categoryId')
       }
@@ -178,6 +209,31 @@ export const adminController = {
       else if (or.length > 1) filter.$or = or
       const updated = await serviceRepository.bulkSetStatus(filter, isActive)
       res.json({ updated, isActive })
+    }),
+  ],
+
+  /**
+   * Bulk set profit percentage by ids and/or category — recalculates selling price.
+   */
+  bulkSetServiceProfit: [
+    validate(bulkServiceProfitBodySchema),
+    asyncHandler(async (req, res) => {
+      const { ids, categoryId, profitPercentage } = req.body as {
+        ids?: string[]
+        categoryId?: string
+        profitPercentage: number
+      }
+      if (!ids?.length && !categoryId) {
+        throw new ApiError(400, 'Provide at least one service id or a categoryId')
+      }
+      const filter: Record<string, unknown> = {}
+      const or: Array<Record<string, unknown>> = []
+      if (ids?.length) or.push({ _id: { $in: ids } })
+      if (categoryId) or.push({ category: categoryId })
+      if (or.length === 1) Object.assign(filter, or[0])
+      else if (or.length > 1) filter.$or = or
+      const updated = await serviceRepository.bulkSetProfitPercentage(filter, profitPercentage)
+      res.json({ updated, profitPercentage })
     }),
   ],
 

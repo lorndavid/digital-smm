@@ -62,6 +62,14 @@ export const adminApi = {
   }): Promise<{ updated: number; isActive: boolean }> =>
     (await apiClient.post('/admin/services/bulk-status', data)).data,
 
+  /** Bulk set profit percentage for services by ids and/or category. */
+  bulkSetServiceProfit: async (data: {
+    ids?: string[]
+    categoryId?: string
+    profitPercentage: number
+  }): Promise<{ updated: number; profitPercentage: number }> =>
+    (await apiClient.post('/admin/services/bulk-profit', data)).data,
+
   // Categories (paginated with search/sort/showEmpty + per-category counts)
   listCategories: async (params: ListParams = {}): Promise<
     Paginated<Category & { serviceCount: number; activeServiceCount?: number }>

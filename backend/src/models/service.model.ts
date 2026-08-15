@@ -10,7 +10,11 @@ const serviceSchema = new Schema(
     category: { type: Schema.Types.ObjectId, ref: 'Category', index: true },
     description: { type: String, default: '' },
     image: { type: String, default: '' },
-    /** Price per single unit (rate). */
+    /** Raw rate per single unit as charged by the provider. */
+    providerRate: { type: Number, default: 0, min: 0 },
+    /** Admin profit percentage markup (e.g. 20 for 20%). */
+    profitPercentage: { type: Number, default: 0, min: 0 },
+    /** Price per single unit charged to customers (pricePerUnit = providerRate * (1 + profitPercentage / 100)). */
     pricePerUnit: { type: Number, required: true, min: 0 },
     currency: { type: String, default: 'USD' },
     min: { type: Number, default: 0 },

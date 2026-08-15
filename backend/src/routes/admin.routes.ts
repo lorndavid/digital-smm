@@ -27,6 +27,7 @@ adminRoutes.post('/admin/services', ...adminController.createService)
 // curation: enable/disable every service in a category).
 adminRoutes.post('/admin/services/bulk', ...adminController.bulkUpdateServices)
 adminRoutes.post('/admin/services/bulk-status', ...adminController.bulkSetServiceStatus)
+adminRoutes.post('/admin/services/bulk-profit', ...adminController.bulkSetServiceProfit)
 adminRoutes.put('/admin/services/:id', ...adminController.updateService)
 adminRoutes.delete('/admin/services/:id', adminController.deleteService)
 

@@ -71,7 +71,7 @@ export class OrderRepository extends BaseRepository<Order> {
   async findSyncable(limit = 100) {
     return OrderModel.find({
       providerOrderId: { $ne: null },
-      status: { $in: ['Processing', 'In progress', 'Partial'] },
+      status: { $in: ['Pending', 'Processing', 'In progress', 'Partial'] },
     })
       .populate<{ service: ServiceDoc }>('service')
       .sort({ createdAt: -1 })

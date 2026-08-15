@@ -1291,9 +1291,7 @@ onMounted(async () => {
           @click="selectPlatform(chip.key)"
         >
           <PlatformIcon :platform="chip.icon" size="xs" tile />
-          <!-- Short label on phones (narrow grid), full label on sm+ -->
-          <span class="hidden truncate sm:inline">{{ chip.label }}</span>
-          <span class="truncate sm:hidden">{{ chip.short }}</span>
+          <span class="truncate text-xs sm:text-sm">{{ chip.label }}</span>
         </button>
       </div>
     </div>
@@ -1362,12 +1360,14 @@ onMounted(async () => {
                       @click="selectServiceFromSearch(s)"
                     >
                       <span class="min-w-0">
-                        <span class="block truncate text-sm font-medium text-ink">{{ s.name }}</span>
-                        <span class="mt-0.5 block truncate text-xs text-ink/40">
-                          {{ categoryLabel(s) }} · {{ SERVICE_TYPE_LABEL[s.type] ?? s.type }}
-                          <span v-if="serviceId(s)" class="ml-1 font-mono text-ink/45">
-                            ID {{ serviceId(s) }}
+                        <span class="block text-sm font-medium text-ink break-words leading-snug">
+                          <span
+                            v-if="s.providerServiceId"
+                            class="mr-1.5 inline-flex items-center rounded-md bg-brand-500/20 px-1.5 py-0.5 font-mono text-[11px] font-bold text-brand-300 align-baseline shrink-0"
+                          >
+                            {{ s.providerServiceId }}
                           </span>
+                          <span>{{ s.name }}</span>
                         </span>
                       </span>
                       <span class="shrink-0 text-right">
@@ -1603,9 +1603,11 @@ onMounted(async () => {
                 type="text"
                 role="combobox"
                 readonly
+                :title="trigger"
                 :aria-expanded="panelOpen"
                 placeholder="Select a service…"
-                class="relative z-30 h-9.5 w-full cursor-pointer rounded-lg border border-ink/10 bg-ink/5 pl-9 pr-9 text-sm text-ink placeholder:text-ink/30 transition-colors focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
+                class="relative z-30 h-9.5 w-full cursor-pointer rounded-lg border border-ink/10 bg-ink/5 pl-9 text-sm text-ink placeholder:text-ink/30 transition-colors focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
+                :class="selected ? 'pr-16' : 'pr-10'"
                 @focus="openServicePanel"
                 @click="openServicePanel"
                 @keydown="onPanelKeydown"
@@ -1686,18 +1688,18 @@ onMounted(async () => {
                           @click="selectService(s)"
                         >
                         <span class="min-w-0">
-                          <span class="block truncate text-sm font-medium text-ink">
+                          <span class="block text-sm font-medium text-ink break-words leading-snug">
                             <Check
                               v-if="selected?._id === s._id"
-                              class="mr-1 inline h-3.5 w-3.5 text-brand-300"
+                              class="mr-1.5 inline h-3.5 w-3.5 text-brand-300 shrink-0"
                             />
-                            {{ s.name }}
-                          </span>
-                          <span class="mt-0.5 block truncate text-xs text-ink/40">
-                            {{ categoryLabel(s) }} · {{ SERVICE_TYPE_LABEL[s.type] ?? s.type }}
-                            <span v-if="serviceId(s)" class="ml-1 font-mono text-ink/45">
-                              ID {{ serviceId(s) }}
+                            <span
+                              v-if="s.providerServiceId"
+                              class="mr-1.5 inline-flex items-center rounded-md bg-brand-500/20 px-1.5 py-0.5 font-mono text-[11px] font-bold text-brand-300 align-baseline shrink-0"
+                            >
+                              {{ s.providerServiceId }}
                             </span>
+                            <span>{{ s.name }}</span>
                           </span>
                         </span>
                         <span class="shrink-0 text-right">
@@ -1810,14 +1812,14 @@ onMounted(async () => {
               :class="servicePlatform !== 'other' ? 'from-brand-500 to-secondary-500' : 'from-slate-500 to-slate-400'"
             />
             <div class="relative">
-              <div class="flex items-start justify-between gap-3">
-                <div class="flex min-w-0 items-center gap-3">
-                  <PlatformIcon :platform="servicePlatform" size="md" tile />
-                  <div class="min-w-0">
-                    <h3 class="font-display truncate text-base font-semibold text-ink">
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div class="flex min-w-0 items-start gap-3">
+                  <PlatformIcon :platform="servicePlatform" size="md" tile class="mt-0.5 shrink-0" />
+                  <div class="min-w-0 flex-1">
+                    <h3 class="font-display text-base font-semibold text-ink break-words leading-snug">
                       {{ selected.name }}
                     </h3>
-                    <p class="mt-0.5 flex items-center gap-2 text-xs text-ink/45">
+                    <p class="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink/45">
                       {{ serviceTypeLabel }}
                       <span
                         v-if="serviceId(selected)"
@@ -1828,7 +1830,7 @@ onMounted(async () => {
                     </p>
                   </div>
                 </div>
-                <div class="flex shrink-0 items-center gap-2">
+                <div class="flex shrink-0 items-center justify-between sm:justify-end gap-2 pt-1 sm:pt-0">
                   <button
                     type="button"
                     :data-fav-selected-service="selected._id"
@@ -1843,7 +1845,7 @@ onMounted(async () => {
                         ? 'Remove from favourites'
                         : 'Add to favourites'
                     "
-                    class="shrink-0 rounded-xl p-2.5 text-ink/35 transition-all hover:bg-amber-400/10 hover:text-amber-400 active:scale-90"
+                    class="shrink-0 rounded-xl p-2 text-ink/35 transition-all hover:bg-amber-400/10 hover:text-amber-400 active:scale-90"
                     @click.stop="toggleServiceFavorite(selected._id)"
                   >
                     <Star
@@ -1855,7 +1857,7 @@ onMounted(async () => {
                       "
                     />
                   </button>
-                  <span class="rounded-full bg-emerald-400/10 px-2.5 py-1 text-xs font-semibold text-emerald-300">
+                  <span class="rounded-full bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-300">
                     {{ formatUnitPrice(selected.pricePerUnit, selected.currency) }} / 1,000
                   </span>
                 </div>
@@ -1913,7 +1915,7 @@ onMounted(async () => {
               v-if="linkRequired"
               v-model="link"
               label="Link to your page or post"
-              placeholder="https://www.tiktok.com/@username"
+              placeholder=""
               :error="error && !link ? error : ''"
             />
 

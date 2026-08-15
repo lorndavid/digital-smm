@@ -97,28 +97,38 @@ onMounted(() => {
       <p class="mt-0.5 text-sm text-ink/50">Top up with KHQR and track every transaction.</p>
     </div>
 
-    <!-- Balance hero -->
+    <!-- Balance hero card -->
     <div
-      class="animate-gradient relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-700/80 via-brand-600/60 to-secondary-600/40 p-6 shadow-glow"
+      class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 sm:p-7 shadow-xl border border-indigo-500/20 text-white"
     >
-      <div class="bg-grid pointer-events-none absolute inset-0 opacity-20" />
-      <div class="relative flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-        <div>
-          <div class="flex items-center gap-2 text-ink/70">
-            <Wallet class="h-4 w-4" />
-            <span class="text-[13px]">Available balance</span>
+      <!-- Background subtle glow accents -->
+      <div class="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-brand-500/20 blur-3xl" />
+      <div class="pointer-events-none absolute -left-10 -bottom-10 h-40 w-40 rounded-full bg-indigo-500/20 blur-3xl" />
+      <div class="bg-grid pointer-events-none absolute inset-0 opacity-10" />
+
+      <div class="relative flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2 text-indigo-200/80 text-xs font-medium uppercase tracking-wider">
+            <Wallet class="h-4 w-4 text-emerald-400" />
+            <span>Available balance</span>
           </div>
-          <p class="font-display mt-1 text-3xl font-bold text-ink">
+          <p class="font-display text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
             {{ formatMoney(store.wallet?.balance ?? 0) }}
           </p>
-          <div class="mt-2 flex gap-5 text-[13px] text-ink/75">
-            <span>Top-ups: <b>{{ formatMoney(store.wallet?.totalTopUp ?? 0) }}</b></span>
-            <span>Spent: <b>{{ formatMoney(store.wallet?.totalSpent ?? 0) }}</b></span>
+          <div class="pt-1 flex flex-wrap items-center gap-4 text-xs text-indigo-200/70 font-mono">
+            <span>Top-ups: <strong class="text-white font-semibold">{{ formatMoney(store.wallet?.totalTopUp ?? 0) }}</strong></span>
+            <span class="text-indigo-400/40">•</span>
+            <span>Spent: <strong class="text-white font-semibold">{{ formatMoney(store.wallet?.totalSpent ?? 0) }}</strong></span>
           </div>
         </div>
-        <BaseButton size="lg" variant="secondary" @click="openTopUp">
+
+        <button
+          type="button"
+          class="flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-500 to-indigo-500 px-5 py-2.5 text-sm font-semibold text-white shadow-glow transition-all hover:brightness-110 active:scale-95 shrink-0"
+          @click="openTopUp"
+        >
           <Plus class="h-4 w-4" /> Top up
-        </BaseButton>
+        </button>
       </div>
     </div>
 

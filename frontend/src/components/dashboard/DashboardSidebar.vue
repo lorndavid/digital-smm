@@ -41,9 +41,9 @@ async function signOut(): Promise<void> {
 </script>
 
 <template>
-  <aside class="flex h-full w-60 flex-col border-r border-ink/10 bg-card/60 backdrop-blur-xl">
-    <div class="flex h-14 items-center border-b border-ink/10 px-4">
-      <BrandLogo size="sm" />
+  <aside class="flex h-full w-60 flex-col border-r border-line bg-card shadow-2xl">
+    <div class="flex h-16 items-center border-b border-ink/10 px-4">
+      <BrandLogo size="md" />
     </div>
 
     <div class="flex-1 space-y-1 overflow-y-auto px-2.5 py-3">

@@ -7,10 +7,12 @@ import {
   EyeOff,
   Layers,
   Pencil,
+  Percent,
   Plus,
   Search,
   Sparkles,
   Trash2,
+  TrendingUp,
 } from '@lucide/vue'
 import { adminApi } from '@/api/admin.api'
 import { useToast } from '@/composables/useToast'
@@ -46,6 +48,50 @@ const pageSize = 10
 const selected = ref<Set<string>>(new Set())
 const bulkBusy = ref(false)
 
+// Bulk profit percentage modal --------------------------------------------------
+const profitModalOpen = ref(false)
+const profitTargetMode = ref<'selected' | 'category'>('selected')
+const profitInput = ref<number | string>(20)
+const profitBusy = ref(false)
+
+function openProfitModal(mode: 'selected' | 'category'): void {
+  profitTargetMode.value = mode
+  profitInput.value = 20
+  profitModalOpen.value = true
+}
+
+async function applyProfitModal(): Promise<void> {
+  const pct = Number(profitInput.value)
+  if (isNaN(pct) || pct < 0) {
+    toast.warning('Enter a valid non-negative profit percentage')
+    return
+  }
+  profitBusy.value = true
+  try {
+    if (profitTargetMode.value === 'selected') {
+      if (selectedCount.value === 0) return
+      const res = await adminApi.bulkSetServiceProfit({
+        ids: [...selected.value],
+        profitPercentage: pct,
+      })
+      toast.success(`Set ${pct}% profit on ${res.updated} selected service${res.updated === 1 ? '' : 's'}`)
+      selected.value = new Set()
+    } else if (profitTargetMode.value === 'category' && selectedCategory.value) {
+      const res = await adminApi.bulkSetServiceProfit({
+        categoryId: selectedCategory.value._id,
+        profitPercentage: pct,
+      })
+      toast.success(`Set ${pct}% profit on ${res.updated} service${res.updated === 1 ? '' : 's'} in “${selectedCategory.value.name}”`)
+    }
+    profitModalOpen.value = false
+    await load()
+  } catch (err) {
+    toast.error(errorMessage(err, 'Failed to update profit percentage'))
+  } finally {
+    profitBusy.value = false
+  }
+}
+
 // Category curation (enable/disable every service in the filtered category) ----
 const confirmOpen = ref(false)
 const pendingAction = ref<{
@@ -62,6 +108,8 @@ const form = reactive({
   type: 'Default',
   categoryId: '',
   description: '',
+  providerRate: '',
+  profitPercentage: '0',
   pricePerUnit: '',
   min: '',
   max: '',
@@ -74,6 +122,58 @@ const form = reactive({
   sortOrder: '',
 })
 
+function onProfitMarkupChange(): void {
+  const rate = Number(form.providerRate) || 0
+  const pct = Number(form.profitPercentage) || 0
+  form.pricePerUnit = (rate * (1 + pct / 100)).toFixed(4)
+}
+
+function onSellingPriceChange(): void {
+  const rate = Number(form.providerRate) || 0
+  const selling = Number(form.pricePerUnit) || 0
+  if (rate > 0 && selling >= 0) {
+    const pct = ((selling - rate) / rate) * 100
+    form.profitPercentage = pct.toFixed(2)
+  }
+}
+
+function onProviderRateChange(): void {
+  onProfitMarkupChange()
+}
+
+const computedSellingRate = computed(() => {
+  return (Number(form.pricePerUnit) || 0).toFixed(4)
+})
+
+const computedProfitMargin = computed(() => {
+  const rate = Number(form.providerRate) || 0
+  const selling = Number(form.pricePerUnit) || 0
+  return Math.max(0, selling - rate).toFixed(4)
+})
+
+const computedProfitMarginPct = computed(() => {
+  const selling = Number(form.pricePerUnit) || 0
+  const profit = Number(computedProfitMargin.value) || 0
+  if (!selling) return '0.0'
+  return ((profit / selling) * 100).toFixed(1)
+})
+
+const summaryAvgProviderCost = computed(() => {
+  if (!items.value.length) return 0
+  const totalCost = items.value.reduce((acc, s) => acc + (s.providerRate ?? s.pricePerUnit), 0)
+  return totalCost / items.value.length
+})
+
+const summaryAvgSellingPrice = computed(() => {
+  if (!items.value.length) return 0
+  const totalSelling = items.value.reduce((acc, s) => acc + s.pricePerUnit, 0)
+  return totalSelling / items.value.length
+})
+
+const summaryAvgProfitPer1k = computed(() => {
+  return Math.max(0, summaryAvgSellingPrice.value - summaryAvgProviderCost.value)
+})
+
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
 const selectedCount = computed(() => selected.value.size)
 const allChecked = computed(
@@ -82,9 +182,6 @@ const allChecked = computed(
 const selectedCategory = computed<Category | null>(
   () => categories.value.find((c) => c._id === categoryFilter.value) ?? null,
 )
-/** True when a category filter is active (enables the category-curation bar).
- *  Uses the filter value rather than the loaded category object so deep links
- *  (/services?category=<id>) also surface the curation actions. */
 const isCategoryFiltered = computed(() => categoryFilter.value !== '')
 const pageInactiveCount = computed(() => items.value.filter((s) => !s.isActive).length)
 
@@ -110,6 +207,8 @@ function openCreate(): void {
     type: 'Default',
     categoryId: categories.value[0]?._id ?? '',
     description: '',
+    providerRate: '',
+    profitPercentage: '0',
     pricePerUnit: '',
     min: '',
     max: '',
@@ -126,11 +225,15 @@ function openCreate(): void {
 
 function openEdit(service: Service): void {
   editingId.value = service._id
+  const pRate = service.providerRate ?? service.pricePerUnit
+  const pPct = service.profitPercentage ?? 0
   Object.assign(form, {
     name: service.name,
     type: service.type,
     categoryId: service.category && typeof service.category === 'object' ? service.category._id : (service.category ?? ''),
     description: service.description,
+    providerRate: String(pRate),
+    profitPercentage: String(pPct),
     pricePerUnit: String(service.pricePerUnit),
     min: String(service.min),
     max: String(service.max),
@@ -173,12 +276,18 @@ async function save(): Promise<void> {
     return
   }
   saving.value = true
+  const providerRate = Number(form.providerRate) || Number(form.pricePerUnit) || 0
+  const profitPercentage = Number(form.profitPercentage) || 0
+  const calculatedPrice = Number(computedSellingRate.value) || Number(form.pricePerUnit) || 0
+
   const payload = {
     name: form.name.trim(),
     type: form.type as ServiceType,
     categoryId: form.categoryId || undefined,
     description: form.description,
-    pricePerUnit: Number(form.pricePerUnit) || 0,
+    providerRate,
+    profitPercentage,
+    pricePerUnit: calculatedPrice,
     min: Number(form.min) || 0,
     max: Number(form.max) || 0,
     deliveryTime: form.deliveryTime,
@@ -339,17 +448,50 @@ onMounted(async () => {
       </div>
     </div>
 
+    <!-- Price Comparison & Profit Analytics Summary Cards -->
+    <div v-if="!loading && items.length > 0" class="grid gap-3.5 sm:grid-cols-3">
+      <div class="glass rounded-xl p-3.5 shadow-card border border-(--a-border)">
+        <div class="flex items-center justify-between text-xs text-(--a-muted)">
+          <span>Avg Provider Cost / 1k</span>
+          <span class="rounded bg-sky-500/10 px-2 py-0.5 text-[11px] font-semibold text-sky-300">Original Cost</span>
+        </div>
+        <p class="mt-1 font-mono text-lg font-bold text-(--a-text)">{{ formatMoney(summaryAvgProviderCost) }}</p>
+        <p class="text-[11px] text-(--a-muted-2)">Original supplier rate from WizSMM</p>
+      </div>
+
+      <div class="glass rounded-xl p-3.5 shadow-card border border-(--a-border)">
+        <div class="flex items-center justify-between text-xs text-(--a-muted)">
+          <span>Avg Selling Price / 1k</span>
+          <span class="rounded bg-brand-500/10 px-2 py-0.5 text-[11px] font-semibold text-brand-300">With Profit</span>
+        </div>
+        <p class="mt-1 font-mono text-lg font-bold text-(--a-text)">{{ formatMoney(summaryAvgSellingPrice) }}</p>
+        <p class="text-[11px] text-(--a-muted-2)">Storefront customer rate</p>
+      </div>
+
+      <div class="glass rounded-xl p-3.5 shadow-card border border-emerald-500/30 bg-emerald-500/5">
+        <div class="flex items-center justify-between text-xs text-emerald-400">
+          <span class="font-medium">Avg Net Profit / 1k</span>
+          <span class="rounded bg-emerald-500/20 px-2 py-0.5 text-[11px] font-bold text-emerald-300">Margin</span>
+        </div>
+        <p class="mt-1 font-mono text-lg font-bold text-emerald-400">+{{ formatMoney(summaryAvgProfitPer1k) }}</p>
+        <p class="text-[11px] text-emerald-300/80">Average admin profit earned per 1k</p>
+      </div>
+    </div>
+
     <!-- Filters -->
     <div class="glass grid gap-3 rounded-2xl p-4 shadow-card sm:grid-cols-2 lg:grid-cols-4">
-      <div class="relative">
-        <Search class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-(--a-muted-3)" />
-        <input
-          v-model="search"
-          type="search"
-          placeholder="Search services…"
-          class="h-9.5 w-full rounded-lg border border-(--a-border) bg-(--a-soft) pl-9 pr-3.5 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
-          @keyup.enter="page = 1; void load()"
-        />
+      <div>
+        <label class="block text-xs font-medium text-(--a-muted-2) mb-1.5">Search</label>
+        <div class="relative">
+          <Search class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-(--a-muted-3)" />
+          <input
+            v-model="search"
+            type="search"
+            placeholder="Search services…"
+            class="h-9.5 w-full rounded-lg border border-(--a-border) bg-(--a-soft) pl-9 pr-3.5 text-sm text-(--a-text) placeholder:text-(--a-muted-3) focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
+            @keyup.enter="page = 1; void load()"
+          />
+        </div>
       </div>
 
       <BaseSelect
@@ -378,7 +520,7 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- Bulk curation toolbar (selected ids: show/hide/feature) -->
+    <!-- Bulk curation toolbar (selected ids: show/hide/feature/set profit) -->
     <div
       v-if="selectedCount > 0"
       class="flex flex-wrap items-center gap-3 rounded-2xl border border-brand-400/40 bg-brand-500/10 px-4 py-3 shadow-glow"
@@ -399,6 +541,9 @@ onMounted(async () => {
         <BaseButton size="sm" variant="ghost" :loading="bulkBusy" @click="bulkUpdate({ isFeatured: false }, 'Unfeatured')">
           Unfeature
         </BaseButton>
+        <BaseButton size="sm" variant="outline" @click="openProfitModal('selected')">
+          <Percent class="h-4 w-4" /> Set Profit %
+        </BaseButton>
         <button
           class="ml-1 text-xs font-medium text-(--a-muted) transition-colors hover:text-(--a-text)"
           @click="selected = new Set()"
@@ -408,7 +553,7 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- Category curation bar (enable/disable every service in the filtered category) -->
+    <!-- Category curation bar (enable/disable/profit every service in the filtered category) -->
     <div
       v-if="isCategoryFiltered"
       class="glass-strong flex flex-wrap items-center gap-3 rounded-2xl border-brand-400/30 p-3 shadow-card"
@@ -423,6 +568,9 @@ onMounted(async () => {
       </BaseButton>
       <BaseButton size="sm" variant="danger" :disabled="categoryActing" @click="requestBulkByCategory(false)">
         Disable all in category
+      </BaseButton>
+      <BaseButton size="sm" variant="ghost" @click="openProfitModal('category')">
+        <TrendingUp class="h-4 w-4" /> Set Profit % for category
       </BaseButton>
       <span class="text-xs text-(--a-muted-2)">
         ~{{ total }} services · {{ pageInactiveCount }} inactive on this page
@@ -454,7 +602,10 @@ onMounted(async () => {
               </th>
               <th class="px-4 py-3 font-medium">Service</th>
               <th class="px-4 py-3 font-medium">Type</th>
-              <th class="px-4 py-3 font-medium">Rate / 1,000</th>
+              <th class="px-4 py-3 font-medium">Original Cost / 1k</th>
+              <th class="px-4 py-3 font-medium">Markup %</th>
+              <th class="px-4 py-3 font-medium">Selling Price / 1k</th>
+              <th class="px-4 py-3 font-medium">Net Profit / 1k</th>
               <th class="px-4 py-3 font-medium">Range</th>
               <th class="px-4 py-3 font-medium">Flags</th>
               <th class="px-4 py-3 text-right font-medium">Actions</th>
@@ -482,8 +633,25 @@ onMounted(async () => {
                   <span v-if="service.description" class="ml-1">· {{ service.description }}</span>
                 </p>
               </td>
-              <td class="px-4 py-3.5 text-(--a-muted)">{{ service.type }}</td>
-              <td class="px-4 py-3.5 font-semibold text-(--a-text)">{{ formatMoney(service.pricePerUnit) }}</td>
+              <td class="px-4 py-3.5 text-(--a-muted)">
+                <span class="font-mono text-sm">{{ formatMoney(service.providerRate ?? service.pricePerUnit) }}</span>
+              </td>
+              <td class="px-4 py-3.5">
+                <BaseBadge tone="success" dot>+{{ service.profitPercentage ?? 0 }}%</BaseBadge>
+              </td>
+              <td class="px-4 py-3.5">
+                <span class="font-mono text-sm font-semibold text-(--a-text)">{{ formatMoney(service.pricePerUnit) }}</span>
+              </td>
+              <td class="px-4 py-3.5">
+                <div class="flex flex-col">
+                  <span class="font-mono text-sm font-semibold text-emerald-400">
+                    +{{ formatMoney(Math.max(0, service.pricePerUnit - (service.providerRate ?? service.pricePerUnit))) }}
+                  </span>
+                  <span class="text-[10px] text-emerald-400/80">
+                    ({{ service.pricePerUnit > 0 ? (((Math.max(0, service.pricePerUnit - (service.providerRate ?? service.pricePerUnit))) / service.pricePerUnit) * 100).toFixed(1) : 0 }}% margin)
+                  </span>
+                </div>
+              </td>
               <td class="px-4 py-3.5 text-(--a-muted)">{{ formatNumber(service.min) }}–{{ formatNumber(service.max) }}</td>
               <td class="px-4 py-3.5">
                 <div class="flex flex-wrap gap-1.5">
@@ -568,6 +736,28 @@ onMounted(async () => {
       </div>
     </BaseModal>
 
+    <!-- Bulk Profit Percentage Modal -->
+    <BaseModal
+      :open="profitModalOpen"
+      :title="profitTargetMode === 'selected' ? `Set profit % for ${selectedCount} services` : `Set profit % for category “${selectedCategory?.name ?? ''}”`"
+      @close="profitModalOpen = false"
+    >
+      <div class="space-y-4">
+        <p class="text-sm text-(--a-muted)">
+          Update the admin profit percentage markup for all
+          <strong class="text-(--a-text)">
+            {{ profitTargetMode === 'selected' ? `${selectedCount} selected services` : `services in category “${selectedCategory?.name ?? ''}”` }}
+          </strong>.
+          Selling price will be automatically recalculated (`Price = Provider Cost * (1 + Profit% / 100)`).
+        </p>
+        <BaseInput v-model="profitInput" label="Profit Markup (%)" type="number" min="0" step="1" placeholder="e.g. 20 for 20%" />
+        <div class="flex justify-end gap-3 pt-2">
+          <BaseButton variant="ghost" :disabled="profitBusy" @click="profitModalOpen = false">Cancel</BaseButton>
+          <BaseButton :loading="profitBusy" @click="applyProfitModal">Apply Profit Percentage</BaseButton>
+        </div>
+      </div>
+    </BaseModal>
+
     <!-- Create / edit modal -->
     <BaseModal :open="modalOpen" :title="editingId ? 'Edit service' : 'Add service'" :max-width="'max-w-2xl'" @close="modalOpen = false">
       <div class="space-y-4">
@@ -594,8 +784,60 @@ onMounted(async () => {
             ]"
           />
         </div>
-        <div class="grid gap-4 sm:grid-cols-3">
-          <BaseInput v-model="form.pricePerUnit" label="Rate / 1,000 ($)" type="number" min="0" step="0.01" />
+
+        <!-- Price & Profit Comparison Breakdown -->
+        <div class="rounded-xl border border-brand-400/30 bg-brand-500/5 p-4 space-y-3">
+          <div class="flex items-center justify-between border-b border-brand-400/20 pb-2">
+            <span class="text-xs font-semibold uppercase tracking-wider text-brand-300 flex items-center gap-1.5">
+              <TrendingUp class="h-3.5 w-3.5" /> Price & Profit Settings
+            </span>
+            <span class="text-xs text-(--a-muted-2)">Calculated per 1,000 units</span>
+          </div>
+          <div class="grid gap-3 sm:grid-cols-3">
+            <BaseInput
+              v-model="form.providerRate"
+              label="Provider Cost / 1k ($)"
+              type="number"
+              min="0"
+              step="0.0001"
+              placeholder="0.04"
+              @input="onProviderRateChange"
+            />
+            <BaseInput
+              v-model="form.profitPercentage"
+              label="Profit Markup (%)"
+              type="number"
+              step="0.1"
+              placeholder="15"
+              @input="onProfitMarkupChange"
+            />
+            <BaseInput
+              v-model="form.pricePerUnit"
+              label="Fixed Price / 1k ($)"
+              type="number"
+              min="0"
+              step="0.0001"
+              placeholder="0.05"
+              @input="onSellingPriceChange"
+            />
+          </div>
+          <div class="grid grid-cols-3 gap-3 rounded-lg border border-(--a-border) bg-(--a-soft) p-3 text-xs">
+            <div class="space-y-0.5">
+              <span class="text-(--a-muted) block text-[11px]">Original Cost / 1k</span>
+              <p class="font-mono text-sm font-semibold text-(--a-text)">${{ (Number(form.providerRate) || 0).toFixed(4) }}</p>
+            </div>
+            <div class="space-y-0.5 border-l border-(--a-border) pl-3">
+              <span class="text-(--a-muted) block text-[11px]">Fixed Customer Selling Price</span>
+              <p class="font-mono text-sm font-bold text-brand-300">${{ computedSellingRate }}</p>
+            </div>
+            <div class="space-y-0.5 border-l border-(--a-border) pl-3">
+              <span class="text-emerald-400 block text-[11px]">Net Profit / 1k</span>
+              <p class="font-mono text-sm font-bold text-emerald-400">+${{ computedProfitMargin }} <span class="text-[10px] font-normal text-emerald-300/80">({{ computedProfitMarginPct }}%)</span></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid gap-4 sm:grid-cols-2">
           <BaseInput v-model="form.min" label="Min" type="number" min="0" />
           <BaseInput v-model="form.max" label="Max" type="number" min="0" />
         </div>

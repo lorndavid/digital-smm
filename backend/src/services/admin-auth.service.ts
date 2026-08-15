@@ -100,14 +100,25 @@ export async function loginAdmin(email: string, password: string): Promise<{
 
 export async function seedSuperAdmin(): Promise<void> {
   if (!env.SUPER_ADMIN_EMAIL || !env.SUPER_ADMIN_PASSWORD) return
-  const existing = await adminRepository.findByEmail(env.SUPER_ADMIN_EMAIL)
-  if (existing) return
+  const email = env.SUPER_ADMIN_EMAIL.trim().toLowerCase()
+  const passwordHash = hashPassword(env.SUPER_ADMIN_PASSWORD)
+  const existing = await adminRepository.findByEmail(email)
+
+  if (existing) {
+    await AdminModel.updateOne(
+      { _id: existing._id },
+      { $set: { passwordHash, isActive: true, role: 'super_admin' } },
+    )
+    logger.info(`[admin] Super admin account ready for ${email}`)
+    return
+  }
+
   const role: AdminRole = 'super_admin'
   await AdminModel.create({
-    email: env.SUPER_ADMIN_EMAIL.trim().toLowerCase(),
-    passwordHash: hashPassword(env.SUPER_ADMIN_PASSWORD),
+    email,
+    passwordHash,
     role,
     isActive: true,
   })
-  logger.info(`[admin] Seeded super admin account for ${env.SUPER_ADMIN_EMAIL}`)
+  logger.info(`[admin] Seeded super admin account for ${email}`)
 }

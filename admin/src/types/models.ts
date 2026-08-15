@@ -46,6 +46,8 @@ export interface Service {
   category: Category | string | null
   description: string
   image: string
+  providerRate?: number
+  profitPercentage?: number
   pricePerUnit: number
   currency: string
   min: number

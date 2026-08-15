@@ -262,7 +262,7 @@ function closeModal(): void {
         v-if="linkRequired"
         v-model="link"
         label="Link to your page or post"
-        placeholder="https://www.tiktok.com/@username"
+        placeholder=""
         :error="error && !link ? error : ''"
       />
 

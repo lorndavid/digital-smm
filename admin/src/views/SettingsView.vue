@@ -32,6 +32,21 @@ function openCreate(): void {
   modalOpen.value = true
 }
 
+function openPresetProfitSetting(): void {
+  const existing = items.value.find((s) => s.key === 'default_profit_percentage')
+  if (existing) {
+    openEdit(existing)
+  } else {
+    editingKey.value = null
+    Object.assign(form, {
+      key: 'default_profit_percentage',
+      value: '20',
+      description: 'Default profit percentage markup (e.g. 20 = 20%) applied when syncing services.',
+    })
+    modalOpen.value = true
+  }
+}
+
 function openEdit(setting: Setting): void {
   editingKey.value = setting.key
   Object.assign(form, {
@@ -103,7 +118,10 @@ onMounted(() => void load())
           environment variables.
         </p>
       </div>
-      <BaseButton @click="openCreate"><Plus class="h-4 w-4" /> Add setting</BaseButton>
+      <div class="flex gap-2">
+        <BaseButton variant="outline" @click="openPresetProfitSetting">Set Default Profit %</BaseButton>
+        <BaseButton @click="openCreate"><Plus class="h-4 w-4" /> Add setting</BaseButton>
+      </div>
     </div>
 
     <div v-if="loading" class="space-y-3">

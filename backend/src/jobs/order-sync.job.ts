@@ -5,12 +5,14 @@ import { emitOrderStatus } from '../services/order/events.bus.js'
 import { logger } from '../utils/logger.js'
 
 const STATUS_MAP: Record<string, string> = {
+  Pending: 'Pending',
+  Processing: 'Processing',
+  'In progress': 'In progress',
   Completed: 'Completed',
+  Partial: 'Partial',
   Cancelled: 'Cancelled',
   Refunded: 'Refunded',
   Failed: 'Failed',
-  'In progress': 'In progress',
-  Partial: 'Partial',
 }
 
 let timer: NodeJS.Timeout | null = null

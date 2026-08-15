@@ -103,12 +103,13 @@ const pageTitle = computed(() => {
     <!-- Desktop sidebar -->
     <div class="fixed inset-y-0 left-0 z-40 hidden w-60 lg:block">
       <aside class="flex h-full w-60 flex-col border-r border-(--a-border) bg-(--a-sidebar) backdrop-blur-xl">
-        <div class="flex h-14 items-center gap-2 border-b border-(--a-border) px-4">
-          <img :src="logoUrl" alt="DigitalSMM" class="block h-9 w-auto object-contain" />
-          <span class="font-display text-base font-bold text-(--a-text)">
-            Digital<span class="text-gradient">SMM</span>
-            <span class="text-[10px] font-semibold text-(--a-muted-2)">ADMIN</span>
-          </span>
+        <div class="flex h-16 items-center justify-between border-b border-(--a-border) px-4">
+          <div class="flex items-center gap-2">
+            <img :src="logoUrl" alt="DigitalSMM" class="block h-12 w-auto object-contain" />
+            <span class="rounded-md bg-brand-500/15 px-2 py-0.5 text-[10px] font-bold tracking-wider text-brand-300">
+              ADMIN
+            </span>
+          </div>
         </div>
 
         <nav class="flex-1 space-y-4 overflow-y-auto px-2.5 py-3">
@@ -157,14 +158,13 @@ const pageTitle = computed(() => {
         <div class="absolute inset-0 bg-night/80 backdrop-blur-sm" @click="mobileOpen = false" />
         <div class="absolute inset-y-0 left-0">
           <aside class="flex h-full w-64 flex-col border-r border-(--a-border) bg-(--a-sidebar) backdrop-blur-xl">
-            <div class="flex h-14 items-center justify-between border-b border-(--a-border) px-4">
-              <span class="flex items-center gap-2">
-                <img :src="logoUrl" alt="DigitalSMM" class="block h-9 w-auto object-contain" />
-                <span class="font-display text-base font-bold text-(--a-text)">
-                  Digital<span class="text-gradient">SMM</span>
-                  <span class="text-[10px] font-semibold text-(--a-muted-2)">ADMIN</span>
+            <div class="flex h-16 items-center justify-between border-b border-(--a-border) px-4">
+              <div class="flex items-center gap-2">
+                <img :src="logoUrl" alt="DigitalSMM" class="block h-12 w-auto object-contain" />
+                <span class="rounded-md bg-brand-500/15 px-2 py-0.5 text-[10px] font-bold tracking-wider text-brand-300">
+                  ADMIN
                 </span>
-              </span>
+              </div>
               <button class="text-(--a-muted)" @click="mobileOpen = false"><X class="h-5 w-5" /></button>
             </div>
             <nav class="flex-1 space-y-4 overflow-y-auto px-2.5 py-3">

@@ -39,7 +39,7 @@ onMounted(() => {
 <template>
   <header class="glass-strong sticky top-0 z-30 border-b border-line">
     <div
-      class="flex h-14 items-center gap-2 px-4 sm:gap-2.5 sm:px-5"
+      class="flex h-16 items-center gap-3 px-4 sm:px-5"
     >
     <!-- Mobile: menu + brand -->
     <button
@@ -49,7 +49,7 @@ onMounted(() => {
     >
       <Menu class="h-5 w-5" />
     </button>
-    <BrandLogo size="sm" class="lg:hidden" />
+    <BrandLogo size="md" class="lg:hidden" />
 
     <!-- Desktop: current page title (a plain span — the page keeps its own h1) -->
     <div class="hidden min-w-0 lg:block">
