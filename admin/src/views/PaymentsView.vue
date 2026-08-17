@@ -42,14 +42,15 @@ const statCards = computed(() => [
 ])
 
 function userName(payment: Payment): string {
-  return typeof payment.user === 'object' ? (payment.user.name || payment.user.email) : '—'
+  if (!payment.user || typeof payment.user !== 'object') return '—'
+  return payment.user.name || payment.user.email || '—'
 }
 
 function orderInfo(payment: Payment): string {
   if (!payment.order || typeof payment.order !== 'object') return '—'
   const order = payment.order
   const num = order.orderNumber ? `#${order.orderNumber}` : ''
-  const service = typeof order.service === 'object' && order.service ? (order.service.name ?? '') : ''
+  const service = order.service && typeof order.service === 'object' ? (order.service.name ?? '') : ''
   return [num, service].filter(Boolean).join(' · ') || '—'
 }
 

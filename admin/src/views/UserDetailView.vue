@@ -50,7 +50,8 @@ function resolveOrderRef(payment: Payment): string {
   const o = payment.order
   if (!o) return '—'
   if (typeof o === 'string') return o
-  return o.orderNumber ? `#${o.orderNumber}` : (o.service && typeof o.service === 'object' && o.service.name ? o.service.name : o._id)
+  const sName = o.service && typeof o.service === 'object' ? (o.service.name ?? '') : ''
+  return o.orderNumber ? `#${o.orderNumber}` : (sName || o._id)
 }
 
 async function loadDetail(): Promise<void> {

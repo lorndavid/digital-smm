@@ -26,12 +26,14 @@ const updatingId = ref<string | null>(null)
 const statusOptions = ORDER_STATUSES.map((s) => ({ value: s, label: s }))
 
 function userName(order: Order): string {
-  return typeof order.user === 'object' ? (order.user.name || order.user.email) : '—'
+  if (!order.user || typeof order.user !== 'object') return '—'
+  return order.user.name || order.user.email || '—'
 }
 
 function serviceName(order: Order): string {
   const s = order.service
-  return s && typeof s === 'object' ? (s.name ?? 'Service') : 'Service'
+  if (!s || typeof s !== 'object') return 'Service'
+  return s.name ?? 'Service'
 }
 
 // ---------------------------------------------------------------------------
