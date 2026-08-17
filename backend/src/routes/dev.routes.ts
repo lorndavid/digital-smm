@@ -53,3 +53,17 @@ devRoutes.post(
     })
   }),
 )
+
+devRoutes.post(
+  '/dev/delete-service',
+  asyncHandler(async (req, res) => {
+    const { serviceId } = req.body as { serviceId?: string }
+    if (!serviceId) {
+      res.status(400).json({ error: 'serviceId is required' })
+      return
+    }
+    const { ServiceModel } = await import('../models/service.model.js')
+    const result = await ServiceModel.deleteOne({ _id: serviceId }).exec()
+    res.json({ deletedCount: result.deletedCount })
+  }),
+)

@@ -53,15 +53,23 @@ export function useOrderEvents(onEvent: (event: OrderLiveEvent) => void) {
   async function openStream(mySession: number): Promise<void> {
     if (stopped || mySession !== session) return
 
+    const token = getAuthToken()
+    if (!token) return
+
     const myController = new AbortController()
     controller = myController
     try {
       const res = await fetch(`${API_BASE}/orders/events`, {
-        headers: { Authorization: `Bearer ${getAuthToken() ?? ''}` },
+        headers: { Authorization: `Bearer ${token}` },
         signal: myController.signal,
         // An SSE stream must never be served from the browser cache.
         cache: 'no-store',
       })
+
+      if (res.status === 401 || res.status === 403) {
+        connected.value = false
+        return
+      }
 
       if (!res.ok || !res.body) throw new Error('SSE unavailable')
 

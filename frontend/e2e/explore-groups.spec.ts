@@ -119,9 +119,17 @@ async function pickService(page: import('@playwright/test').Page, name: string):
  * instead"), so the regression test must go through the same DB path the
  * provider sync uses. Connects to the newest digitalsmm_browsertest_* DB.
  */
-async function deleteServiceInDb(serviceId: string): Promise<void> {
-  // CI sets MONGODB_URI at the job level; locally it lives in backend/.env.
-  // backend/.env is gitignored, so CI must NOT read that file (ENOENT).
+async function deleteServiceInDb(request: APIRequestContext, serviceId: string): Promise<void> {
+  const res = await request.post(`${BACKEND}/api/dev/delete-service`, {
+    data: { serviceId },
+  })
+  if (res.ok()) {
+    const json = (await res.json()) as { deletedCount: number }
+    expect(json.deletedCount).toBe(1)
+    return
+  }
+
+  // Fallback to direct Mongo connection if dev route is not available
   let uri = process.env.MONGODB_URI ?? ''
   if (!uri) {
     const envPath = resolve(process.cwd(), '../backend/.env')
@@ -136,8 +144,6 @@ async function deleteServiceInDb(serviceId: string): Promise<void> {
     uri,
     'MONGODB_URI is required to hard-delete a service for the deleted-service regression test — set it in the environment (CI) or backend/.env (local)',
   ).toBeTruthy()
-  // Pin DNS servers — same fix as backend/src/config/database.ts (Atlas SRV
-  // lookups fail on some Windows/ISP networks otherwise).
   dns.setServers(['1.1.1.1', '8.8.8.8'])
   const { MongoClient, ObjectId } = await import('mongodb')
   const client = new MongoClient(uri, { serverSelectionTimeoutMS: 15000 })
@@ -150,7 +156,6 @@ async function deleteServiceInDb(serviceId: string): Promise<void> {
       .filter((name) => name.startsWith('digitalsmm_browsertest_'))
       .sort()
     expect(dbs.length).toBeGreaterThan(0)
-    // Newest test DB is the one the current webServer booted.
     const db = client.db(dbs[dbs.length - 1])
     const del = await db.collection('services').deleteOne({ _id: new ObjectId(serviceId) })
     expect(del.deletedCount).toBe(1)
@@ -865,7 +870,7 @@ test('orders whose service was deleted render gracefully (no null crash)', async
   // provider re-sync purge uses (the admin API refuses: "orders exist for
   // this service"). This is exactly the dangling-ref scenario from the
   // production crash.
-  await deleteServiceInDb(serviceId)
+  await deleteServiceInDb(request, serviceId)
 
   // Prove the dangling ref actually happened: the order's populated service
   // must now be null (Mongoose populate of a missing ref). If this assertion

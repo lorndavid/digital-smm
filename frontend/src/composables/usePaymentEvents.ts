@@ -69,9 +69,11 @@ export function usePaymentEvents(
   async function fetchSnapshot(): Promise<void> {
     const ref = reference()
     if (!ref || stopped) return
+    const token = getAuthToken()
+    if (!token) return
     try {
       const res = await fetch(`${API_BASE}/payment/status?reference=${encodeURIComponent(ref)}`, {
-        headers: { Authorization: `Bearer ${getAuthToken() ?? ''}` },
+        headers: { Authorization: `Bearer ${token}` },
         // Never let the browser HTTP cache answer a status poll — an ETag
         // 304 (or worse, a stale cached 200) can keep the page on 'pending'
         // even after the payment settled. Every poll must hit the backend.
@@ -79,6 +81,8 @@ export function usePaymentEvents(
       })
       if (res.ok) {
         applySnapshot((await res.json()) as PaymentStatusResponse)
+      } else if (res.status === 401 || res.status === 403) {
+        stopPolling()
       }
     } catch {
       /* polling continues; transient errors are non-fatal */
@@ -88,17 +92,25 @@ export function usePaymentEvents(
   async function openStream(mySession: number): Promise<void> {
     const ref = reference()
     if (!ref || stopped || mySession !== session) return
+    const token = getAuthToken()
+    if (!token) return
 
     const myController = new AbortController()
     controller = myController
     try {
       const res = await fetch(`${API_BASE}/payment/events?reference=${encodeURIComponent(ref)}`, {
-        headers: { Authorization: `Bearer ${getAuthToken() ?? ''}` },
+        headers: { Authorization: `Bearer ${token}` },
         signal: myController.signal,
         // Same rationale as polling: an SSE stream must never be served from
         // the browser cache (stale 'pending' forever). Always reach the app.
         cache: 'no-store',
       })
+
+      if (res.status === 401 || res.status === 403) {
+        connected.value = false
+        stopPolling()
+        return
+      }
 
       if (!res.ok || !res.body) throw new Error('SSE unavailable')
 

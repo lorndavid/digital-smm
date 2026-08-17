@@ -56,15 +56,24 @@ export class OrderRepository extends BaseRepository<Order> {
 
   /**
    * Atomically allocates the next human friendly order number using an
-   * upserted counter document.
+   * upserted counter document, guaranteed to exceed any existing orderNumber.
    */
   async nextOrderNumber(): Promise<number> {
+    const maxDoc = await OrderModel.findOne({}, { orderNumber: 1 }).sort({ orderNumber: -1 }).exec()
+    const maxExisting = maxDoc?.orderNumber && maxDoc.orderNumber > 0 ? maxDoc.orderNumber : 1000
+
     const doc = await SettingModel.findOneAndUpdate(
       { key: 'order_counter' },
       { $inc: { value: 1 } },
       { new: true, upsert: true },
     ).exec()
-    return Number(doc?.value ?? 1)
+
+    let nextVal = Number(doc?.value ?? 1001)
+    if (nextVal <= maxExisting) {
+      nextVal = maxExisting + 1
+      await SettingModel.updateOne({ key: 'order_counter' }, { $set: { value: nextVal } }).exec()
+    }
+    return nextVal
   }
 
   /** Orders still being delivered that are eligible for provider sync. */

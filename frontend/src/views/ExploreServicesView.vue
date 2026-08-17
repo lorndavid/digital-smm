@@ -202,7 +202,7 @@ async function loadServices(seq?: number): Promise<void> {
       search: query || undefined,
       category: query ? undefined : categoryId.value || undefined,
       platform: query ? undefined : platform.value || undefined,
-      limit: 1000,
+      limit: 250,
     })
     // Fast typing must never let a stale response overwrite newer results.
     if (seq !== undefined && seq !== searchSeq) {
@@ -266,22 +266,17 @@ function selectPlatform(p: string): void {
   void loadServices()
 }
 
-/** Whole catalogue (no category/platform/search filters) — the fallback list
- *  shown when the combobox is opened, so changing the service is never
- *  trapped inside the current category's filtered list. It also backs the
- *  ranked search, so it is fetched page by page until the full catalogue is
- *  covered — a provider catalogue larger than the 1,000-row API cap must not
- *  hide matching services from the search. */
-const allServices = ref<Service[]>([])
-let allServicesLoaded = false
-/** Highest page already merged into allServices (1-based) — a retry after a
- *  partial failure resumes from the next page instead of restarting. */
+/** Page size for catalogue batching — avoids huge single responses. */
+const CATALOGUE_PAGE_SIZE = 250
+
+/** Whole catalogue cache (shared across component re-mounts in same session). */
+const cachedAllServices: Service[] = []
+let globalCatalogueLoaded = false
+let globalCataloguePromise: Promise<void> | null = null
+
+const allServices = ref<Service[]>(cachedAllServices)
+let allServicesLoaded = globalCatalogueLoaded
 let allServicesPage = 0
-/**
- * In-flight guard: fast typing must never spawn a SECOND full pagination
- * loop while the first is still running (each loop is N × 1,000-row
- * requests). Concurrent callers share the same promise.
- */
 let allServicesPromise: Promise<void> | null = null
 
 /** Dedupe-append services into the cached full catalogue. */
@@ -297,30 +292,33 @@ function mergeAllServices(items: Service[]): void {
 /** Loads the FULL catalogue (every page). Idempotent + re-entrant: concurrent
  *  callers share one in-flight promise instead of firing duplicate loops. */
 function loadAllServices(): Promise<void> {
-  if (allServicesLoaded) return Promise.resolve()
-  if (!allServicesPromise) {
-    allServicesPromise = (async () => {
-      try {
-        const first = await servicesApi.list({ limit: 1000 })
-        // Commit page 1 immediately so a later failure never discards it.
-        mergeAllServices(first.items)
-        allServicesPage = Math.max(allServicesPage, 1)
-        const pages = Math.ceil(first.total / 1000)
-        for (let page = allServicesPage + 1; page <= pages; page++) {
-          const res = await servicesApi.list({ limit: 1000, page })
-          mergeAllServices(res.items)
-          allServicesPage = page
-        }
-        allServicesLoaded = true
-      } catch {
-        /* Keep whatever pages merged so far — a failed page never discards the
-           rest, and the union with the server list still fills the dropdown. */
+  if (globalCatalogueLoaded || allServicesLoaded) return Promise.resolve()
+  if (globalCataloguePromise) return globalCataloguePromise
+
+  allServicesPromise = (async () => {
+    try {
+      const first = await servicesApi.list({ limit: CATALOGUE_PAGE_SIZE })
+      // Commit page 1 immediately so a later failure never discards it.
+      mergeAllServices(first.items)
+      allServicesPage = Math.max(allServicesPage, 1)
+      const pages = Math.ceil(first.total / CATALOGUE_PAGE_SIZE)
+      for (let page = allServicesPage + 1; page <= pages; page++) {
+        const res = await servicesApi.list({ limit: CATALOGUE_PAGE_SIZE, page })
+        mergeAllServices(res.items)
+        allServicesPage = page
       }
-    })().finally(() => {
-      allServicesPromise = null
-    })
-  }
-  return allServicesPromise
+      allServicesLoaded = true
+      globalCatalogueLoaded = true
+    } catch {
+      /* Keep whatever pages merged so far — a failed page never discards the
+         rest, and the union with the server list still fills the dropdown. */
+    }
+  })().finally(() => {
+    allServicesPromise = null
+    globalCataloguePromise = null
+  })
+  globalCataloguePromise = allServicesPromise
+  return globalCataloguePromise
 }
 
 /**

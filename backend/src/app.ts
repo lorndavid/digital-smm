@@ -36,6 +36,13 @@ export function createApp() {
 
   app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'))
 
+  app.get('/', (_req, res) => {
+    res.json({ status: 'ok', service: 'DigitalSMM Backend', version: '1.0.0' })
+  })
+  app.get('/favicon.ico', (_req, res) => {
+    res.status(204).end()
+  })
+
   app.use('/api', apiRoutes)
 
   app.use(notFoundHandler)

@@ -148,7 +148,7 @@ export class ServiceRepository extends BaseRepository<Service> {
     }
 
     const page = params.page ?? 1
-    const limit = params.limit ?? 50
+    const limit = Math.min(params.limit ?? 50, 500)
     const skip = (page - 1) * limit
 
     // "Recommended" is the default storefront order: featured/trending services

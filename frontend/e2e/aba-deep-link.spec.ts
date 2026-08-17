@@ -41,14 +41,14 @@ async function installProbes(
   await page.addInitScript(({ touch }) => {
     ;(window as unknown as { __openCalls: { url: string; target: string; features: string }[] }).__openCalls = []
     // Spy window.open — the observable side effect of the hosted-checkout fallback.
-    window.open = (url: string, target?: string, features?: string) => {
+    window.open = ((url?: string | URL, target?: string, features?: string) => {
       ;(window as unknown as { __openCalls: { url: string; target: string; features: string }[] }).__openCalls.push({
-        url,
+        url: String(url ?? ''),
         target: target ?? '',
         features: features ?? '',
       })
       return null
-    }
+    }) as typeof window.open
     // Fake the touch-device media query so the ABA deep-link gate is
     // deterministic on any browser context (no device emulation needed).
     if (touch !== undefined) {
