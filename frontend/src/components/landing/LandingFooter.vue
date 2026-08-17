@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { Camera, MessageCircle, Play, ThumbsUp } from '@lucide/vue'
+import { useAuthStore } from '@/stores/auth.store'
 import BrandLogo from '../layout/BrandLogo.vue'
 
 interface FooterLink {
@@ -8,15 +10,22 @@ interface FooterLink {
   to?: string
 }
 
-const columns: { title: string; links: FooterLink[] }[] = [
+const authStore = useAuthStore()
+
+// 'Explore Services' is auth-aware like the navbar: signed-in users land in
+// their ordering console; visitors get the public SEO catalogue.
+const columns = computed<{ title: string; links: FooterLink[] }[]>(() => [
   {
     title: 'Product',
     links: [
-      { label: 'Explore Services', to: '/dashboard/services' },
+      {
+        label: 'Explore Services',
+        to: authStore.isSignedIn ? '/dashboard/services' : '/services',
+      },
+      { label: 'TikTok Services', to: '/services/tiktok' },
+      { label: 'Instagram Services', to: '/services/instagram' },
       { label: 'How It Works', to: '#how-it-works' },
       { label: 'Wallet & KHQR', to: '/dashboard/wallet' },
-      { label: 'API Access' },
-      { label: 'Affiliates' },
     ],
   },
   {
@@ -48,7 +57,7 @@ const columns: { title: string; links: FooterLink[] }[] = [
       { label: 'Cookies', to: '/cookies' },
     ],
   },
-]
+])
 
 // Social account links — swap these for the real handles whenever you have
 // them (one place to update, used by the icon row below).

@@ -5,6 +5,7 @@ import { useWalletStore } from '@/stores/wallet.store'
 import { paymentApi } from '@/api/payment.api'
 import { ApiRequestError } from '@/api/client'
 import { useToast } from '@/composables/useToast'
+import { event } from '@/analytics'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
@@ -87,6 +88,8 @@ const quickAmounts = [10, 25, 50, 100]
 onMounted(() => {
   void store.fetchWallet().catch(() => undefined)
   void paymentApi.history({ limit: 20 }).catch(() => undefined)
+  // Wallet page viewed (business-level only).
+  event('wallet_view', { signed_in: true })
 })
 </script>
 

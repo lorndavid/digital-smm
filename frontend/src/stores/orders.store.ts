@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { ordersApi, type CreateOrderInput } from '@/api/orders.api'
 import { ApiRequestError } from '@/api/client'
+import { event } from '@/analytics'
 import type { Order } from '@/types/models'
 
 export const useOrdersStore = defineStore('orders', () => {
@@ -32,8 +33,18 @@ export const useOrdersStore = defineStore('orders', () => {
   }
 
   async function placeOrder(input: CreateOrderInput): Promise<Order> {
+    // Wallet-funded order — backend confirmed the charge + placement.
     const order = await ordersApi.create(input)
     orders.value.unshift(order)
+    event('order_create', {
+      service_id: input.serviceId,
+      order_type: 'order',
+      currency: order.currency || 'USD',
+      value: order.totalPrice,
+      quantity: order.quantity,
+      order_status: order.status,
+      signed_in: true,
+    })
     return order
   }
 
@@ -52,7 +63,28 @@ export const useOrdersStore = defineStore('orders', () => {
   function applyOrderUpdate(patch: Partial<Order> & { _id: string }): Order | null {
     const index = orders.value.findIndex((o) => o._id === patch._id)
     if (index === -1) return null
-    orders.value[index] = { ...orders.value[index], ...patch, _id: patch._id }
+    const prev = orders.value[index]
+    orders.value[index] = { ...prev, ...patch, _id: patch._id }
+    // Order completed — tracked from real backend state (SSE push), once.
+    if (patch.status === 'Completed' && prev.status !== 'Completed') {
+      event('order_complete', {
+        service_id: typeof prev.service === 'string' ? prev.service : prev.service?._id,
+        order_type: 'order',
+        currency: prev.currency || 'USD',
+        value: prev.totalPrice,
+        order_status: 'Completed',
+      })
+    }
+    // Refunded — same backend-verified transition, once.
+    if (patch.status === 'Refunded' && prev.status !== 'Refunded') {
+      event('refund', {
+        service_id: typeof prev.service === 'string' ? prev.service : prev.service?._id,
+        order_type: 'order',
+        currency: prev.currency || 'USD',
+        value: prev.totalPrice,
+        order_status: 'Refunded',
+      })
+    }
     return orders.value[index]
   }
 

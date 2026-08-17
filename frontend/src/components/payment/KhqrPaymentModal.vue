@@ -11,6 +11,7 @@ import {
 import { paymentApi, type PaymentStatusResponse } from '@/api/payment.api'
 import { usePaymentEvents, type PaymentLiveEvent } from '@/composables/usePaymentEvents'
 import { useToast } from '@/composables/useToast'
+import { event } from '@/analytics'
 import { formatMoney } from '@/utils/format'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import type { Payment } from '@/types/models'
@@ -153,13 +154,29 @@ function celebrate(): void {
   })
 }
 
-/** Guards the once-per-payment success path (SSE + poll can both fire). */
+/** Guards the once-per-payment success path (SSE + poll can both fire).
+ *  This is the VERIFIED path: the backend confirmed the charge with the
+ *  provider, so firing `payment_success` here is backed by real state. */
 function handlePaid(): void {
   if (settled || !props.payment) return
   settled = true
   successShown.value = true
   celebrate()
   toast.success(`${formatMoney(props.payment.amount)} added to your wallet`)
+  event('payment_success', {
+    order_type: props.payment.purpose,
+    currency: props.payment.currency || 'USD',
+    value: props.payment.amount,
+    provider: props.payment.provider,
+    payment_status: 'paid',
+  })
+  if (props.payment.purpose === 'topup') {
+    event('wallet_topup_success', {
+      currency: props.payment.currency || 'USD',
+      value: props.payment.amount,
+      provider: props.payment.provider,
+    })
+  }
   emit('paid', props.payment)
   startAutoClose()
 }

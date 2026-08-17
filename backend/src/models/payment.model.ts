@@ -34,4 +34,16 @@ const paymentSchema = new Schema(
 export type Payment = InferSchemaType<typeof paymentSchema>
 export type PaymentDoc = HydratedDocument<Payment>
 
+// Analytics + status queries: paid revenue by approved date, and the admin
+// payments list filtered by status + created date.
+paymentSchema.index({ status: 1, approvedAt: -1 })
+paymentSchema.index({ status: 1, createdAt: -1 })
+paymentSchema.index({ user: 1, createdAt: -1 })
+
+paymentSchema.index({ user: 1, status: 1 })
+
+// Provider lookups (webhook idempotency) — exact matches, high traffic.
+paymentSchema.index({ providerPaymentId: 1 })
+paymentSchema.index({ order: 1, status: 1 })
+
 export const PaymentModel = model('Payment', paymentSchema)

@@ -78,7 +78,11 @@ export async function exchangeGoogleCode(code: string, state: string, codeVerifi
   }
 
   // Find-or-create the local user (legacy Clerk-era accounts are adopted by
-  // email so orders and wallets are preserved).
+  // email so orders and wallets are preserved). `isNewUser` lets the
+  // frontend fire a real `sign_up` analytics event only when an account was
+  // actually created — not on every login.
+  const existing = await userRepository.findByProviderId(profile.sub)
+  const isNewUser = !existing && !(await userRepository.findOne({ email: profile.email }))
   const user = await userRepository.upsertFromGoogle(profile)
   const token = await signCustomerToken({
     id: user._id.toString(),
@@ -93,6 +97,7 @@ export async function exchangeGoogleCode(code: string, state: string, codeVerifi
     expiresAt: sessionExpiry(token),
     user: serializeUser(user),
     redirect,
+    isNewUser,
   }
 }
 

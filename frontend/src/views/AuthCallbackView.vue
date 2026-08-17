@@ -5,6 +5,7 @@ import { AlertCircle, ArrowLeft, Loader2, LogIn } from '@lucide/vue'
 import { authApi } from '@/api/auth.api'
 import { useAuthStore } from '@/stores/auth.store'
 import { takePkceVerifier } from '@/utils/pkce'
+import { event } from '@/analytics'
 import BrandLogo from '@/components/layout/BrandLogo.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 
@@ -64,6 +65,12 @@ onMounted(async () => {
   try {
     const result = await authApi.exchangeGoogle(code, stateParam, verifier)
     authStore.setSession(result.token, result.user)
+    // Business-level analytics only: whether the account is brand new or
+    // returning is the only identity signal that leaves the browser.
+    event(result.isNewUser ? 'sign_up' : 'login', {
+      result: 'success',
+      signed_in: true,
+    })
     // Replace the URL to strip the ?code&state params — prevents re-exchange
     // on refresh and avoids leaking auth codes in browser history.
     await router.replace(safeRedirect(result.redirect))

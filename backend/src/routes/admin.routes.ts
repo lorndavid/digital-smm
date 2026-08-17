@@ -20,6 +20,14 @@ adminRoutes.get('/admin/auth/me', adminController.me)
 adminRoutes.get('/admin/stats', adminController.dashboard)
 adminRoutes.post('/admin/services/sync', adminController.syncServices)
 
+// Analytics (database-backed)
+adminRoutes.get('/admin/analytics/revenue', adminController.analyticsRevenue)
+adminRoutes.get('/admin/analytics/overview', adminController.analyticsOverview)
+adminRoutes.get('/admin/analytics/services', adminController.analyticsServices)
+
+// System health
+adminRoutes.get('/admin/system/health', adminController.systemHealth)
+
 // Services
 adminRoutes.get('/admin/services', ...adminController.listServices)
 adminRoutes.post('/admin/services', ...adminController.createService)

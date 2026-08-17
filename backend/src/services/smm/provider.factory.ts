@@ -1,5 +1,6 @@
 import { env } from '../../config/env.js'
 import type { SmmProvider } from '../../interfaces/smm-provider.interface.js'
+import { monitorSmmProvider } from '../monitoring/smm-monitor.js'
 import { MockProvider } from './mock.provider.js'
 import { SmmWizProvider } from './smmwiz.provider.js'
 
@@ -13,7 +14,9 @@ const instances = new Map<string, SmmProvider>()
 /**
  * Returns the configured SMM provider by name.
  * Each provider is instantiated once and cached for the lifetime of the
- * process so connections / caches inside the provider are reused.
+ * process so connections / caches inside the provider are reused. Every
+ * instance is wrapped with the SMM monitoring layer (structured logs with
+ * duration + result — see services/monitoring/smm-monitor.ts).
  *
  * Register additional providers in the `providers` map above.
  */
@@ -26,7 +29,7 @@ export function getSmmProvider(key?: string): SmmProvider {
   if (!factory) {
     throw new Error(`[provider.factory] Unknown SMM provider: ${providerKey}`)
   }
-  const instance = factory()
+  const instance = monitorSmmProvider(factory())
   instances.set(providerKey, instance)
   return instance
 }

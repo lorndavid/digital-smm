@@ -34,4 +34,9 @@ const serviceSchema = new Schema(
 export type Service = InferSchemaType<typeof serviceSchema>
 export type ServiceDoc = HydratedDocument<Service>
 
+// Storefront catalog reads: active services by category + provider, and the
+// SEO sitemap query (all active services).
+serviceSchema.index({ isActive: 1, category: 1, sortOrder: 1 })
+serviceSchema.index({ provider: 1, providerServiceId: 1 })
+
 export const ServiceModel = model('Service', serviceSchema)

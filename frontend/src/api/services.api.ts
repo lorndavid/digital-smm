@@ -32,6 +32,12 @@ export const servicesApi = {
     return data
   },
 
+  /** Single ACTIVE service (public SEO pages). Throws 404 when hidden/missing. */
+  async get(id: string): Promise<Service> {
+    const { data } = await apiClient.get<Service>(`/services/${id}`)
+    return data
+  },
+
   async categories(params: { curated?: boolean } = {}): Promise<Category[]> {
     const { data } = await apiClient.get<Category[]>('/categories', {
       params: params.curated === undefined ? {} : { curated: String(params.curated) },

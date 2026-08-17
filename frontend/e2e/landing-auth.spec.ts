@@ -117,16 +117,21 @@ test('legal footer links open the legal pages', async ({ page }) => {
   }
 })
 
-test('navbar Services routes signed-out users into the sign-in flow', async ({
+test('navbar Services shows signed-out users the public catalogue', async ({
   page,
 }) => {
   await page.goto('/')
   const nav = page.locator('header')
 
-  // Clicking Services as a guest goes through the auth guard, which
-  // sends them to sign-in with a redirect back to the catalog.
+  // Clicking Services as a guest opens the public SEO catalogue (no sign-in
+  // wall) so visitors can browse before creating an account. Signed-in users
+  // get the auth-gated dashboard catalog instead — covered in the signed-in
+  // tests below.
   await nav.getByRole('link', { name: 'Services', exact: true }).click()
-  await expect(page).toHaveURL(/\/sign-in\?redirect=\/dashboard\/services/)
+  await expect(page).toHaveURL(/\/services/)
+  await expect(
+    page.getByRole('heading', { name: 'Social media growth services', level: 1 }),
+  ).toBeVisible()
 
   // In-page section anchors still scroll (fixed header no longer covers them).
   await page.goto('/')

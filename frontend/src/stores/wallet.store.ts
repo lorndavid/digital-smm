@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { paymentApi } from '@/api/payment.api'
 import { profileApi } from '@/api/profile.api'
 import { ApiRequestError } from '@/api/client'
+import { event } from '@/analytics'
 import type { Payment, Wallet } from '@/types/models'
 
 export const useWalletStore = defineStore('wallet', () => {
@@ -38,7 +39,19 @@ export const useWalletStore = defineStore('wallet', () => {
 
   /** Generates a KHQR payment for a top-up. Returns the created payment. */
   async function topUp(amount: number): Promise<Payment> {
+    // UI intent (frontend truth) — financial truth comes from backend state.
+    event('wallet_topup_start', {
+      order_type: 'topup',
+      currency: 'USD',
+      value: amount,
+    })
     const { payment } = await paymentApi.create({ purpose: 'topup', amount })
+    event('payment_create', {
+      order_type: 'topup',
+      currency: 'USD',
+      value: amount,
+      provider: payment.provider,
+    })
     return payment
   }
 

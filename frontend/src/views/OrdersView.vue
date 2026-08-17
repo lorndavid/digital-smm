@@ -14,6 +14,7 @@ import { useOrdersStore } from '@/stores/orders.store'
 import { ordersApi } from '@/api/orders.api'
 import { paymentApi } from '@/api/payment.api'
 import { useToast } from '@/composables/useToast'
+import { event } from '@/analytics'
 import { useOrderEvents } from '@/composables/useOrderEvents'
 import { detectPlatform, type DetectedPlatform } from '@/utils/linkValidation'
 import { buildOrderAgainQuery } from '@/utils/orderPrefill'
@@ -221,6 +222,13 @@ async function payOrder(order: Order): Promise<void> {
   actionId.value = order._id
   try {
     const { payment } = await paymentApi.create({ purpose: 'order', orderId: order._id })
+    // Provider returned an order payment — backend-confirmed business state.
+    event('payment_create', {
+      order_type: 'order',
+      currency: payment.currency || 'USD',
+      value: payment.amount,
+      provider: payment.provider,
+    })
     await router.push(`/pay/${payment.referenceId}`)
   } catch (err) {
     toast.error(err instanceof Error ? err.message : 'Failed to start payment')

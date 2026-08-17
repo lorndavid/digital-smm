@@ -114,13 +114,36 @@ export class PaymentService {
             params: order?.params ?? {},
           }
 
-    const result = await this.provider.createPayment({
-      amount,
-      currency: 'USD',
-      referenceId,
-      description: options.purpose === 'topup' ? 'Wallet top-up' : 'Service order',
-      metadata,
-    })
+    const startedAt = Date.now()
+    let result: Awaited<ReturnType<PaymentProvider['createPayment']>>
+    try {
+      result = await this.provider.createPayment({
+        amount,
+        currency: 'USD',
+        referenceId,
+        description: options.purpose === 'topup' ? 'Wallet top-up' : 'Service order',
+        metadata,
+      })
+      logger.info('[payment] createPayment provider ok', {
+        reference: referenceId,
+        provider: this.provider.name,
+        purpose: options.purpose,
+        amount,
+        duration_ms: Date.now() - startedAt,
+        result: 'success',
+      })
+    } catch (err) {
+      logger.error('[payment] createPayment provider failed', {
+        reference: referenceId,
+        provider: this.provider.name,
+        purpose: options.purpose,
+        amount,
+        duration_ms: Date.now() - startedAt,
+        result: 'error',
+        error: err instanceof Error ? err.message : String(err),
+      })
+      throw err
+    }
 
     const payment = await paymentRepository.create({
       user: userId as unknown as Types.ObjectId,
@@ -198,10 +221,24 @@ export class PaymentService {
     // app already settled the charge.
     if (!force && !providerSyncCache.isDue(payment._id.toString())) return
     let providerStatus: ProviderPaymentStatus
+    const startedAt = Date.now()
     try {
       providerStatus = await this.provider.getPayment(payment.providerPaymentId)
+      logger.info('[payment] provider status check ok', {
+        reference: payment.referenceId,
+        provider: this.provider.name,
+        status: providerStatus.status,
+        duration_ms: Date.now() - startedAt,
+        result: 'success',
+      })
     } catch (err) {
-      logger.warn(`[payment] provider status check failed for ${payment.referenceId}`, err)
+      logger.warn('[payment] provider status check failed', {
+        reference: payment.referenceId,
+        provider: this.provider.name,
+        duration_ms: Date.now() - startedAt,
+        result: 'error',
+        error: err instanceof Error ? err.message : String(err),
+      })
       return
     }
     // Record only after a SUCCESSFUL call — transient provider errors retry
@@ -268,6 +305,15 @@ export class PaymentService {
         : null
       return { payment: fresh ?? payment, order }
     }
+
+    logger.info('[payment] fulfilled', {
+      reference: payment.referenceId,
+      provider: this.provider.name,
+      purpose: payment.purpose,
+      amount: payment.amount,
+      orderId: payment.order ? payment.order.toString() : null,
+      result: 'success',
+    })
 
     payment.status = 'paid'
     payment.approvedAt = new Date()
@@ -351,9 +397,22 @@ export class PaymentService {
       payment = await paymentRepository.findByReferenceId(input.referenceId)
     }
     if (!payment) {
-      logger.warn(`[payment] webhook for unknown payment (provider=${input.provider}, event=${event.type})`)
+      logger.warn('[payment] webhook for unknown payment', {
+        provider: input.provider,
+        event: event.type,
+        reference: input.referenceId ?? null,
+        result: 'ignored',
+      })
       return { payment: null, order: null }
     }
+
+    logger.info('[payment] webhook processed', {
+      reference: payment.referenceId,
+      provider: input.provider,
+      event: event.type,
+      status: event.status,
+      result: 'processed',
+    })
 
     await this.applyProviderStatus(payment, { status: event.status })
     const order = payment.order ? await this.loadOrderForFulfillment(payment.order.toString()) : null

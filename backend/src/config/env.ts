@@ -90,6 +90,10 @@ const envSchema = z.object({
   ABAPAYWAY_API_KEY: z.string().optional(),
   ABAPAYWAY_RETURN_URL: z.string().default('http://localhost:5173/dashboard/wallet'),
 
+  // Sentry error monitoring (optional — leave DSN empty to disable).
+  SENTRY_DSN: optionalString(z.url()),
+  SENTRY_ENVIRONMENT: z.string().default(process.env.NODE_ENV ?? 'development'),
+
   // Rate limiting
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(15 * 60 * 1000),
   RATE_LIMIT_MAX: z.coerce.number().default(3000),

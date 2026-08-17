@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#050816"/>
+      <stop offset="0.55" stop-color="#1b1340"/>
+      <stop offset="1" stop-color="#0a2a3a"/>
+    </linearGradient>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6C3BFF"/>
+      <stop offset="0.55" stop-color="#3B82F6"/>
+      <stop offset="1" stop-color="#00E5FF"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="1050" cy="90" r="260" fill="#6C3BFF" opacity="0.16"/>
+  <circle cx="150" cy="560" r="240" fill="#00E5FF" opacity="0.12"/>
+  <rect x="120" y="150" width="92" height="92" rx="24" fill="url(#brand)"/>
+  <path d="M148 180 L196 196 L148 212 Z" fill="#ffffff"/>
+  <text x="120" y="320" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="bold" fill="#ffffff">DigitalSMM</text>
+  <text x="120" y="375" font-family="Arial, Helvetica, sans-serif" font-size="30" fill="#9aa3c0">Buy real TikTok, Facebook, Instagram, YouTube</text>
+  <text x="120" y="415" font-family="Arial, Helvetica, sans-serif" font-size="30" fill="#9aa3c0">and Telegram growth — instant delivery, KHQR payments.</text>
+  <text x="120" y="500" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#00E5FF">digitalsmm.shop</text>
+</svg>

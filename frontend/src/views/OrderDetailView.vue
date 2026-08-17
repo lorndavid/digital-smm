@@ -21,6 +21,7 @@ import {
 } from '@lucide/vue'
 import { ordersApi } from '@/api/orders.api'
 import { paymentApi, type PaymentStatusResponse } from '@/api/payment.api'
+import { event } from '@/analytics'
 import { usePaymentEvents, type PaymentLiveEvent } from '@/composables/usePaymentEvents'
 import { useOrderEvents } from '@/composables/useOrderEvents'
 import { useToast } from '@/composables/useToast'
@@ -353,6 +354,13 @@ async function startPay(): Promise<void> {
   try {
     const snap = await paymentApi.create({ purpose: 'order', orderId: order.value._id })
     payment.value = snap.payment
+    // Provider returned an order payment — backend-confirmed business state.
+    event('payment_create', {
+      order_type: 'order',
+      currency: snap.payment.currency || 'USD',
+      value: snap.payment.amount,
+      provider: snap.payment.provider,
+    })
     startClock()
     await events.start()
   } catch (err) {

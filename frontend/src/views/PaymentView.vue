@@ -20,6 +20,7 @@ import {
 import { paymentApi, type PaymentStatusResponse } from '@/api/payment.api'
 import { usePaymentEvents, type PaymentLiveEvent } from '@/composables/usePaymentEvents'
 import { useToast } from '@/composables/useToast'
+import { event } from '@/analytics'
 import { formatMoney, formatNumber, orderServiceName } from '@/utils/format'
 import { buildAbaDeepLink, isTouchDevice } from '@/utils/deepLink'
 import { detectPlatform, type DetectedPlatform } from '@/utils/linkValidation'
@@ -78,7 +79,17 @@ function stopCloseCountdown(): void {
 
 watch(status, (s) => {
   if (manualCancel.value) return
-  if ((s === 'expired' || s === 'failed') && !isPaid.value) startCloseCountdown()
+  if ((s === 'expired' || s === 'failed') && !isPaid.value) {
+    // Backend-verified terminal state — track the failure/expiry once.
+    event(s === 'expired' ? 'payment_expired' : 'payment_failed', {
+      order_type: payment.value?.purpose,
+      currency: payment.value?.currency || 'USD',
+      value: payment.value?.amount,
+      provider: payment.value?.provider,
+      payment_status: s,
+    })
+    startCloseCountdown()
+  }
 })
 
 // ---------------------------------------------------------------------------
@@ -157,6 +168,33 @@ const REDIRECT_AFTER_S = 6
 function showSuccess(): void {
   if (successToastShown.value) return
   successToastShown.value = true
+
+  // Backend-verified: the provider confirmed the charge, so this is a real
+  // `payment_success`, not a button click. Safe business fields only.
+  event('payment_success', {
+    order_type: payment.value?.purpose,
+    currency: payment.value?.currency || 'USD',
+    value: payment.value?.amount,
+    provider: payment.value?.provider,
+    payment_status: 'paid',
+  })
+  if (payment.value?.purpose === 'order') {
+    event('order_create', {
+      order_type: 'order',
+      currency: payment.value?.currency || 'USD',
+      value: payment.value?.amount,
+      provider: payment.value?.provider,
+      signed_in: true,
+    })
+  } else if (payment.value?.purpose === 'topup') {
+    // Mirror the wallet modal: a top-up settled on the full checkout page is
+    // still a verified wallet credit.
+    event('wallet_topup_success', {
+      currency: payment.value?.currency || 'USD',
+      value: payment.value?.amount,
+      provider: payment.value?.provider,
+    })
+  }
 
   celebrate()
 

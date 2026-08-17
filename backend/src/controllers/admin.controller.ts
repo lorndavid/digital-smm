@@ -2,7 +2,13 @@ import { asyncHandler } from '../utils/async-handler.js'
 import { ApiError } from '../utils/api-error.js'
 import { toCsv } from '../utils/csv.js'
 import { adminService } from '../services/admin.service.js'
+import { analyticsService, type AnalyticsRange } from '../services/analytics.service.js'
 import { orderService } from '../services/order.service.js'
+import { metricsStore } from '../services/monitoring/metrics.store.js'
+import { getRedisClient } from '../services/redis/redis.client.js'
+import { isDatabaseConnected } from '../config/database.js'
+import { env } from '../config/env.js'
+import { getSmmProvider } from '../services/smm/provider.factory.js'
 import {
   announcementRepository,
   categoryRepository,
@@ -67,6 +73,86 @@ export const adminController = {
 
   syncServices: asyncHandler(async (_req, res) => {
     res.json(await adminService.syncProviderServices())
+  }),
+
+  // ------------------------------------------------------------------
+  // Analytics (database is the source of truth — never GA4)
+  // ------------------------------------------------------------------
+
+  analyticsRevenue: asyncHandler(async (req, res) => {
+    const { range = '30d', start, end } = req.query
+    res.json(
+      await analyticsService.revenue(
+        range as AnalyticsRange,
+        typeof start === 'string' ? start : undefined,
+        typeof end === 'string' ? end : undefined,
+      ),
+    )
+  }),
+
+  analyticsOverview: asyncHandler(async (req, res) => {
+    const { range = '30d', start, end } = req.query
+    res.json(
+      await analyticsService.overview(
+        range as AnalyticsRange,
+        typeof start === 'string' ? start : undefined,
+        typeof end === 'string' ? end : undefined,
+      ),
+    )
+  }),
+
+  analyticsServices: asyncHandler(async (req, res) => {
+    const { range = '30d', start, end } = req.query
+    res.json(
+      await analyticsService.services(
+        range as AnalyticsRange,
+        typeof start === 'string' ? start : undefined,
+        typeof end === 'string' ? end : undefined,
+      ),
+    )
+  }),
+
+  // ------------------------------------------------------------------
+  // System health (admin System Health page) — never exposes secrets
+  // ------------------------------------------------------------------
+
+  systemHealth: asyncHandler(async (_req, res) => {
+    const dbOk = isDatabaseConnected()
+    const redisConfigured = Boolean(env.REDIS_URL)
+    const redisOk = redisConfigured ? Boolean(await getRedisClient()) : true
+
+    // SMM provider availability — advisory only, best effort.
+    let smmOk = true
+    let smmError: string | null = null
+    if (env.SMM_PROVIDER === 'smmwiz') {
+      try {
+        await getSmmProvider().getBalance()
+      } catch (err) {
+        smmOk = false
+        smmError = err instanceof Error ? err.message : 'unavailable'
+      }
+    }
+
+    const metrics = metricsStore.summary()
+    res.json({
+      status: dbOk && (redisOk || !redisConfigured) ? 'ok' : 'degraded',
+      service: 'digitalsmm-backend',
+      version: '1.0.0',
+      environment: env.NODE_ENV,
+      sentryEnabled: Boolean(env.SENTRY_DSN),
+      dependencies: {
+        mongodb: { status: dbOk ? 'ok' : 'down' },
+        redis: { status: redisConfigured ? (redisOk ? 'ok' : 'down') : 'not-configured' },
+        smmProvider: {
+          status: smmOk ? 'ok' : 'degraded',
+          provider: env.SMM_PROVIDER,
+          ...(smmError ? { error: smmError.slice(0, 200) } : {}),
+        },
+        paymentProvider: { status: 'ok', provider: env.PAYMENT_PROVIDER },
+      },
+      metrics,
+      time: new Date().toISOString(),
+    })
   }),
 
   // ------------------------------------------------------------------

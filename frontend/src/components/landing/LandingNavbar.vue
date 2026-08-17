@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowRight, Menu, Package, Settings, User, Wallet, X } from '@lucide/vue'
 import { useAuthStore } from '@/stores/auth.store'
@@ -30,16 +30,20 @@ onUnmounted(() => {
   window.removeEventListener('scroll', onScroll)
 })
 
-// Section links scroll in-page; 'Services' navigates to the real catalog.
-// It is auth-gated, so the router guard smooth-redirects signed-out users
-// to /sign-in?redirect=/dashboard/services and back after they sign in.
-const links: { label: string; href?: string; to?: string }[] = [
+// Section links scroll in-page. 'Services' is auth-aware: signed-in users go
+// to their ordering console (/dashboard/services); signed-out visitors get the
+// public SEO catalogue (/services) so they can browse before creating an
+// account. Both destinations are guarded appropriately by the router.
+const links = computed<{ label: string; href?: string; to?: string }[]>(() => [
   { label: 'Home', href: '#home' },
-  { label: 'Services', to: '/dashboard/services' },
+  {
+    label: 'Services',
+    to: authStore.isSignedIn ? '/dashboard/services' : '/services',
+  },
   { label: 'How it works', href: '#how-it-works' },
   { label: 'FAQ', href: '#faq' },
   { label: 'Contact', href: '#contact' },
-]
+])
 
 function go(to: string): void {
   mobileOpen.value = false

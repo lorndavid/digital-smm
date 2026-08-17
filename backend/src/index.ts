@@ -1,6 +1,7 @@
 import { createApp } from './app.js'
 import { env } from './config/env.js'
 import { connectDatabase, disconnectDatabase } from './config/database.js'
+import { initSentry } from './config/sentry.js'
 import { startOrderSyncJob, stopOrderSyncJob } from './jobs/order-sync.job.js'
 import { shutdownRedis } from './services/payment/events.bus.js'
 import { shutdownOrderRedis } from './services/order/events.bus.js'
@@ -9,6 +10,9 @@ import { seedSuperAdmin } from './services/admin-auth.service.js'
 import { logger } from './utils/logger.js'
 
 async function bootstrap(): Promise<void> {
+  // Start error monitoring first so boot failures are captured too.
+  initSentry()
+
   await connectDatabase()
   await seedSuperAdmin()
 

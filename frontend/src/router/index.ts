@@ -15,6 +15,22 @@ const routes: RouteRecordRaw[] = [
     meta: { guestOnly: true },
   },
   {
+    // Public SEO pages — real catalogue data, crawlable, no auth.
+    path: '/services',
+    name: 'public-services',
+    component: () => import('@/views/PublicServicesIndexView.vue'),
+  },
+  {
+    path: '/services/:platform',
+    name: 'public-platform',
+    component: () => import('@/views/PublicPlatformView.vue'),
+  },
+  {
+    path: '/service/:id',
+    name: 'public-service',
+    component: () => import('@/views/PublicServiceView.vue'),
+  },
+  {
     // Google redirects here after consent (?code=…&state=…). The view
     // exchanges the code, stores the session and continues to the dashboard.
     path: '/auth/callback',

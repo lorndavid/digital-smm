@@ -224,3 +224,79 @@ export interface SyncResult {
   total: number
 }
 
+export type AnalyticsRange =
+  | 'today'
+  | '7d'
+  | '30d'
+  | '90d'
+  | 'this_month'
+  | 'last_month'
+  | 'custom'
+
+export interface RevenueAnalytics {
+  range: AnalyticsRange
+  start: string
+  end: string
+  totalRevenue: number
+  successfulPayments: number
+  failedPayments: number
+  refunds: number
+  averageOrderValue: number
+  byPurpose: Record<string, { total: number; count: number }>
+}
+
+export interface OverviewAnalytics {
+  range: AnalyticsRange
+  start: string
+  end: string
+  orders: number
+  users: number
+  paidOrders: number
+  conversionRate: number
+  ordersByStatus: Array<{ _id: string; count: number }>
+}
+
+export interface ServicesAnalytics {
+  range: AnalyticsRange
+  start: string
+  end: string
+  topServices: Array<{ serviceName: string; count: number; revenue: number }>
+  byPlatform: Array<{ _id: string; orders: number; revenue: number }>
+  totalServices: number
+  totalCategories: number
+}
+
+/** Dependency status for the System Health page. */
+export type DependencyStatus = 'ok' | 'down' | 'degraded' | 'not-configured'
+
+export interface SystemHealth {
+  status: 'ok' | 'degraded' | 'unavailable'
+  service: string
+  version: string
+  environment: string
+  sentryEnabled: boolean
+  dependencies: {
+    mongodb: { status: DependencyStatus }
+    redis: { status: DependencyStatus }
+    smmProvider: { status: DependencyStatus; provider?: string; error?: string }
+    paymentProvider: { status: DependencyStatus; provider?: string }
+  }
+  metrics: {
+    startedAt: string
+    uptimeSeconds: number
+    totalRequests: number
+    totalErrors: number
+    errorRate: number
+    latency: { p50: number; p95: number; p99: number }
+    topRoutes: Array<{
+      method: string
+      route: string
+      count: number
+      errorCount: number
+      lastDurationMs: number
+      lastErrorAt: string | null
+    }>
+  }
+  time: string
+}
+

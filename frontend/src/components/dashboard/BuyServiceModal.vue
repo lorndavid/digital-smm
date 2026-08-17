@@ -12,6 +12,7 @@ import {
 import type { Category, Service } from '@/types/models'
 import { ordersApi } from '@/api/orders.api'
 import { ApiRequestError } from '@/api/client'
+import { event } from '@/analytics'
 import { useWalletStore } from '@/stores/wallet.store'
 import { formatMoney, formatNumber, formatUnitPrice } from '@/utils/format'
 import { SERVICE_TYPE_LABEL } from '@/utils/constants'
@@ -211,11 +212,31 @@ async function placeOrder(): Promise<void> {
   submitting.value = true
   error.value = ''
   try {
+    // UI intent (frontend truth) — financial truth comes from backend state.
+    event('order_start', {
+      service_id: service._id,
+      service_type: service.type,
+      platform: servicePlatform.value,
+      currency: 'USD',
+      value: totalPrice.value,
+      quantity: quantity.value ?? undefined,
+      signed_in: true,
+    })
     const order = await ordersApi.create({
       serviceId: service._id,
       link: link.value.trim() || undefined,
       quantity: quantity.value ?? undefined,
       params: { ...params },
+    })
+    // Backend confirmed the order — track the creation once.
+    event('order_create', {
+      service_id: service._id,
+      order_type: 'order',
+      currency: order.currency || 'USD',
+      value: order.totalPrice,
+      quantity: order.quantity,
+      order_status: order.status,
+      signed_in: true,
     })
     emit('close')
     toast.success('Order placed — track it from your orders')

@@ -418,13 +418,59 @@ tests (health, 404 vs 401 behaviour, auth guards, CORS).
 
 ## SEO
 
-The frontend ships `public/favicon.svg`, `public/robots.txt` and `public/sitemap.xml`
-along with Open Graph / Twitter meta tags in `index.html`. Update the domain in
-`public/sitemap.xml` before going live.
+The frontend ships a centralized SEO layer (`frontend/src/seo/`) that drives
+`<title>`, meta tags, canonical URLs, Open Graph / Twitter cards and JSON-LD
+schema (Organization, WebSite, BreadcrumbList, Product) per route. Public,
+SEO-friendly service pages exist at `/services`, `/services/:platform` and
+`/service/:id` (real catalogue data only).
+
+- `public/robots.txt` — public routes allowed; private routes disallowed.
+- `public/sitemap.xml` — regenerated from the live catalogue at build time:
+  ```bash
+  npm run sitemap:generate -w frontend
+  npm run build:seo -w frontend   # sitemap + build in one step
+  ```
+- See `docs/seo.md` and `docs/sitemap.md`.
+
+## Analytics
+
+GA4 is integrated behind a typed, privacy-filtered abstraction
+(`frontend/src/analytics/`). Set `VITE_GA_MEASUREMENT_ID` (+ `VITE_APP_ENV`);
+page views are tracked centrally via the router, and financial events
+(`payment_success`, `order_complete`, …) fire only from **backend-verified
+state**, never button clicks. See `docs/analytics.md` and
+`docs/analytics-events.md`.
+
+## Monitoring
+
+- **Frontend RUM** — LCP/CLS/INP/TTFB → analytics (`frontend/src/monitoring/`).
+- **Sentry** — backend (`SENTRY_DSN`) + frontends (`VITE_SENTRY_DSN`).
+- **Backend request metrics** — `/api/health/metrics` (p50/p95/p99, top routes).
+- **Structured logs** — JSON with per-request `requestId` (correlated to Sentry).
+- **Health endpoints** — `/api/health` (liveness), `/api/ready` (readiness),
+  `/api/health/deps` (dependency detail).
+- **Admin UI** — Admin → Insights → Analytics and Admin → System → System Health.
+
+See `docs/monitoring.md` and `docs/health-checks.md`.
+
+## Production readiness
+
+Everything is implemented in the repo; the external dashboards (Cloudflare,
+Vercel, GA, Search Console, Sentry, uptime) are **manual** — follow the step-
+by-step guides in `docs/manual-setup/` (01–07) and `docs/deployment.md`.
 
 ## Deployment
 
 - **Frontend / Admin** → Vercel (set the `VITE_*` env vars; point `VITE_API_BASE_URL` at
-  the deployed backend).
+  the deployed backend; build with `npm run build:seo`).
 - **Backend** → any VPS / container host. Build with `npm run build -w backend`, run
   `npm run start`. Enable the order-sync job with `ENABLE_ORDER_SYNC_JOB=true`.
+  Set `SENTRY_DSN` for error monitoring.
+
+## Tests
+
+```bash
+npm test              # backend unit + API tests (vitest + supertest)
+npm test -w frontend  # frontend SEO / analytics / schema unit tests (vitest)
+npm run test:e2e      # Playwright browser tests (see Scripts)
+```

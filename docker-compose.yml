@@ -87,6 +87,9 @@ services:
       CUTLUY_API_URL: https://cutluy.com/v1
       CUTLUY_API_KEY: ${CUTLUY_API_KEY:-}
       CUTLUY_WEBHOOK_SECRET: ${CUTLUY_WEBHOOK_SECRET:-}
+      # Sentry (optional)
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
       # Background jobs — the order-sync job is ON by default so status/remains
       # stay near-real-time; set ENABLE_ORDER_SYNC_JOB=false to disable.
       ENABLE_ORDER_SYNC_JOB: ${ENABLE_ORDER_SYNC_JOB:-true}

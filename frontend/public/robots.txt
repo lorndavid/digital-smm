@@ -1,6 +1,19 @@
+# DigitalSMM — robots.txt
+#
+# robots.txt is NOT security — private routes are protected by
+# authentication/authorization server-side. These rules simply tell
+# search engines which areas add no indexing value.
+
 User-agent: *
 Allow: /
+
+# Private / authenticated areas — no indexing value.
 Disallow: /dashboard
+Disallow: /pay/
+Disallow: /payment-result
 Disallow: /sign-in
+Disallow: /auth/
+Disallow: /403
+Disallow: /500
 
 Sitemap: https://digitalsmm.shop/sitemap.xml

@@ -40,4 +40,18 @@ export const catalogController = {
   getAnnouncements: asyncHandler(async (_req, res) => {
     res.json(await catalogService.announcements())
   }),
+
+  /**
+   * GET /api/services/:id — public single-service read for SEO landing
+   * pages. Only ACTIVE services resolve; hidden/removed ones 404.
+   */
+  getServiceById: asyncHandler(async (req, res) => {
+    const service = await catalogService.serviceById(req.params.id as string)
+    if (!service) {
+      res.status(404).json({ error: 'Service not found' })
+      return
+    }
+    res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=120')
+    res.json(service)
+  }),
 }

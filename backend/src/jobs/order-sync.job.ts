@@ -101,9 +101,16 @@ export async function runOrderSync(): Promise<void> {
       }
     }
 
-    if (updated > 0) logger.info(`[job] order-sync updated ${updated} orders`)
+    if (updated > 0) logger.info('[job] order-sync updated orders', {
+      checked: orders.length,
+      updated,
+      result: 'success',
+    })
   } catch (err) {
-    logger.error('[job] order-sync failed', err)
+    logger.error('[job] order-sync failed', {
+      result: 'error',
+      error: err instanceof Error ? err.message : String(err),
+    })
   }
 }
 

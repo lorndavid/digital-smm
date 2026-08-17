@@ -4,18 +4,23 @@ import type {
   AdminAuditLog,
   AdminIdentity,
   AdminUser,
+  AnalyticsRange,
   Announcement,
   Category,
   DashboardStats,
   ManagedRole,
   Order,
   OrderStatus,
+  OverviewAnalytics,
   Paginated,
   Payment,
   PaymentStats,
+  RevenueAnalytics,
   Service,
+  ServicesAnalytics,
   Setting,
   SyncResult,
+  SystemHealth,
   UserDetail,
 } from '@/types/models'
 
@@ -38,6 +43,18 @@ export const adminApi = {
   // Dashboard
   stats: async (): Promise<DashboardStats> => (await apiClient.get('/admin/stats')).data,
   syncServices: async (): Promise<SyncResult> => (await apiClient.post('/admin/services/sync')).data,
+
+  // Analytics (database-backed)
+  analyticsRevenue: async (range: AnalyticsRange, start?: string, end?: string): Promise<RevenueAnalytics> =>
+    (await apiClient.get('/admin/analytics/revenue', { params: { range, start, end } })).data,
+  analyticsOverview: async (range: AnalyticsRange, start?: string, end?: string): Promise<OverviewAnalytics> =>
+    (await apiClient.get('/admin/analytics/overview', { params: { range, start, end } })).data,
+  analyticsServices: async (range: AnalyticsRange, start?: string, end?: string): Promise<ServicesAnalytics> =>
+    (await apiClient.get('/admin/analytics/services', { params: { range, start, end } })).data,
+
+  // System health
+  systemHealth: async (): Promise<SystemHealth> =>
+    (await apiClient.get('/admin/system/health')).data,
 
   // Services
   listServices: async (params: ListParams = {}): Promise<Paginated<Service>> =>

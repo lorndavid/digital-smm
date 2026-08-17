@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { authApi, type SessionUser } from '@/api/auth.api'
 import { clearSessionToken, storeSessionToken } from '@/api/session'
+import { event } from '@/analytics'
 
 /**
  * Customer auth state — backed by the Google OAuth session JWT stored in
@@ -53,6 +54,7 @@ export const useAuthStore = defineStore('auth', () => {
     } catch {
       /* the local cleanup below is the source of truth */
     }
+    event('logout', { signed_in: false })
     clearSessionToken()
     applyUser(null)
   }

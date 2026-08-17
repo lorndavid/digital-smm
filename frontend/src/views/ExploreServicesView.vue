@@ -19,6 +19,7 @@ import { watchDebounced } from '@vueuse/core'
 import { servicesApi } from '@/api/services.api'
 import { ordersApi } from '@/api/orders.api'
 import { ApiRequestError } from '@/api/client'
+import { event } from '@/analytics'
 import { useServicesStore } from '@/stores/services.store'
 import { useWalletStore } from '@/stores/wallet.store'
 import { useFavoritesStore } from '@/stores/favorites.store'
@@ -230,10 +231,18 @@ watchDebounced(
     // idempotent full-catalogue load — it retries a failed mount-time load and
     // shares one in-flight promise, so no duplicate requests. The search
     // endpoint is only re-queried when browsing with an EMPTY box.
-    if (!search.value.trim()) void loadServices(++searchSeq)
-    else void loadAllServices()
+    if (search.value.trim()) {
+      // Track search intent (sanitized — the term is capped + scrubbed).
+      event('service_search', {
+        search_term: search.value.trim(),
+        signed_in: true,
+      })
+      void loadAllServices()
+    } else {
+      void loadServices(++searchSeq)
+    }
   },
-  { debounce: 120 },
+  { debounce: 400 },
 )
 
 /**
@@ -832,6 +841,12 @@ function selectService(service: Service): void {
   panelOpen.value = false
   panelIndex.value = -1
   trigger.value = service.name
+  event('service_select', {
+    service_id: service._id,
+    service_type: service.type,
+    platform: servicePlatformSlug(service),
+    signed_in: true,
+  })
 }
 
 /** Picked from the search autocomplete — fills the box and auto-sets the category. */
@@ -842,6 +857,21 @@ function selectServiceFromSearch(service: Service): void {
   closeSearch()
   panelOpen.value = false
   panelIndex.value = -1
+  event('service_select', {
+    service_id: service._id,
+    service_type: service.type,
+    platform: servicePlatformSlug(service),
+    signed_in: true,
+  })
+}
+
+/** Platform slug for a service (from its category, 'other' when unknown). */
+function servicePlatformSlug(service: Service): string {
+  const cat = service.category
+  if (cat && typeof cat === 'object' && 'platform' in cat) {
+    return (cat as Category).platform
+  }
+  return 'other'
 }
 
 /** True when a category group's rows are hidden in the dropdown. */
@@ -1096,11 +1126,30 @@ async function submit(): Promise<void> {
   submitting.value = true
   error.value = ''
   try {
+    event('order_start', {
+      service_id: s._id,
+      service_type: s.type,
+      platform: servicePlatformSlug(s),
+      currency: 'USD',
+      value: totalPrice.value,
+      quantity: quantity.value ?? undefined,
+      signed_in: true,
+    })
     const order = await ordersApi.create({
       serviceId: s._id,
       link: link.value.trim() || undefined,
       quantity: quantity.value ?? undefined,
       params: { ...params },
+    })
+    // Backend confirmed the order — track the creation once.
+    event('order_create', {
+      service_id: s._id,
+      order_type: 'order',
+      currency: order.currency || 'USD',
+      value: order.totalPrice,
+      quantity: order.quantity,
+      order_status: order.status,
+      signed_in: true,
     })
     toast.success('Order placed — track it from your orders')
     await walletStore.refreshWallet().catch(() => undefined)

@@ -14,6 +14,8 @@ export interface ExchangeResult {
   expiresAt: string
   user: SessionUser
   redirect: string
+  /** True when this exchange created a brand-new account (sign_up). */
+  isNewUser?: boolean
 }
 
 /** Customer auth endpoints (Google OAuth 2.0 + PKCE). */

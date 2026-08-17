@@ -27,4 +27,11 @@ const userSchema = new Schema(
 export type User = InferSchemaType<typeof userSchema>
 export type UserDoc = HydratedDocument<User>
 
+// Analytics: new-user counts by created date.
+userSchema.index({ createdAt: -1 })
+
+// Email lookups (legacy adoption, admin search) — non-unique because legacy
+// Clerk-era rows may share emails; providerId is the authoritative unique key.
+userSchema.index({ email: 1 })
+
 export const UserModel = model('User', userSchema)

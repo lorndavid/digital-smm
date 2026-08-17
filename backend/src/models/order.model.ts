@@ -32,4 +32,12 @@ const orderSchema = new Schema(
 export type Order = InferSchemaType<typeof orderSchema>
 export type OrderDoc = HydratedDocument<Order>
 
+// Analytics + admin list queries: orders by created date (any status filter),
+// and status-breakdown aggregates.
+orderSchema.index({ createdAt: -1 })
+orderSchema.index({ status: 1, createdAt: -1 })
+
+// Top-services analytics: group by service over a date range (paid orders).
+orderSchema.index({ service: 1, createdAt: -1, status: 1 })
+
 export const OrderModel = model('Order', orderSchema)

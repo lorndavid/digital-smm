@@ -22,6 +22,8 @@ const routes: RouteRecordRaw[] = [
       { path: 'orders', name: 'admin-orders', component: () => import('@/views/OrdersView.vue') },
       { path: 'payments', name: 'admin-payments', component: () => import('@/views/PaymentsView.vue') },
       { path: 'announcements', name: 'admin-announcements', component: () => import('@/views/AnnouncementsView.vue') },
+      { path: 'analytics', name: 'admin-analytics', component: () => import('@/views/AnalyticsView.vue') },
+      { path: 'system/health', name: 'admin-system-health', component: () => import('@/views/SystemHealthView.vue') },
       { path: 'settings', name: 'admin-settings', component: () => import('@/views/SettingsView.vue') },
     ],
   },
