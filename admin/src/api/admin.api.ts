@@ -12,6 +12,7 @@ import type {
   Incident,
   IntegrationProviderKey,
   IntegrationSavePayload,
+  IntegrationSendMessageResult,
   IntegrationSummary,
   IntegrationTestResult,
   ManagedRole,
@@ -196,6 +197,6 @@ export const adminApi = {
     (await apiClient.post(`/admin/integrations/${provider}/enable`, { enabled })).data,
   testIntegration: async (provider: IntegrationProviderKey): Promise<IntegrationTestResult> =>
     (await apiClient.post(`/admin/integrations/${provider}/test`)).data,
-  sendTelegramTestMessage: async (): Promise<{ messageId: number }> =>
+  sendTelegramTestMessage: async (): Promise<IntegrationSendMessageResult> =>
     (await apiClient.post('/admin/integrations/telegram/test-message')).data,
 }

@@ -281,14 +281,16 @@ const telegramTokenSchema = z
 
 /**
  * Telegram destinations: numeric ids (private, group, supergroup, channel)
- * or @username. Kept lenient — the real validation happens at test time.
+ * or @username. Positive ids are PERSONAL chats (123456789), negative ids
+ * are groups (-1234567890) and supergroups/channels (-100…). Kept lenient —
+ * the real validation happens at test time.
  */
 const telegramChatIdSchema = z
   .string()
   .trim()
   .min(1)
   .max(128)
-  .regex(/^(@[A-Za-z0-9_]{3,}|-?\d{5,})$/, 'Chat ID must be a numeric id or @username') as z.ZodType<string>
+  .regex(/^(@[A-Za-z0-9_]{3,}|-?\d{5,})$/, 'Chat ID must be a numeric id (e.g. 123456789 or -1001234567890) or @username') as z.ZodType<string>
 
 const baseUrlSchema = z
   .string()
@@ -312,12 +314,22 @@ const integrationSecretsSchema = z.object({
   webhookSecret: z.string().trim().min(1).max(512).optional(),
 })
 
+/** One Telegram destination row. `retain: true` keeps the stored encrypted value. */
+export const integrationDestinationSchema = z.object({
+  chatId: telegramChatIdSchema.optional(),
+  type: z.enum(['private', 'group', 'supergroup', 'channel']).default('private'),
+  label: z.string().trim().max(80).optional(),
+  retain: z.boolean().optional(),
+})
+
 /** Upsert body for any provider (fields validated; provider-specific rules in code). */
 export const integrationSaveBodySchema = z.object({
   displayName: z.string().trim().max(120).optional(),
   isEnabled: z.boolean().optional(),
   secrets: integrationSecretsSchema.optional(),
   config: integrationConfigSchema.optional(),
+  /** Telegram only — full destination list (up to 25 chats). */
+  destinations: z.array(integrationDestinationSchema).max(25).optional(),
 })
 
 export const integrationEnableBodySchema = z.object({

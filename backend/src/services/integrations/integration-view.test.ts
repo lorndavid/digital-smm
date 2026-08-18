@@ -68,7 +68,7 @@ describe('toSafeView — SECURITY (secrets never leave the backend)', () => {
     const view = toSafeView({ provider: 'telegram', secrets: null })
     expect(view.configured).toBe(false)
     expect(view.credentials.botToken).toEqual({ configured: false, masked: null })
-    expect(view.credentials.chatId).toEqual({ configured: false, masked: null })
+    expect(view.destinations).toEqual([])
   })
 
   it('includes non-secret config and history', () => {
@@ -85,6 +85,44 @@ describe('toSafeView — SECURITY (secrets never leave the backend)', () => {
     expect(effectiveStatus({ isEnabled: true, status: 'CONNECTED', secrets: null })).toBe(
       'NOT_CONFIGURED',
     )
+  })
+})
+
+describe('toSafeView — destinations (multi-chat support)', () => {
+  it('exposes masked destinations with their type, never plaintext', () => {
+    const doc = telegramDoc({
+      destinations: [
+        { type: 'private', chatId: encryptSecret('987654321'), label: 'Owner' },
+        { type: 'supergroup', chatId: encryptSecret('-1001234567890'), label: '' },
+      ],
+    })
+    const view = toSafeView(doc)
+    const serialized = JSON.stringify(view)
+
+    expect(view.destinations).toHaveLength(2)
+    expect(view.destinations[0]).toMatchObject({
+      type: 'private',
+      configured: true,
+      masked: '••••••••••••4321',
+      label: 'Owner',
+    })
+    expect(view.destinations[1]).toMatchObject({ type: 'supergroup', masked: '••••••••••••7890' })
+    expect(serialized).not.toContain('987654321')
+    expect(serialized).not.toContain('-1001234567890')
+  })
+
+  it('backfills the legacy single chatId into destinations', () => {
+    const view = toSafeView(telegramDoc())
+    expect(view.destinations).toHaveLength(1)
+    // Legacy type comes from metadata.destinationType.
+    expect(view.destinations[0]).toMatchObject({ type: 'supergroup', masked: '••••••••••••7890' })
+    // Legacy mirror stays in credentials.chatId for compatibility.
+    expect(view.credentials.chatId).toEqual({ configured: true, masked: '••••••••••••7890' })
+  })
+
+  it('returns an empty destinations list for non-telegram providers', () => {
+    const view = toSafeView({ provider: 'smm', secrets: null })
+    expect(view.destinations).toEqual([])
   })
 })
 

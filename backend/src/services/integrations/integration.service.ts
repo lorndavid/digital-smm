@@ -5,7 +5,7 @@ import { decryptSecret, encryptSecret } from './credential-crypto.service.js'
 import { testCultureConnection } from './adapters/culture.adapter.js'
 import { testSmmConnection } from './adapters/smm.adapter.js'
 import {
-  sendTelegramMessage as sendTelegram,
+  sendTelegramMessageToAll,
   testTelegramConnection,
   validateTelegramBot,
 } from './adapters/telegram.adapter.js'
@@ -13,6 +13,8 @@ import {
   INTEGRATION_PROVIDERS,
   type AdapterTestResult,
   type DecryptedCredentials,
+  type DecryptedDestination,
+  type DestinationType,
   type IntegrationConfig,
   type IntegrationErrorCode,
   type IntegrationProviderKey,
@@ -48,10 +50,11 @@ async function runAdapterTest(
   provider: IntegrationProviderKey,
   creds: DecryptedCredentials,
   config: IntegrationConfig,
+  destinations: DecryptedDestination[] = [],
 ): Promise<AdapterTestResult> {
   switch (provider) {
     case 'telegram':
-      return testTelegramConnection(creds)
+      return testTelegramConnection(creds, destinations)
     case 'smm':
       return testSmmConnection(creds, config)
     case 'culture':
@@ -109,6 +112,7 @@ function emptyView(provider: IntegrationProviderKey): IntegrationSafeView {
     lastErrorMessage: '',
     latencyMs: null,
     credentials,
+    destinations: [],
     config: {},
     connectionHistory: [],
   }
@@ -136,6 +140,14 @@ export function isProviderKey(value: string): value is IntegrationProviderKey {
   return value in INTEGRATION_PROVIDERS
 }
 
+export interface SaveDestinationInput {
+  chatId?: string
+  type: DestinationType
+  label?: string
+  /** true = keep the currently stored encrypted chatId at this position. */
+  retain?: boolean
+}
+
 export interface SaveIntegrationInput {
   displayName?: string
   isEnabled?: boolean
@@ -143,6 +155,8 @@ export interface SaveIntegrationInput {
   secrets?: Partial<Record<SecretField, string>>
   /** Non-secret configuration merged into metadata. */
   config?: IntegrationConfig
+  /** Telegram only — full destination list (retain keeps stored values). */
+  destinations?: SaveDestinationInput[]
 }
 
 /** Creates or updates the credential for a provider. Returns the safe view. */
@@ -172,7 +186,30 @@ export async function saveIntegration(
     ...(input.config ?? {}),
   }
 
-  const now = new Date()
+  // Telegram destinations: full-list replace. `retain: true` keeps the stored
+  // encrypted chatId at that position; a new `chatId` is encrypted; nothing
+  // else → 400. The first destination is mirrored into `secrets.chatId` +
+  // `metadata.destinationType` so legacy consumers keep working.
+  let destinationsPatch: Array<{ type: DestinationType; chatId: string; label: string }> | null = null
+  if (provider === 'telegram' && input.destinations) {
+    const current = (existing?.destinations ?? []) as unknown[]
+    destinationsPatch = input.destinations.map((dest, index) => {
+      const type = dest.type ?? 'private'
+      if (dest.retain) {
+        const stored = current[index] as { chatId?: string | null } | undefined
+        if (!stored?.chatId) {
+          throw new ApiError(400, `Destination #${index + 1} is marked as kept but has no stored value`)
+        }
+        return { type, chatId: stored.chatId, label: dest.label ?? '' }
+      }
+      const chatId = dest.chatId?.trim()
+      if (!chatId) {
+        throw new ApiError(400, `Destination #${index + 1} is missing a chat id`)
+      }
+      return { type, chatId: encryptSecret(chatId), label: dest.label ?? '' }
+    })
+  }
+
   const actorId = actor?.id ?? ''
   const actorEmail = actor?.email ?? ''
 
@@ -185,6 +222,19 @@ export async function saveIntegration(
     metadata,
     updatedBy: actorId,
     ...secretFieldsSet,
+  }
+
+  if (destinationsPatch) {
+    setClause.destinations = destinationsPatch
+    // Mirror the first destination for backward compatibility.
+    const first = destinationsPatch[0]
+    if (first) {
+      setClause['secrets.chatId'] = first.chatId
+      metadata.destinationType = first.type
+    } else {
+      setClause['secrets.chatId'] = null
+      delete metadata.destinationType
+    }
   }
 
   const doc = existing
@@ -200,7 +250,11 @@ export async function saveIntegration(
         displayName: input.displayName ?? '',
         isEnabled: input.isEnabled ?? true,
         metadata,
-        secrets: secretPatch,
+        secrets: {
+          ...secretPatch,
+          ...(destinationsPatch?.[0] ? { chatId: destinationsPatch[0].chatId } : {}),
+        },
+        ...(destinationsPatch ? { destinations: destinationsPatch } : {}),
         createdBy: actorId,
         updatedBy: actorId,
         status: 'NOT_CONFIGURED',
@@ -290,11 +344,12 @@ export async function testConnection(
 
   const creds = decryptCredentials(existing)
   const config = (existing.metadata ?? {}) as IntegrationConfig
+  const destinations = getDecryptedDestinations(existing)
 
   const started = performance.now()
   let result: AdapterTestResult
   try {
-    result = await runAdapterTest(provider, creds, config)
+    result = await runAdapterTest(provider, creds, config, destinations)
   } catch (err) {
     result = {
       success: false,
@@ -358,20 +413,73 @@ export async function testConnection(
   }
 }
 
-/** Telegram: sends a harmless test message to the configured destination. */
-export async function sendTelegramTestMessage(actor?: { id?: string; email?: string }): Promise<{ messageId: number }> {
+/**
+ * Decrypts the destination list (or the legacy single chatId) into
+ * in-memory destinations. Never exposed by the API.
+ */
+export function getDecryptedDestinations(doc: {
+  destinations?: unknown
+  secrets?: SecretsLike
+  metadata?: unknown
+}): DecryptedDestination[] {
+  const raw = Array.isArray(doc.destinations) ? (doc.destinations as unknown[]) : []
+  const out: DecryptedDestination[] = []
+  for (const entry of raw) {
+    const d = (entry ?? {}) as { type?: string; chatId?: string | null; label?: string }
+    if (typeof d.chatId !== 'string' || d.chatId.length === 0) continue
+    try {
+      out.push({
+        type: (d.type as DestinationType) ?? 'private',
+        chatId: decryptSecret(d.chatId),
+        label: d.label ?? '',
+      })
+    } catch {
+      logger.warn('[integrations] failed to decrypt a stored destination')
+    }
+  }
+  if (out.length === 0 && doc.secrets?.chatId) {
+    try {
+      const legacyType = ((doc.metadata as Record<string, unknown> | null)?.destinationType as DestinationType) ?? 'private'
+      out.push({ type: legacyType, chatId: decryptSecret(doc.secrets.chatId), label: '' })
+    } catch {
+      logger.warn('[integrations] failed to decrypt legacy chatId')
+    }
+  }
+  return out
+}
+
+/**
+ * Telegram: sends a harmless test message to EVERY configured destination.
+ * Returns per-destination results; throws only when every send fails.
+ */
+export async function sendTelegramTestMessage(
+  actor?: { id?: string; email?: string },
+): Promise<{ sent: number; failed: number; results: Array<{ chatId: string; ok: boolean; messageId?: number; errorCode?: string }> }> {
   const doc = await findDoc('telegram')
   if (!doc || !isConfigured(doc)) {
-    throw new ApiError(400, 'Telegram is not configured. Save a bot token and chat ID first.')
+    throw new ApiError(400, 'Telegram is not configured. Save a bot token and at least one destination first.')
   }
   if (!doc.isEnabled) throw new ApiError(400, 'Telegram is disabled. Enable it before sending test messages.')
   const creds = decryptCredentials(doc)
-  if (!creds.botToken || !creds.chatId) throw new ApiError(400, 'Telegram credentials are incomplete.')
+  if (!creds.botToken) throw new ApiError(400, 'Telegram credentials are incomplete (missing bot token).')
+  const destinations = getDecryptedDestinations(doc)
+  if (!destinations.length) throw new ApiError(400, 'Telegram has no destinations configured.')
   try {
-    const result = await sendTelegram(creds.botToken, creds.chatId, '<b>✅ DigitalSMM</b> — test message from the admin panel.')
-    void log('info', 'integration.test_message', { provider: 'telegram', actor: actor?.email })
-    return result
+    const results = await sendTelegramMessageToAll(
+      creds.botToken,
+      destinations,
+      '<b>✅ DigitalSMM</b> — test message from the admin panel.',
+    )
+    const sent = results.filter((r) => r.ok).length
+    const failed = results.length - sent
+    void log('info', 'integration.test_message', { provider: 'telegram', actor: actor?.email, sent, failed })
+    if (sent === 0) {
+      const first = results.find((r) => !r.ok)
+      throw new ApiError(502, `Failed to send to any destination${first?.errorCode ? ` (${first.errorCode})` : ''}.`)
+    }
+    return { sent, failed, results }
   } catch (err) {
+    if (err instanceof ApiError) throw err
     const message = err instanceof Error ? err.message : 'Failed to send the test message.'
     throw new ApiError(502, message)
   }

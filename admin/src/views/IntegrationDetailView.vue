@@ -12,13 +12,16 @@ import {
   Send,
   ShieldAlert,
   Trash2,
+  XCircle,
   Zap,
 } from '@lucide/vue'
 import { adminApi } from '@/api/admin.api'
 import { useToast } from '@/composables/useToast'
-import { INTEGRATION_PROVIDER_META } from '@/utils/integrations'
+import { DESTINATION_TYPE_OPTIONS, INTEGRATION_PROVIDER_META } from '@/utils/integrations'
 import type {
+  IntegrationDestinationType,
   IntegrationProviderKey,
+  IntegrationSendResult,
   IntegrationSummary,
   IntegrationTestResult,
 } from '@/types/models'
@@ -46,6 +49,44 @@ const secretForm = reactive<Record<string, string>>({})
 /** Secret fields currently in "replace" mode. */
 const replaceMode = reactive<Record<string, boolean>>({})
 
+interface DestRow {
+  id: number
+  type: IntegrationDestinationType
+  chatId: string
+  label: string
+  configured: boolean
+  masked: string | null
+  editing: boolean
+  removed: boolean
+}
+
+/** Telegram destinations being edited (configured rows keep their stored value). */
+const destRows = ref<DestRow[]>([])
+let destIdSeq = 1
+
+function addDestinationRow(): void {
+  destRows.value.push({ id: destIdSeq++, type: 'private', chatId: '', label: '', configured: false, masked: null, editing: true, removed: false })
+}
+
+function removeDestinationRow(id: number): void {
+  const row = destRows.value.find((r) => r.id === id)
+  if (row) row.removed = true
+}
+
+function destinationsDirty(): boolean {
+  const active = destRows.value.filter((r) => !r.removed)
+  const stored = integration.value?.destinations ?? []
+  if (active.length !== stored.length) return true
+  return active.some((row, i) => {
+    const storedRow = stored[i]
+    if (!storedRow) return true
+    if (row.type !== storedRow.type) return true
+    // A configured row that is not being edited keeps its stored value.
+    if (row.configured && !row.editing) return false
+    return (row.chatId ?? '') !== ''
+  })
+}
+
 const dirty = computed(() => {
   if (!integration.value) return false
   const nonSecretKeys = meta.fields.filter((f) => f.type !== 'secret')
@@ -56,7 +97,7 @@ const dirty = computed(() => {
     if (!view?.configured) return (secretForm[f.key] ?? '') !== ''
     return replaceMode[f.key] === true && (secretForm[f.key] ?? '') !== ''
   })
-  return configChanged || secretChanged
+  return configChanged || secretChanged || destinationsDirty()
 })
 
 onBeforeRouteLeave(() => {
@@ -74,6 +115,20 @@ async function load(): Promise<void> {
     for (const field of meta.fields) {
       if (field.type === 'secret') continue
       configForm[field.key] = String(integration.value.config[field.key] ?? '')
+    }
+    // Seed Telegram destination rows (configured rows start read-only).
+    destRows.value = (integration.value.destinations ?? []).map((d) => ({
+      id: destIdSeq++,
+      type: d.type,
+      chatId: '',
+      label: d.label,
+      configured: d.configured,
+      masked: d.masked,
+      editing: false,
+      removed: false,
+    }))
+    if (meta.supportsMultipleDestinations && destRows.value.length === 0) {
+      addDestinationRow()
     }
   } catch (err) {
     toast.error(err instanceof Error ? err.message : 'Failed to load integration')
@@ -110,9 +165,22 @@ async function save(): Promise<void> {
       if (field.type === 'secret') continue
       config[field.key] = configForm[field.key] ?? ''
     }
-    const saved = await adminApi.saveIntegration(provider, { secrets, config })
+
+    // Telegram destinations: full list. Configured rows that are not being
+    // edited are sent with retain:true so the stored value is kept.
+    const destinations = meta.supportsMultipleDestinations
+      ? destRows.value
+          .filter((r) => !r.removed)
+          .map((row) => {
+            if (row.configured && !row.editing) return { type: row.type, retain: true as const }
+            return { type: row.type, chatId: (row.chatId ?? '').trim() }
+          })
+      : undefined
+
+    const saved = await adminApi.saveIntegration(provider, { secrets, config, destinations })
     integration.value = saved
     for (const key of Object.keys(replaceMode)) replaceMode[key] = false
+    await load()
     toast.success(`${meta.name} saved`)
   } catch (err) {
     toast.error(err instanceof Error ? err.message : 'Failed to save')
@@ -154,18 +222,30 @@ async function testConnection(): Promise<void> {
 }
 
 const showSendDialog = ref(false)
+const sendResults = ref<IntegrationSendResult[] | null>(null)
 
 async function sendTestMessage(): Promise<void> {
   sending.value = true
+  sendResults.value = null
   try {
     const result = await adminApi.sendTelegramTestMessage()
-    toast.success(`Test message sent (message id ${result.messageId})`)
-    showSendDialog.value = false
+    sendResults.value = result.results
+    if (result.failed === 0) {
+      toast.success(`Test message sent to ${result.sent} destination${result.sent === 1 ? '' : 's'}`)
+      showSendDialog.value = false
+    } else {
+      toast.error(`${result.sent} sent, ${result.failed} failed`)
+    }
   } catch (err) {
     toast.error(err instanceof Error ? err.message : 'Failed to send test message')
   } finally {
     sending.value = false
   }
+}
+
+function testDestinationResults(): Array<{ type: string; chatId: string; ok: boolean; errorCode?: string; message?: string }> {
+  const dests = testResult.value?.details?.destinations
+  return Array.isArray(dests) ? (dests as Array<{ type: string; chatId: string; ok: boolean; errorCode?: string; message?: string }>) : []
 }
 
 const showDeleteDialog = ref(false)
@@ -271,7 +351,78 @@ onMounted(() => void load())
               @update:model-value="configForm[field.key] = String($event)"
             />
 
-            <!-- Enum fields -->
+            <!-- Telegram destinations (multi-chat: personal, group, supergroup, channel) -->
+            <div v-if="meta.supportsMultipleDestinations" class="rounded-lg border border-(--a-border) bg-(--a-soft)/40 p-3.5">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <p class="text-[13px] font-medium text-(--a-text-soft)">Destinations</p>
+                  <p class="mt-0.5 text-xs text-(--a-muted-2)">
+                    Personal chats, groups, supergroups and channels — the bot sends to every listed destination.
+                    For personal chats the recipient must press <b>Start</b> on the bot once.
+                  </p>
+                </div>
+              </div>
+
+              <div class="mt-3 space-y-2.5">
+                <div v-for="row in destRows.filter((r) => !r.removed)" :key="row.id" class="rounded-lg border border-(--a-border) bg-(--a-soft)/40 p-3">
+                  <template v-if="row.configured && !row.editing">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                      <div class="min-w-0">
+                        <p class="flex items-center gap-2 font-mono text-sm text-(--a-muted)">
+                          {{ row.masked }}
+                          <span class="rounded bg-brand-500/15 px-1.5 py-0.5 font-sans text-[10px] font-semibold text-brand-300">
+                            {{ row.type }}
+                          </span>
+                        </p>
+                        <p class="mt-0.5 text-xs text-emerald-300">● Configured — encrypted at rest</p>
+                      </div>
+                      <div class="flex gap-1.5">
+                        <BaseButton size="sm" variant="outline" @click="row.editing = true">Replace</BaseButton>
+                        <BaseButton size="sm" variant="ghost" class="!text-rose-300 hover:!text-rose-200" @click="removeDestinationRow(row.id)">
+                          Remove
+                        </BaseButton>
+                      </div>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <div class="grid gap-2 sm:grid-cols-[1fr_180px]">
+                      <BaseInput
+                        :model-value="row.chatId"
+                        placeholder="123456789 (personal) · -100… (group/channel) · @username"
+                        @update:model-value="row.chatId = String($event)"
+                      />
+                      <select
+                        :value="row.type"
+                        class="h-9.5 w-full rounded-lg border border-(--a-border) bg-(--a-soft) px-3.5 text-sm text-(--a-text) transition-colors focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
+                        @change="row.type = ($event.target as HTMLSelectElement).value as typeof row.type"
+                      >
+                        <option v-for="opt in DESTINATION_TYPE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                      </select>
+                    </div>
+                    <div class="mt-2 flex items-center justify-between gap-2">
+                      <p class="flex items-center gap-1 text-xs text-(--a-muted-2)">
+                        <EyeOff class="h-3.5 w-3.5" /> Encrypted before storage.
+                      </p>
+                      <div class="flex gap-1.5">
+                        <BaseButton v-if="row.configured" size="sm" variant="ghost" @click="row.editing = false">Cancel</BaseButton>
+                        <BaseButton size="sm" variant="ghost" class="!text-rose-300 hover:!text-rose-200" @click="removeDestinationRow(row.id)">Remove</BaseButton>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+
+                <BaseButton
+                  v-if="destRows.filter((r) => !r.removed).length < 25"
+                  size="sm"
+                  variant="outline"
+                  @click="addDestinationRow"
+                >
+                  + Add destination
+                </BaseButton>
+              </div>
+            </div>
+
+            <!-- Enum fields (non-Telegram providers) -->
             <label v-for="field in meta.fields.filter((f) => f.type === 'enum')" :key="field.key" class="block">
               <span class="mb-1 block text-[13px] font-medium text-(--a-text-soft)">{{ field.label }}</span>
               <select
@@ -279,7 +430,7 @@ onMounted(() => void load())
                 class="h-9.5 w-full rounded-lg border border-(--a-border) bg-(--a-soft) px-3.5 text-sm text-(--a-text) transition-colors focus:border-brand-400/60 focus:outline-none focus:ring-2 focus:ring-brand-400/30"
                 @change="configForm[field.key] = ($event.target as HTMLSelectElement).value"
               >
-                <option value="" disabled>Select destination type…</option>
+                <option value="" disabled>Select…</option>
                 <option v-for="opt in field.options" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
               </select>
             </label>
@@ -361,9 +512,32 @@ onMounted(() => void load())
               </div>
             </dl>
 
-            <p v-if="testResult && !testResult.success" class="mt-3 rounded-lg bg-rose-400/10 px-3 py-2 text-xs text-rose-300">
+            <p
+              v-if="testResult && !testResult.success"
+              class="mt-3 rounded-lg bg-rose-400/10 px-3 py-2 text-xs text-rose-300"
+            >
               {{ testResult.errorCode }} — {{ testResult.message }}
             </p>
+
+            <!-- Per-destination test breakdown (Telegram) -->
+            <div v-if="provider === 'telegram' && testDestinationResults().length > 0" class="mt-3 space-y-1.5">
+              <div
+                v-for="(d, idx) in testDestinationResults()"
+                :key="idx"
+                class="flex items-start justify-between gap-2 rounded-lg bg-(--a-soft) px-3 py-2 text-xs"
+              >
+                <span class="flex min-w-0 items-center gap-1.5" :class="d.ok ? 'text-emerald-300' : 'text-rose-300'">
+                  <CheckCircle2 v-if="d.ok" class="h-3.5 w-3.5 shrink-0" />
+                  <XCircle v-else class="h-3.5 w-3.5 shrink-0" />
+                  <span class="truncate font-mono">{{ d.chatId }}</span>
+                  <span class="shrink-0 rounded bg-(--a-hover) px-1.5 py-0.5 text-[10px] font-semibold text-(--a-muted)">{{ d.type }}</span>
+                </span>
+                <span class="shrink-0 text-right">{{ d.ok ? 'OK' : d.errorCode ?? 'failed' }}</span>
+              </div>
+              <p v-if="testResult && !testResult.success && testDestinationResults().some((d) => !d.ok)" class="text-xs text-(--a-muted-2)">
+                {{ testDestinationResults().filter((d) => !d.ok)[0]?.message }}
+              </p>
+            </div>
 
             <div v-if="provider === 'telegram' && testing" class="mt-3 space-y-1.5">
               <div v-for="step in testSteps" :key="step.label" class="flex items-center gap-2 text-xs" :class="step.done ? 'text-emerald-300' : 'text-(--a-muted-2)'">
@@ -448,13 +622,31 @@ onMounted(() => void load())
     <!-- Send test message dialog -->
     <div v-if="showSendDialog" class="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div class="absolute inset-0 bg-night/80 backdrop-blur-sm" @click="showSendDialog = false" />
-      <div class="glass-strong relative w-full max-w-sm rounded-xl p-5 shadow-card">
+      <div class="glass-strong relative w-full max-w-md rounded-xl p-5 shadow-card">
         <h3 class="font-display text-sm font-semibold text-(--a-text)">Send Test Message?</h3>
         <p class="mt-2 text-sm text-(--a-muted)">
-          This will send a test message to the configured Telegram destination.
+          This will send a test message to every configured Telegram destination
+          ({{ integration?.destinations.length ?? 0 }} total).
         </p>
+
+        <div v-if="sendResults" class="mt-3 space-y-1.5">
+          <div
+            v-for="(r, idx) in sendResults"
+            :key="idx"
+            class="flex items-center justify-between gap-2 rounded-lg bg-(--a-soft) px-3 py-2 text-xs"
+            :class="r.ok ? 'text-emerald-300' : 'text-rose-300'"
+          >
+            <span class="flex items-center gap-1.5 font-mono">
+              <CheckCircle2 v-if="r.ok" class="h-3.5 w-3.5" />
+              <XCircle v-else class="h-3.5 w-3.5" />
+              {{ r.chatId }}
+            </span>
+            <span>{{ r.ok ? (r.messageId != null ? `sent #${r.messageId}` : 'sent') : (r.errorCode ?? 'failed') }}</span>
+          </div>
+        </div>
+
         <div class="mt-4 flex justify-end gap-2">
-          <BaseButton variant="ghost" @click="showSendDialog = false">Cancel</BaseButton>
+          <BaseButton variant="ghost" @click="showSendDialog = false">Close</BaseButton>
           <BaseButton :loading="sending" @click="sendTestMessage"><Send class="h-4 w-4" /> Send Test</BaseButton>
         </div>
       </div>

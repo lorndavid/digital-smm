@@ -1,5 +1,9 @@
 import { Schema, model, type HydratedDocument, type InferSchemaType } from 'mongoose'
-import { INTEGRATION_STATUSES, INTEGRATION_PROVIDER_KEYS } from '../services/integrations/integration.types.js'
+import {
+  DESTINATION_TYPES,
+  INTEGRATION_STATUSES,
+  INTEGRATION_PROVIDER_KEYS,
+} from '../services/integrations/integration.types.js'
 
 /**
  * Integration credentials (Admin → Integrations).
@@ -33,6 +37,18 @@ const integrationCredentialSchema = new Schema(
 
     // Non-secret provider configuration (baseUrl, destinationType, ...).
     metadata: { type: Schema.Types.Mixed, default: {} },
+
+    // Telegram destinations — one row per chat (personal chats, groups,
+    // supergroups and channels can all be listed). Each chatId is stored
+    // ENCRYPTED (AES-256-GCM). `secrets.chatId` below mirrors the first
+    // destination for backward compatibility.
+    destinations: [
+      {
+        type: { type: String, enum: [...DESTINATION_TYPES], default: 'private' },
+        chatId: { type: String, default: null },
+        label: { type: String, default: '' },
+      },
+    ],
 
     isEnabled: { type: Boolean, default: true },
     status: { type: String, enum: [...INTEGRATION_STATUSES], default: 'NOT_CONFIGURED' },

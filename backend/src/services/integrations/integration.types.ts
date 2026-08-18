@@ -40,6 +40,25 @@ export type IntegrationErrorCode = (typeof INTEGRATION_ERROR_CODES)[number]
 export const SECRET_FIELDS = ['botToken', 'apiKey', 'apiSecret', 'chatId', 'webhookSecret'] as const
 export type SecretField = (typeof SECRET_FIELDS)[number]
 
+/** Telegram destination types (stored per destination). */
+export const DESTINATION_TYPES = ['private', 'group', 'supergroup', 'channel'] as const
+export type DestinationType = (typeof DESTINATION_TYPES)[number]
+
+/** One Telegram destination (chatId stored encrypted at rest). */
+export interface DestinationDef {
+  type: DestinationType
+  /** Encrypted chat id — never plaintext in the model. */
+  chatId: string
+  label?: string
+}
+
+/** Decrypted destination passed to adapters (in-memory only). */
+export interface DecryptedDestination {
+  type: DestinationType
+  chatId: string
+  label?: string
+}
+
 export interface ProviderFieldDef {
   key: string
   label: string
@@ -60,6 +79,8 @@ export interface ProviderMeta {
   supportsTest: boolean
   /** Telegram only — allows the admin to send a test message. */
   supportsSendTestMessage?: boolean
+  /** Telegram only — the destination is a managed list of chats (not one field). */
+  supportsMultipleDestinations?: boolean
   fields: ProviderFieldDef[]
 }
 
@@ -75,6 +96,7 @@ export const INTEGRATION_PROVIDERS: Record<IntegrationProviderKey, ProviderMeta>
     category: 'Messaging',
     supportsTest: true,
     supportsSendTestMessage: true,
+    supportsMultipleDestinations: true,
     fields: [
       {
         key: 'botToken',
@@ -83,26 +105,6 @@ export const INTEGRATION_PROVIDERS: Record<IntegrationProviderKey, ProviderMeta>
         required: true,
         hint: 'From @BotFather. Your token is encrypted before being stored.',
         placeholder: '123456789:AA...',
-      },
-      {
-        key: 'chatId',
-        label: 'Destination Chat ID',
-        type: 'secret',
-        required: true,
-        reveal: 4,
-        hint: 'Private chat: 123456789 · Group/supergroup: -1001234567890 · Channel: -100… or @channelusername',
-        placeholder: '-1001234567890',
-      },
-      {
-        key: 'destinationType',
-        label: 'Destination Type',
-        type: 'enum',
-        options: [
-          { value: 'private', label: 'Private Chat' },
-          { value: 'group', label: 'Group' },
-          { value: 'supergroup', label: 'Supergroup' },
-          { value: 'channel', label: 'Channel' },
-        ],
       },
     ],
   },
@@ -210,6 +212,13 @@ export interface IntegrationSafeView {
   latencyMs: number | null
   /** Secret fields — configured + masked ONLY. Never the plaintext. */
   credentials: Record<string, SecretFieldView>
+  /** Telegram destinations — masked + type per chat (empty for other providers). */
+  destinations: Array<{
+    type: DestinationType
+    configured: boolean
+    masked: string | null
+    label: string
+  }>
   /** Non-secret configuration (baseUrl, destinationType, ...). */
   config: Record<string, unknown>
   /** Connection-test history (safe fields only). */

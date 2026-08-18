@@ -8,7 +8,7 @@ Providers today:
 
 | Provider      | Key        | Purpose                                        | Connection test                |
 |---------------|------------|------------------------------------------------|--------------------------------|
-| Telegram      | `telegram` | Bot publishing, alerts, test messages          | ✅ real Bot API (`getMe` + `getChat`) |
+| Telegram      | `telegram` | Bot publishing, alerts, test messages. Multiple destinations (personal chats, groups, supergroups, channels) on one integration. | ✅ real Bot API (`getMe` + `getChat` per destination, `getUpdates` fallback for private chats) |
 | SMM Provider  | `smm`      | Social media order fulfilment API              | ✅ real `balance` call (wizsmm client) |
 | Culture API   | `culture`  | Translation / language service                 | ⏳ adapter interface ready, no documented endpoint yet |
 
@@ -126,7 +126,7 @@ Normalized error codes: `INVALID_CREDENTIALS`, `UNAUTHORIZED`, `FORBIDDEN`,
 
 | Status             | Meaning                                                          |
 |--------------------|------------------------------------------------------------------|
-| `CONNECTED`        | Configured + last test succeeded.                                |
+| `CONNECTED`        | Configured + last test succeeded (Telegram: bot + every destination verified). |
 | `NOT_CONFIGURED`   | No credentials saved yet.                                        |
 | `CONNECTION_FAILED`| Configured but the last test failed (see `lastErrorCode`).       |
 | `DISABLED`         | Stored but disabled by an admin — unusable by jobs/services.     |

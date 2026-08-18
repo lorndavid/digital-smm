@@ -121,6 +121,9 @@ onMounted(() => void load())
           <template v-if="summary(meta.key)?.configured">
             <span>Last tested: {{ summary(meta.key)?.lastTestedAt ? new Date(summary(meta.key)!.lastTestedAt!).toLocaleString() : 'never' }}</span>
             <span v-if="summary(meta.key)?.latencyMs" class="text-(--a-muted-3)">· {{ summary(meta.key)?.latencyMs }}ms</span>
+            <span v-if="meta.supportsMultipleDestinations && summary(meta.key)?.destinations.length" class="text-(--a-muted-3)">
+              · {{ summary(meta.key)!.destinations.length }} destination{{ summary(meta.key)!.destinations.length === 1 ? '' : 's' }}
+            </span>
           </template>
           <span v-else>Not configured yet</span>
         </div>

@@ -1,6 +1,7 @@
 import { decryptSecret, maskSecret } from './credential-crypto.service.js'
 import {
   INTEGRATION_PROVIDERS,
+  type DestinationType,
   type IntegrationSafeView,
   type IntegrationStatus,
   type ProviderFieldDef,
@@ -46,6 +47,7 @@ type ViewSource = {
   lastErrorCode?: unknown
   lastErrorMessage?: unknown
   latencyMs?: unknown
+  destinations?: unknown
   connectionHistory?: unknown
 }
 
@@ -76,6 +78,45 @@ export function toSafeView(doc: ViewSource): IntegrationSafeView {
   const meta = INTEGRATION_PROVIDERS[(doc.provider ?? '') as keyof typeof INTEGRATION_PROVIDERS]
   const credentials: IntegrationSafeView['credentials'] = {}
 
+  // Telegram destinations — decrypt only for masking (server-side), expose
+  // masked tails + type. Backfills legacy single-chatId docs.
+  const rawDestinations = Array.isArray(doc.destinations) ? (doc.destinations as unknown[]) : []
+  const destinations: IntegrationSafeView['destinations'] = []
+  for (const raw of rawDestinations) {
+    const d = (raw ?? {}) as Record<string, unknown>
+    const type = (d.type as DestinationType) ?? 'private'
+    const encrypted = typeof d.chatId === 'string' ? d.chatId : null
+    let masked: string | null = null
+    if (encrypted) {
+      try {
+        masked = maskSecret(decryptSecret(encrypted), 4)
+      } catch {
+        masked = null
+      }
+    }
+    destinations.push({
+      type,
+      configured: Boolean(encrypted),
+      masked,
+      label: String(d.label ?? ''),
+    })
+  }
+  // Legacy: single encrypted chatId + metadata.destinationType.
+  const legacyChatId = doc.secrets?.chatId
+  if (destinations.length === 0 && legacyChatId) {
+    const legacyType = ((doc.metadata as Record<string, unknown> | null)?.destinationType as DestinationType) ?? 'private'
+    try {
+      destinations.push({
+        type: legacyType,
+        configured: true,
+        masked: maskSecret(decryptSecret(legacyChatId), 4),
+        label: '',
+      })
+    } catch {
+      destinations.push({ type: legacyType, configured: true, masked: null, label: '' })
+    }
+  }
+
   for (const field of meta?.fields ?? []) {
     if (field.type !== 'secret') continue
     const column = secretColumnForField(field.key)
@@ -97,6 +138,13 @@ export function toSafeView(doc: ViewSource): IntegrationSafeView {
     credentials[field.key] = {
       configured: Boolean(stored),
       masked,
+    }
+  }
+  // Legacy single-chatId view: mirror the first destination.
+  if (destinations.length > 0 && !credentials.chatId) {
+    credentials.chatId = {
+      configured: destinations[0]!.configured,
+      masked: destinations[0]!.masked,
     }
   }
 
@@ -125,6 +173,7 @@ export function toSafeView(doc: ViewSource): IntegrationSafeView {
     lastErrorMessage: String(doc.lastErrorMessage ?? ''),
     latencyMs: typeof doc.latencyMs === 'number' ? doc.latencyMs : null,
     credentials,
+    destinations,
     config: { ...((doc.metadata as Record<string, unknown> | null) ?? {}) },
     connectionHistory: history.slice(0, 20),
   }

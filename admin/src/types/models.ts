@@ -380,6 +380,16 @@ export interface IntegrationConnectionHistoryEntry {
   errorCode: string
 }
 
+export type IntegrationDestinationType = 'private' | 'group' | 'supergroup' | 'channel'
+
+/** One Telegram destination as seen by the admin (masked, never plaintext). */
+export interface IntegrationDestinationView {
+  type: IntegrationDestinationType
+  configured: boolean
+  masked: string | null
+  label: string
+}
+
 /** Safe representation of one integration (never contains secrets). */
 export interface IntegrationSummary {
   provider: IntegrationProviderKey
@@ -394,6 +404,8 @@ export interface IntegrationSummary {
   lastErrorMessage: string
   latencyMs: number | null
   credentials: Record<string, SecretFieldView>
+  /** Telegram destinations (empty for other providers). */
+  destinations: IntegrationDestinationView[]
   config: Record<string, unknown>
   connectionHistory: IntegrationConnectionHistoryEntry[]
 }
@@ -410,11 +422,34 @@ export interface IntegrationTestResult {
   details?: Record<string, unknown>
 }
 
+/** One destination row in a save payload. retain: true keeps the stored value. */
+export interface IntegrationDestinationPayload {
+  chatId?: string
+  type: IntegrationDestinationType
+  label?: string
+  retain?: boolean
+}
+
 /** Body used when saving an integration. Secret fields: omit = keep, '' = clear. */
 export interface IntegrationSavePayload {
   displayName?: string
   isEnabled?: boolean
   secrets?: Partial<Record<string, string>>
   config?: Record<string, unknown>
+  destinations?: IntegrationDestinationPayload[]
+}
+
+/** Per-destination result of sending a Telegram test message. */
+export interface IntegrationSendResult {
+  chatId: string
+  ok: boolean
+  messageId?: number
+  errorCode?: string
+}
+
+export interface IntegrationSendMessageResult {
+  sent: number
+  failed: number
+  results: IntegrationSendResult[]
 }
 

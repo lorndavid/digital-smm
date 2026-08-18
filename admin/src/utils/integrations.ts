@@ -27,8 +27,17 @@ export interface IntegrationProviderMeta {
   icon: LucideIcon
   supportsTest: boolean
   supportsSendTestMessage?: boolean
+  /** Telegram: destinations are a managed list (not single fields). */
+  supportsMultipleDestinations?: boolean
   fields: IntegrationFieldDef[]
 }
+
+export const DESTINATION_TYPE_OPTIONS = [
+  { value: 'private', label: 'Private Chat' },
+  { value: 'group', label: 'Group' },
+  { value: 'supergroup', label: 'Supergroup' },
+  { value: 'channel', label: 'Channel' },
+] as const
 
 export const INTEGRATION_PROVIDER_META: Record<IntegrationProviderKey, IntegrationProviderMeta> = {
   telegram: {
@@ -38,6 +47,7 @@ export const INTEGRATION_PROVIDER_META: Record<IntegrationProviderKey, Integrati
     icon: Send,
     supportsTest: true,
     supportsSendTestMessage: true,
+    supportsMultipleDestinations: true,
     fields: [
       {
         key: 'botToken',
@@ -46,26 +56,6 @@ export const INTEGRATION_PROVIDER_META: Record<IntegrationProviderKey, Integrati
         required: true,
         hint: 'From @BotFather. Your token is encrypted before being stored.',
         placeholder: '123456789:AA...',
-      },
-      {
-        key: 'chatId',
-        label: 'Destination Chat ID',
-        type: 'secret',
-        required: true,
-        reveal: 4,
-        hint: 'Private chat: 123456789 · Group/supergroup: -1001234567890 · Channel: -100… or @channelusername',
-        placeholder: '-1001234567890',
-      },
-      {
-        key: 'destinationType',
-        label: 'Destination Type',
-        type: 'enum',
-        options: [
-          { value: 'private', label: 'Private Chat' },
-          { value: 'group', label: 'Group' },
-          { value: 'supergroup', label: 'Supergroup' },
-          { value: 'channel', label: 'Channel' },
-        ],
       },
     ],
   },
