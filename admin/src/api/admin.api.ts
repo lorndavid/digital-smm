@@ -8,6 +8,8 @@ import type {
   Announcement,
   Category,
   DashboardStats,
+  DeploymentRecord,
+  Incident,
   ManagedRole,
   Order,
   OrderStatus,
@@ -55,6 +57,14 @@ export const adminApi = {
   // System health
   systemHealth: async (): Promise<SystemHealth> =>
     (await apiClient.get('/admin/system/health')).data,
+
+  // Operations center: incidents + deployment history
+  listIncidents: async (params: ListParams = {}): Promise<Paginated<Incident>> =>
+    (await apiClient.get('/admin/system/incidents', { params })).data,
+  resolveIncident: async (id: string, reason?: string): Promise<{ resolved: boolean }> =>
+    (await apiClient.post(`/admin/system/incidents/${id}/resolve`, { reason })).data,
+  listDeployments: async (params: ListParams = {}): Promise<Paginated<DeploymentRecord>> =>
+    (await apiClient.get('/admin/system/deployments', { params })).data,
 
   // Services
   listServices: async (params: ListParams = {}): Promise<Paginated<Service>> =>

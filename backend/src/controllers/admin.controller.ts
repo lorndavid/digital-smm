@@ -5,6 +5,9 @@ import { adminService } from '../services/admin.service.js'
 import { analyticsService, type AnalyticsRange } from '../services/analytics.service.js'
 import { orderService } from '../services/order.service.js'
 import { metricsStore } from '../services/monitoring/metrics.store.js'
+import { listIncidents, resolveIncidentById } from '../services/monitoring/incident.service.js'
+import { listDeployments } from '../services/monitoring/deployment.service.js'
+import { getAppVersion } from '../utils/version.js'
 import { getRedisClient } from '../services/redis/redis.client.js'
 import { isDatabaseConnected } from '../config/database.js'
 import { env } from '../config/env.js'
@@ -134,10 +137,12 @@ export const adminController = {
     }
 
     const metrics = metricsStore.summary()
+    const app = getAppVersion()
     res.json({
       status: dbOk && (redisOk || !redisConfigured) ? 'ok' : 'degraded',
       service: 'digitalsmm-backend',
-      version: '1.0.0',
+      version: app.version,
+      commit: app.commit,
       environment: env.NODE_ENV,
       sentryEnabled: Boolean(env.SENTRY_DSN),
       dependencies: {
@@ -154,6 +159,49 @@ export const adminController = {
       time: new Date().toISOString(),
     })
   }),
+
+  // ------------------------------------------------------------------
+  // Incidents & deployments (admin operations center)
+  // ------------------------------------------------------------------
+
+  listIncidents: [
+    validateQuery(adminListQuerySchema),
+    asyncHandler(async (req, res) => {
+      const q = req.validatedQuery ?? {}
+      res.json(
+        await listIncidents({
+          status: asString(q.status),
+          severity: asString(q.severity),
+          service: asString(q.service),
+          search: asString(q.search),
+          page: asNumber(q.page, 1),
+          limit: asNumber(q.limit, 20),
+        }),
+      )
+    }),
+  ],
+
+  resolveIncident: asyncHandler(async (req, res) => {
+    const reason = typeof req.body?.reason === 'string' ? req.body.reason : 'resolved by admin'
+    const ok = await resolveIncidentById(req.params.id as string, reason)
+    if (!ok) throw new ApiError(404, 'Incident not found or already resolved')
+    res.json({ resolved: true })
+  }),
+
+  listDeployments: [
+    validateQuery(adminListQuerySchema),
+    asyncHandler(async (req, res) => {
+      const q = req.validatedQuery ?? {}
+      res.json(
+        await listDeployments({
+          service: asString(q.service),
+          status: asString(q.status),
+          page: asNumber(q.page, 1),
+          limit: asNumber(q.limit, 20),
+        }),
+      )
+    }),
+  ],
 
   // ------------------------------------------------------------------
   // Services

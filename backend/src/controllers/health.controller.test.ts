@@ -53,6 +53,18 @@ vi.mock('../config/env.js', () => ({
     SENTRY_ENVIRONMENT: 'test',
     ENABLE_ORDER_SYNC_JOB: false,
     ORDER_SYNC_INTERVAL_MS: 60_000,
+    APP_VERSION: '1.0.0',
+    APP_COMMIT: 'abc123',
+    APP_BUILD_TIME: '',
+    DEPLOYMENT_ID: '',
+    TELEGRAM_BOT_TOKEN: undefined,
+    TELEGRAM_CHAT_ID: undefined,
+    TELEGRAM_ALERTS_ENABLED: false,
+    TELEGRAM_MIN_ALERT_LEVEL: 'warning',
+    TELEGRAM_ALERT_COOLDOWN_MS: 900_000,
+    DAILY_REPORT_ENABLED: false,
+    DAILY_REPORT_TIME: '22:00',
+    DAILY_REPORT_TZ: 'Asia/Phnom_Penh',
   },
   corsOrigins: ['http://localhost:5173'],
 }))
@@ -113,5 +125,20 @@ describe('Health endpoints', () => {
     expect(body).not.toContain('node_modules')
     expect(body).not.toContain(' at ')
     expect(body).not.toContain('SENTRY_DSN')
+  })
+
+  it('GET /api/version returns safe deployment identity', async () => {
+    const res = await request(createApp()).get('/api/version')
+    expect(res.status).toBe(200)
+    expect(res.body.application).toBe('digitalsmm-backend')
+    expect(res.body.version).toBe('1.0.0')
+    expect(res.body.commit).toBe('abc123')
+    expect(res.body.environment).toBe('test')
+  })
+
+  it('GET /api/health carries the version without leaking internals', async () => {
+    const res = await request(createApp()).get('/api/health')
+    expect(res.body.version).toBe('1.0.0')
+    expect(JSON.stringify(res.body)).not.toMatch(/secret|password|token/i)
   })
 })

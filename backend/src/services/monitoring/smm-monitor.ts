@@ -1,5 +1,6 @@
 import type { SmmProvider } from '../../interfaces/smm-provider.interface.js'
 import { logger } from '../../utils/logger.js'
+import { reportAlert } from './alert.service.js'
 
 /**
  * SMM provider monitoring wrapper.
@@ -57,13 +58,24 @@ export function monitorSmmProvider(provider: SmmProvider): SmmProvider {
         })
         return result
       } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
         logger.error('[smm-monitor] failed', {
           provider: provider.name,
           operation,
           duration_ms: Date.now() - startedAt,
           result: 'error',
-          error: err instanceof Error ? err.message : String(err),
+          error: message,
           ...safeId,
+        })
+        // Operational alert (deduplicated + level gated by the alert service).
+        // Safe metadata only: provider name + operation + truncated message.
+        reportAlert({
+          category: 'SMM_PROVIDER_ERROR',
+          level: 'warning',
+          service: 'smm',
+          event: 'provider_operation_failed',
+          message: `${provider.name} ${operation} failed`,
+          details: message.slice(0, 300),
         })
         throw err
       }

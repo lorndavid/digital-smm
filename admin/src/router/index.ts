@@ -24,6 +24,16 @@ const routes: RouteRecordRaw[] = [
       { path: 'announcements', name: 'admin-announcements', component: () => import('@/views/AnnouncementsView.vue') },
       { path: 'analytics', name: 'admin-analytics', component: () => import('@/views/AnalyticsView.vue') },
       { path: 'system/health', name: 'admin-system-health', component: () => import('@/views/SystemHealthView.vue') },
+      {
+        path: 'system/incidents',
+        name: 'admin-system-incidents',
+        component: () => import('@/views/SystemIncidentsView.vue'),
+      },
+      {
+        path: 'system/deployments',
+        name: 'admin-system-deployments',
+        component: () => import('@/views/SystemDeploymentsView.vue'),
+      },
       { path: 'settings', name: 'admin-settings', component: () => import('@/views/SettingsView.vue') },
     ],
   },

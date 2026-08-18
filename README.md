@@ -441,31 +441,53 @@ page views are tracked centrally via the router, and financial events
 state**, never button clicks. See `docs/analytics.md` and
 `docs/analytics-events.md`.
 
-## Monitoring
+## Monitoring & operations (Part 2)
 
+- **Telegram alerts** — deployment success/failure, rollback, unhandled 5xx,
+  webhook security events, provider failures; level-gated + deduplicated
+  (`modules/notifications/`). Fail-safe: never takes business logic down.
+- **Incidents** — persistent incident history with dedup-by-key, admin center
+  (Admin → System → Incidents), resolve inline.
+- **Daily report** — every day at **22:00 Asia/Phnom_Penh** one Telegram
+  report with traffic, performance, orders/revenue, incidents and deployments
+  (Mongo distributed lock → exactly one send, multi-replica safe).
+- **Deployment tracking** — `/api/version` + `/api/admin/system/deployments`;
+  identity baked into the image (commit sha, version, build time).
 - **Frontend RUM** — LCP/CLS/INP/TTFB → analytics (`frontend/src/monitoring/`).
 - **Sentry** — backend (`SENTRY_DSN`) + frontends (`VITE_SENTRY_DSN`).
 - **Backend request metrics** — `/api/health/metrics` (p50/p95/p99, top routes).
 - **Structured logs** — JSON with per-request `requestId` (correlated to Sentry).
 - **Health endpoints** — `/api/health` (liveness), `/api/ready` (readiness),
-  `/api/health/deps` (dependency detail).
-- **Admin UI** — Admin → Insights → Analytics and Admin → System → System Health.
+  `/api/health/deps` (dependency detail), `/api/version` (deployment identity).
+- **Admin UI** — Admin → Insights → Analytics, Admin → System → System Health /
+  Incidents / Deployments.
 
-See `docs/monitoring.md` and `docs/health-checks.md`.
+See `docs/monitoring.md`, `docs/telegram-alerts.md`, `docs/alerting.md` and
+`docs/incident-management.md`.
 
 ## Production readiness
 
 Everything is implemented in the repo; the external dashboards (Cloudflare,
-Vercel, GA, Search Console, Sentry, uptime) are **manual** — follow the step-
-by-step guides in `docs/manual-setup/` (01–07) and `docs/deployment.md`.
+Vercel, GA, Search Console, Sentry, uptime, **Telegram bot**) are **manual** —
+follow the step-by-step guides in `docs/manual-setup/` (01–09) and
+`docs/deployment.md`.
 
-## Deployment
+## Deployment & CI/CD
 
-- **Frontend / Admin** → Vercel (set the `VITE_*` env vars; point `VITE_API_BASE_URL` at
-  the deployed backend; build with `npm run build:seo`).
-- **Backend** → any VPS / container host. Build with `npm run build -w backend`, run
-  `npm run start`. Enable the order-sync job with `ENABLE_ORDER_SYNC_JOB=true`.
-  Set `SENTRY_DSN` for error monitoring.
+- **Frontend / Admin** → Vercel (set the `VITE_*` env vars; point
+  `VITE_API_BASE_URL` at the deployed backend). `frontend-deploy.yml` and
+  `admin-deploy.yml` smoke-test the live URLs and notify Telegram.
+- **Backend** → VPS via Docker (`docker-compose.prod.yml`). `backend-deploy.yml`
+  deploys immutable `digitalsmm-prod-backend:<sha>` images, verifies
+  `/api/ready` with retries and **auto-rolls-back** to the previous image on
+  failure (`scripts/backend-deploy.sh`).
+- **Security** — `security-scan.yml` runs gitleaks (secret scan) + npm audit on
+  every PR/push.
+- Set `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` (+ `VPS_*` secrets) to enable
+  notifications — see `docs/manual-setup/08-github-actions.md` and
+  `docs/manual-setup/09-telegram-bot.md`.
+
+See `docs/ci-cd.md`, `docs/rollback.md` and `docs/architecture-audit.md`.
 
 ## Tests
 

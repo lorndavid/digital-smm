@@ -26,9 +26,19 @@ name: digitalsmm-prod
 
 services:
   backend:
+    # Explicit image name:tag. The CI/CD deploy workflow sets IMAGE_TAG to the
+    # git commit SHA so every deploy is an immutable, rollback-able version
+    # (rollback = IMAGE_TAG=<previous-sha> + up --no-build --force-recreate).
+    # Plain `docker compose up -d` still works (defaults to :latest).
+    image: digitalsmm-prod-backend:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: backend/Dockerfile
+      args:
+        # Deployment identity baked into the image (safe metadata, no secrets).
+        VERSION: ${APP_VERSION:-1.0.0}
+        COMMIT: ${APP_COMMIT:-}
+        BUILD_TIME: ${APP_BUILD_TIME:-}
     restart: unless-stopped
     # All runtime configuration comes from backend/.env (gitignored).
     # See backend/.env.production.example for the full list.

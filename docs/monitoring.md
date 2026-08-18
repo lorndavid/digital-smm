@@ -17,6 +17,10 @@ disables the corresponding layer.
 | SMM provider monitoring   | `backend/src/services/monitoring/smm-monitor.ts` | provider call duration/result, safe ids.             |
 | Payment flow monitoring   | `backend/src/services/payment.service.ts`  | create/status/webhook/fulfillment logs (safe fields).        |
 | Health checks             | `backend/src/controllers/health.controller.ts` | liveness / readiness / dependency detail.              |
+| Operational alerts        | `backend/src/services/monitoring/alert.service.ts` | error classification → incidents → Telegram (dedup). |
+| Incidents                 | `backend/src/services/monitoring/incident.service.ts` | persistent incident history (admin center).   |
+| Deployment tracking       | `backend/src/services/monitoring/deployment.service.ts` | version/commit/status history + rollback target. |
+| Daily report              | `backend/src/jobs/daily-report.job.ts` | 22:00 Asia/Phnom_Penh Telegram report (distributed lock). |
 
 ## Environment variables
 
@@ -27,6 +31,10 @@ disables the corresponding layer.
 | `SENTRY_ENVIRONMENT` | backend   | Environment label (defaults to `NODE_ENV`).          |
 | `VITE_APP_ENV`       | frontend/admin | Sentry + analytics environment label.           |
 | `VITE_GA_MEASUREMENT_ID` | frontend | RUM reporting destination (analytics).          |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | backend | Operational alerts + daily report (optional, fail-safe). |
+| `TELEGRAM_ALERTS_ENABLED` / `TELEGRAM_MIN_ALERT_LEVEL` / `TELEGRAM_ALERT_COOLDOWN_MS` | backend | Alert gating + dedup tuning. |
+| `DAILY_REPORT_ENABLED` / `DAILY_REPORT_TIME` / `DAILY_REPORT_TZ` | backend | Daily report schedule (default 22:00 Asia/Phnom_Penh). |
+| `APP_VERSION` / `APP_COMMIT` / `APP_BUILD_TIME` | backend | Deployment identity (baked at build). |
 
 ## Endpoints
 
@@ -36,7 +44,11 @@ disables the corresponding layer.
 | `GET /api/ready`      | —     | Readiness (MongoDB + Redis reachable) → 200/503.    |
 | `GET /api/health/deps`| —     | Per-dependency status (never fails the request).    |
 | `GET /api/health/metrics` | — | Request metrics summary (p50/p95/p99, top routes). |
+| `GET /api/version` | — | Safe deployment identity (version/commit/environment). |
 | `GET /api/admin/system/health` | admin | Admin System Health page payload.        |
+| `GET /api/admin/system/incidents` | admin | Incident list (filter by status/severity/search). |
+| `POST /api/admin/system/incidents/:id/resolve` | admin | Resolve an incident. |
+| `GET /api/admin/system/deployments` | admin | Deployment history per service.          |
 
 ## Privacy
 
@@ -54,3 +66,13 @@ disables the corresponding layer.
   services and platform breakdowns from the database.
 - **Admin → System → System Health** — API/MongoDB/Redis/SMM/Payment status,
   error rate, latency percentiles, top routes, uptime, deployment version.
+- **Admin → System → Incidents** — operational failures with severity,
+  occurrences, first/last seen, resolve inline (auto-refresh 30s).
+- **Admin → System → Deployments** — per-service deployment history with
+  commit/version/status and the rollback target.
+
+## Operational alerts (Telegram)
+
+See `docs/telegram-alerts.md` and `docs/alerting.md`. Every alert is
+level-gated, deduplicated (spike + cooldown), contains safe identifiers only,
+and can never take the business logic down.

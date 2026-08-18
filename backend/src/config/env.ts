@@ -114,6 +114,42 @@ const envSchema = z.object({
     .default('false')
     .transform((v) => v === 'true'),
   ORDER_SYNC_INTERVAL_MS: z.coerce.number().default(60_000),
+
+  // --- Deployment identity (baked into the image at build time) ---
+  // Safe to expose publicly: version/commit/build_time are not secrets.
+  APP_VERSION: z.string().default('1.0.0'),
+  APP_COMMIT: z.string().default(''),
+  APP_BUILD_TIME: z.string().default(''),
+  // Set by the CI/CD deploy workflow so logs/incidents/deployments correlate.
+  DEPLOYMENT_ID: z.string().default(''),
+
+  // --- Telegram operational alerts (OPTIONAL — the app must start without) ---
+  // 1. Create a bot via @BotFather and copy its token.
+  // 2. Send any message to the target chat/group, then run:
+  //    curl https://api.telegram.org/bot<TOKEN>/getUpdates
+  //    and copy the numeric `chat.id`.
+  // Alerts are deduplicated (spike + cooldown) so one repeated failure sends
+  // one aggregated message, not hundreds. See modules/notifications.
+  TELEGRAM_BOT_TOKEN: optionalString(z.string().min(10)),
+  TELEGRAM_CHAT_ID: optionalString(z.string().min(1)),
+  TELEGRAM_ALERTS_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
+  TELEGRAM_MIN_ALERT_LEVEL: z
+    .enum(['info', 'warning', 'error', 'critical'])
+    .default('warning'),
+  // Aggregation window for identical alerts before a new message is sent.
+  TELEGRAM_ALERT_COOLDOWN_MS: z.coerce.number().default(15 * 60 * 1000),
+
+  // --- Daily operational report (Telegram, Asia/Phnom_Penh) ---
+  DAILY_REPORT_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
+  // Local wall-clock time in DAILY_REPORT_TZ, e.g. '22:00'.
+  DAILY_REPORT_TIME: z.string().default('22:00'),
+  DAILY_REPORT_TZ: z.string().default('Asia/Phnom_Penh'),
 })
 
 const parsed = envSchema.safeParse(process.env)

@@ -28,6 +28,11 @@ adminRoutes.get('/admin/analytics/services', adminController.analyticsServices)
 // System health
 adminRoutes.get('/admin/system/health', adminController.systemHealth)
 
+// Operations center: incidents + deployment history (admin authenticated)
+adminRoutes.get('/admin/system/incidents', ...adminController.listIncidents)
+adminRoutes.post('/admin/system/incidents/:id/resolve', adminController.resolveIncident)
+adminRoutes.get('/admin/system/deployments', ...adminController.listDeployments)
+
 // Services
 adminRoutes.get('/admin/services', ...adminController.listServices)
 adminRoutes.post('/admin/services', ...adminController.createService)

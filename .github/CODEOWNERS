@@ -1,0 +1,25 @@
+# CODEOWNERS — who reviews what.
+#
+# GitHub shows these owners as required reviewers on PRs (after enabling
+# "Require review from Code Owners" under branch protection).
+#
+# Adjust the handles below to your team's actual GitHub usernames.
+# Format:  path pattern  @owner1 @owner2
+
+# Default: the project owner reviews everything.
+* @lorndavid
+
+# Backend + infrastructure — the owner of record for deployments and CI.
+/backend/ @lorndavid
+/.github/ @lorndavid
+/docker-compose*.yml @lorndavid
+/scripts/ @lorndavid
+
+# Frontend (customer storefront).
+/frontend/ @lorndavid
+
+# Admin panel.
+/admin/ @lorndavid
+
+# Documentation.
+/docs/ @lorndavid

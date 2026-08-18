@@ -12,7 +12,9 @@ import {
   Moon,
   Package,
   Receipt,
+  RotateCcw,
   Settings,
+  ShieldAlert,
   Sun,
   Users,
 } from '@lucide/vue'
@@ -73,6 +75,8 @@ const navGroups: NavGroup[] = [
     title: 'System',
     items: [
       { to: '/system/health', label: 'System Health', icon: Activity },
+      { to: '/system/incidents', label: 'Incidents', icon: ShieldAlert },
+      { to: '/system/deployments', label: 'Deployments', icon: RotateCcw },
       { to: '/settings', label: 'Settings', icon: Settings },
     ],
   },

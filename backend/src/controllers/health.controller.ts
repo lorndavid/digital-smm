@@ -1,6 +1,7 @@
 import { isDatabaseConnected } from '../config/database.js'
 import { env } from '../config/env.js'
 import { asyncHandler } from '../utils/async-handler.js'
+import { getAppVersion } from '../utils/version.js'
 import { getRedisClient } from '../services/redis/redis.client.js'
 import { metricsStore } from '../services/monitoring/metrics.store.js'
 import { getSmmProvider } from '../services/smm/provider.factory.js'
@@ -24,11 +25,20 @@ import { getSmmProvider } from '../services/smm/provider.factory.js'
  */
 
 export const healthController = {
+  /** Safe deployment identity (no secrets) — GET /api/version. */
+  version: asyncHandler(async (_req, res) => {
+    res.json(getAppVersion())
+  }),
+
   /** Liveness — always 200 while the process is alive. */
   check: asyncHandler(async (_req, res) => {
+    const v = getAppVersion()
     res.json({
       status: 'ok',
       service: 'digitalsmm-backend',
+      version: v.version,
+      commit: v.commit,
+      environment: v.environment,
       db: isDatabaseConnected() ? 'connected' : 'disconnected',
       smmProvider: env.SMM_PROVIDER,
       paymentProvider: env.PAYMENT_PROVIDER,
@@ -83,10 +93,12 @@ export const healthController = {
       }
     }
 
+    const v = getAppVersion()
     res.json({
       status: dbOk && (redisOk || !redisConfigured) ? 'ok' : 'degraded',
       service: 'digitalsmm-backend',
-      version: '1.0.0',
+      version: v.version,
+      commit: v.commit,
       uptimeSeconds: metricsStore.summary().uptimeSeconds,
       dependencies: {
         mongodb: { status: dbOk ? 'ok' : 'down' },

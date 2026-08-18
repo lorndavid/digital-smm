@@ -3,6 +3,7 @@ import * as Sentry from '@sentry/node'
 import { ApiError } from '../utils/api-error.js'
 import { logger } from '../utils/logger.js'
 import { env } from '../config/env.js'
+import { reportUnhandledError } from '../services/monitoring/alert.service.js'
 
 /** Catch-all for unmatched routes. */
 export const notFoundHandler: RequestHandler = (req, res) => {
@@ -67,6 +68,14 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     } catch {
       /* Sentry must never break the response path */
     }
+  }
+
+  // Operational alerting (Telegram + incidents) for unexpected 5xx.
+  // Fire-and-forget: alerting must never slow or break the response path.
+  try {
+    reportUnhandledError(err)
+  } catch {
+    /* never break the response because alerting failed */
   }
 
   if (env.NODE_ENV === 'production') {

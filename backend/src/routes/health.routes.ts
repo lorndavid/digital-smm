@@ -3,6 +3,9 @@ import { healthController } from '../controllers/health.controller.js'
 
 export const healthRoutes = Router()
 
+// Safe deployment identity (version / commit / environment).
+healthRoutes.get('/version', healthController.version)
+
 // Liveness (process up) — compatible with the pre-existing /api/health.
 healthRoutes.get('/health', healthController.check)
 healthRoutes.get('/health/check', healthController.check)

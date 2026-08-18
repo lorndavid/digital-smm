@@ -1,0 +1,83 @@
+# Backend production deploy.
+#
+# Runs when backend code (or the prod compose/Dockerfile) lands on `main`.
+# Flow: SSH → git pull → scripts/backend-deploy.sh <sha> (builds an immutable
+# digitalsmm-prod-backend:<sha> image, restarts, verifies /api/ready with
+# retries, auto-rolls-back to the previous known-good image on failure and
+# sends Telegram notifications at every step).
+#
+# MANUAL REQUIRED (GitHub → Settings → Secrets and variables → Actions):
+#   TELEGRAM_BOT_TOKEN   — bot token from @BotFather
+#   TELEGRAM_CHAT_ID     — chat/group id to receive notifications
+#   VPS_HOST             — VPS IP or hostname
+#   VPS_USER             — SSH user (e.g. ubuntu)
+#   VPS_SSH_KEY          — private deploy key (ed25519) for the VPS
+#   VPS_SSH_PORT         — optional, defaults to 22
+#
+# Optional hardening: put the job in a `production` GitHub Environment with
+# required reviewers so deploys always need an explicit approval.
+name: Backend Deploy (production)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'docker-compose.prod.yml'
+      - 'backend/Dockerfile'
+      - 'scripts/backend-deploy.sh'
+      - '.github/workflows/backend-deploy.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-backend-prod
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Optional: GitHub Environment with required reviewers for manual approval.
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Notify deploy started
+        continue-on-error: true
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: node scripts/notify-telegram.mjs "🟡 DigitalSMM Backend deploy STARTED — commit ${GITHUB_SHA:0:12} (${{ github.ref_name }})"
+
+      - name: Deploy, verify and rollback via SSH
+        env:
+          SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_HOST: ${{ secrets.VPS_HOST }}
+          SSH_USER: ${{ secrets.VPS_USER }}
+          SSH_PORT: ${{ secrets.VPS_SSH_PORT || '22' }}
+        run: |
+          if [[ -z "$SSH_HOST" || -z "$SSH_USER" || -z "$SSH_KEY" ]]; then
+            echo "::error::VPS_SSH_KEY / VPS_HOST / VPS_USER secrets are not configured. See .github/workflows/backend-deploy.yml header." >&2
+            exit 1
+          fi
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          ssh -p "$SSH_PORT" -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" \
+            "cd /opt/digital-smm && git pull --ff-only && bash scripts/backend-deploy.sh '${GITHUB_SHA}'"
+
+      - name: Notify result
+        if: always()
+        continue-on-error: true
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            node scripts/notify-telegram.mjs "🟢 DigitalSMM Backend deploy SUCCESS — commit ${GITHUB_SHA:0:12}"
+          else
+            node scripts/notify-telegram.mjs "🔴 DigitalSMM Backend deploy FAILED — commit ${GITHUB_SHA:0:12}. Check GitHub Actions for the rollback result."
+          fi

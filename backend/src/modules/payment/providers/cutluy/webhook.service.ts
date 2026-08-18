@@ -4,6 +4,7 @@ import { normalizeCutLuyEvent } from './payment.service.js'
 import type { CutLuyWebhookEvent } from './types.js'
 import { WebhookLogModel } from '../../../../models/webhook-log.model.js'
 import { paymentService } from '../../../../services/payment.service.js'
+import { reportAlert } from '../../../../services/monitoring/alert.service.js'
 import { logger } from '../../../../utils/logger.js'
 
 export interface WebhookHandleResult {
@@ -36,6 +37,16 @@ export async function handleCutLuyWebhook(
 
   if (!verification.valid) {
     logger.warn(`[cutluy-webhook] rejected: ${verification.reason}`)
+    // Security event — repeated invalid signatures may be a replay/attack
+    // attempt or a misconfigured secret. Safe metadata only (no payload).
+    reportAlert({
+      category: 'WEBHOOK_ERROR',
+      level: 'warning',
+      service: 'payment',
+      event: 'webhook_invalid_signature',
+      message: 'CutLuy webhook rejected — invalid signature',
+      details: `reason: ${verification.reason ?? 'invalid signature'}`,
+    })
     // Still record the attempt for audit.
     await WebhookLogModel.create({
       provider: 'cutluy',
@@ -90,6 +101,15 @@ export async function handleCutLuyWebhook(
     // with exponential backoff (up to 8 times).
     const message = err instanceof Error ? err.message : 'processing failed'
     logger.error('[cutluy-webhook] processing failed', err)
+    // Operational alert — the payment could not be verified/fulfilled.
+    reportAlert({
+      category: 'WEBHOOK_ERROR',
+      level: 'error',
+      service: 'payment',
+      event: 'webhook_processing_failed',
+      message: 'CutLuy webhook processing failed',
+      details: message.slice(0, 300),
+    })
     await WebhookLogModel.create({
       provider: 'cutluy',
       eventId,

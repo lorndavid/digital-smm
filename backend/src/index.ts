@@ -3,10 +3,13 @@ import { env } from './config/env.js'
 import { connectDatabase, disconnectDatabase } from './config/database.js'
 import { initSentry } from './config/sentry.js'
 import { startOrderSyncJob, stopOrderSyncJob } from './jobs/order-sync.job.js'
+import { startDailyReportJob, stopDailyReportJob } from './jobs/daily-report.job.js'
 import { shutdownRedis } from './services/payment/events.bus.js'
 import { shutdownOrderRedis } from './services/order/events.bus.js'
 import { shutdownRedisClient } from './services/redis/redis.client.js'
 import { seedSuperAdmin } from './services/admin-auth.service.js'
+import { recordBootDeployment } from './services/monitoring/deployment.service.js'
+import { isTelegramConfigured } from './modules/notifications/index.js'
 import { logger } from './utils/logger.js'
 
 async function bootstrap(): Promise<void> {
@@ -15,6 +18,18 @@ async function bootstrap(): Promise<void> {
 
   await connectDatabase()
   await seedSuperAdmin()
+
+  // Record this process start as a deployment (identity baked into the image).
+  await recordBootDeployment()
+
+  // Confirm Telegram or warn (optional infrastructure — app must run without).
+  if (isTelegramConfigured()) {
+    logger.info('[notifications] Telegram alerts configured and enabled')
+  } else {
+    logger.warn(
+      '[notifications] Telegram not configured — operational alerts and the daily report are disabled',
+    )
+  }
 
   // Confirm Google OAuth or warn.
   if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
@@ -31,10 +46,12 @@ async function bootstrap(): Promise<void> {
   })
 
   startOrderSyncJob()
+  startDailyReportJob()
 
   const shutdown = async (signal: string): Promise<void> => {
     logger.info(`[server] Received ${signal}, shutting down...`)
     stopOrderSyncJob()
+    stopDailyReportJob()
     server.close()
     await shutdownRedis() // payment SSE bus pub/sub clients
     await shutdownOrderRedis() // order SSE bus pub/sub clients

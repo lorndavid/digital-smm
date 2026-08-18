@@ -1,0 +1,63 @@
+# Admin panel production deploy verification + Telegram notifications.
+#
+# The admin panel is deployed by the Vercel GitHub integration on `main`.
+# This workflow smoke-tests the admin production URL and notifies Telegram.
+#
+# MANUAL REQUIRED:
+#   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID — GitHub Actions secrets.
+#   Vercel GitHub app must have access to this repo.
+name: Admin Deploy (verify + notify)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'admin/**'
+      - 'admin/vercel.json'
+      - 'package-lock.json'
+      - '.github/workflows/admin-deploy.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-admin-prod
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wait for Vercel deploy to settle
+        run: sleep 120
+
+      - name: Smoke test admin URL
+        id: smoke
+        continue-on-error: true
+        env:
+          PROD_URL: ${{ vars.ADMIN_PROD_URL || 'https://admin.digitalsmm.shop' }}
+        run: |
+          code=$(curl -sS -L -o /dev/null -w '%{http_code}' -m 30 "$PROD_URL" || echo 000)
+          echo "status=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" != "200" ]; then
+            echo "::error::Admin smoke test failed: HTTP $code from $PROD_URL"
+            exit 1
+          fi
+          echo "Admin is live: $PROD_URL → HTTP $code"
+
+      - name: Notify result
+        if: always()
+        continue-on-error: true
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [ "${{ steps.smoke.outcome }}" == "success" ]; then
+            node scripts/notify-telegram.mjs "🟢 DigitalSMM Admin deployed — commit ${GITHUB_SHA:0:12} (${{ vars.ADMIN_PROD_URL || 'https://admin.digitalsmm.shop' }})"
+          else
+            node scripts/notify-telegram.mjs "🔴 DigitalSMM Admin deploy check FAILED — commit ${GITHUB_SHA:0:12}. See GitHub Actions."
+          fi

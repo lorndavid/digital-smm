@@ -269,6 +269,46 @@ export interface ServicesAnalytics {
 /** Dependency status for the System Health page. */
 export type DependencyStatus = 'ok' | 'down' | 'degraded' | 'not-configured'
 
+export type IncidentSeverity = 'warning' | 'error' | 'critical'
+export type IncidentStatus = 'open' | 'investigating' | 'resolved'
+
+export interface Incident {
+  id: string
+  key: string
+  severity: IncidentSeverity
+  service: string
+  title: string
+  message: string
+  status: IncidentStatus
+  occurrences: number
+  environment: string
+  version: string
+  firstSeenAt: string
+  lastSeenAt: string
+  resolvedAt: string | null
+  resolutionReason: string
+}
+
+export type DeploymentService = 'frontend' | 'admin' | 'backend'
+export type DeploymentStatus = 'in-progress' | 'success' | 'failed' | 'rolled-back'
+
+export interface DeploymentRecord {
+  id: string
+  service: DeploymentService
+  version: string
+  commit: string
+  environment: string
+  status: DeploymentStatus
+  triggeredBy: string
+  deploymentId: string
+  startedAt: string
+  completedAt: string | null
+  durationMs: number
+  rollbackTo: string
+  url: string
+  notes: string
+}
+
 export interface SystemHealth {
   status: 'ok' | 'degraded' | 'unavailable'
   service: string
