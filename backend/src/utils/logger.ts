@@ -1,5 +1,6 @@
 import { env } from '../config/env.js'
 import { getRequestId } from './request-context.js'
+import { redact } from './redact.js'
 
 /**
  * Structured logger with request correlation.
@@ -33,12 +34,20 @@ function stamp(): string {
   return new Date().toISOString()
 }
 
-/** Serializes meta values defensively (Error → message, never throws). */
+/**
+ * Serializes meta values defensively (Error → message, never throws) and
+ * redacts credential-shaped values so secrets can never reach the log
+ * stream, even if a caller passes them in `meta` by accident.
+ */
 function safeMeta(meta: unknown): unknown {
   if (meta instanceof Error) {
-    return { message: meta.message, name: meta.name, stack: env.NODE_ENV === 'production' ? undefined : meta.stack }
+    return redact({
+      message: meta.message,
+      name: meta.name,
+      stack: env.NODE_ENV === 'production' ? undefined : meta.stack,
+    })
   }
-  return meta
+  return redact(meta)
 }
 
 function write(level: LogLevel, message: string, meta?: unknown): void {

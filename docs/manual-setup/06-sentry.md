@@ -6,8 +6,19 @@
 
 ## Goal
 
-Create three Sentry projects (backend, customer frontend, admin) and copy their
-DSNs into the right env files.
+Create the Sentry projects (backend, customer frontend, admin) so events are
+routed to the right project.
+
+## Current status
+
+The **customer frontend and admin DSNs are already baked into their bundles**
+(`frontend/src/monitoring/sentry.ts` and `admin/src/monitoring/sentry.ts` —
+`DEFAULT_SENTRY_DSN`). DSNs are public by design (the browser must know where
+to send events), so they ship in the client code. `VITE_SENTRY_DSN` can
+override the baked-in DSN per environment, but it is no longer required.
+
+The **backend** DSN is a secret (it can read project events) and must only live
+in `backend/.env`.
 
 ## Steps
 
@@ -16,9 +27,9 @@ DSNs into the right env files.
    - Platform: **Node.js / Express** → name: `digitalsmm-backend`.
    - Copy the **DSN** (`https://<key>@o<org>.ingest.sentry.io/<project>`).
 3. **Create a project** for the customer frontend:
-   - Platform: **Vue** → name: `digitalsmm-frontend` → copy its DSN.
+   - Platform: **Vue** → name: `digitalsmm-frontend`.
 4. **Create a project** for the admin panel:
-   - Platform: **Vue** → name: `digitalsmm-admin` → copy its DSN.
+   - Platform: **Vue** → name: `digitalsmm-admin`.
 
 ## Configure in the repo
 
@@ -29,7 +40,7 @@ SENTRY_ENVIRONMENT=production
 ```
 
 ```env
-# frontend/.env + admin/.env (public by design — the browser needs the DSN)
+# frontend/.env + admin/.env — OPTIONAL (only to override the baked-in DSN)
 VITE_SENTRY_DSN=https://<key>@o<org>.ingest.sentry.io/<project>
 VITE_APP_ENV=production
 ```

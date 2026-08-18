@@ -340,3 +340,81 @@ export interface SystemHealth {
   time: string
 }
 
+// ---------------------------------------------------------------------------
+// Admin Integrations (encrypted provider credentials)
+// ---------------------------------------------------------------------------
+
+export type IntegrationProviderKey = 'telegram' | 'smm' | 'culture'
+
+export type IntegrationStatus =
+  | 'CONNECTED'
+  | 'NOT_CONFIGURED'
+  | 'CONNECTION_FAILED'
+  | 'DISABLED'
+  | 'TESTING'
+  | 'EXPIRED'
+
+export type IntegrationErrorCode =
+  | 'INVALID_CREDENTIALS'
+  | 'UNAUTHORIZED'
+  | 'FORBIDDEN'
+  | 'RATE_LIMITED'
+  | 'TIMEOUT'
+  | 'NETWORK_ERROR'
+  | 'INVALID_DESTINATION'
+  | 'PROVIDER_UNAVAILABLE'
+  | 'NOT_CONFIGURED'
+  | 'UNSUPPORTED'
+  | 'UNKNOWN_ERROR'
+
+/** A secret field as seen by the admin — configured + masked ONLY. */
+export interface SecretFieldView {
+  configured: boolean
+  masked: string | null
+}
+
+export interface IntegrationConnectionHistoryEntry {
+  testedAt: string
+  success: boolean
+  latencyMs: number | null
+  errorCode: string
+}
+
+/** Safe representation of one integration (never contains secrets). */
+export interface IntegrationSummary {
+  provider: IntegrationProviderKey
+  displayName: string
+  configured: boolean
+  enabled: boolean
+  status: IntegrationStatus
+  lastTestedAt: string | null
+  lastSuccessfulAt: string | null
+  lastFailedAt: string | null
+  lastErrorCode: string
+  lastErrorMessage: string
+  latencyMs: number | null
+  credentials: Record<string, SecretFieldView>
+  config: Record<string, unknown>
+  connectionHistory: IntegrationConnectionHistoryEntry[]
+}
+
+/** Result of a connection test. */
+export interface IntegrationTestResult {
+  success: boolean
+  provider: IntegrationProviderKey
+  status: IntegrationStatus
+  latencyMs: number
+  checkedAt: string
+  errorCode?: IntegrationErrorCode
+  message?: string
+  details?: Record<string, unknown>
+}
+
+/** Body used when saving an integration. Secret fields: omit = keep, '' = clear. */
+export interface IntegrationSavePayload {
+  displayName?: string
+  isEnabled?: boolean
+  secrets?: Partial<Record<string, string>>
+  config?: Record<string, unknown>
+}
+

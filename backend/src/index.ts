@@ -4,6 +4,10 @@ import { connectDatabase, disconnectDatabase } from './config/database.js'
 import { initSentry } from './config/sentry.js'
 import { startOrderSyncJob, stopOrderSyncJob } from './jobs/order-sync.job.js'
 import { startDailyReportJob, stopDailyReportJob } from './jobs/daily-report.job.js'
+import {
+  startIntegrationHealthJob,
+  stopIntegrationHealthJob,
+} from './jobs/integration-health.job.js'
 import { shutdownRedis } from './services/payment/events.bus.js'
 import { shutdownOrderRedis } from './services/order/events.bus.js'
 import { shutdownRedisClient } from './services/redis/redis.client.js'
@@ -47,11 +51,13 @@ async function bootstrap(): Promise<void> {
 
   startOrderSyncJob()
   startDailyReportJob()
+  startIntegrationHealthJob()
 
   const shutdown = async (signal: string): Promise<void> => {
     logger.info(`[server] Received ${signal}, shutting down...`)
     stopOrderSyncJob()
     stopDailyReportJob()
+    stopIntegrationHealthJob()
     server.close()
     await shutdownRedis() // payment SSE bus pub/sub clients
     await shutdownOrderRedis() // order SSE bus pub/sub clients

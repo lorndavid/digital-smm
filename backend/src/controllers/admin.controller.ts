@@ -22,7 +22,16 @@ import { paymentRepository, walletRepository } from '../repositories/finance.rep
 import { userRepository } from '../repositories/user.repository.js'
 import { adminRepository } from '../repositories/admin.repository.js'
 import { hashPassword, loginAdmin } from '../services/admin-auth.service.js'
-import { listAuditLogs, logAdminAction } from '../services/audit.service.js'
+import { listAuditLogs, logAdminAction, logIntegrationAudit } from '../services/audit.service.js'
+import {
+  deleteIntegration,
+  getIntegration,
+  listIntegrations,
+  saveIntegration,
+  sendTelegramTestMessage,
+  setEnabled,
+  testConnection,
+} from '../services/integrations/index.js'
 import { validate, validateQuery } from '../middleware/validate.middleware.js'
 import {
   adminListQuerySchema,
@@ -32,6 +41,8 @@ import {
   bulkServiceProfitBodySchema,
   categoryBodySchema,
   createAdminBodySchema,
+  integrationEnableBodySchema,
+  integrationSaveBodySchema,
   orderStatusBodySchema,
   paginationQuerySchema,
   serviceBodySchema,
@@ -202,6 +213,99 @@ export const adminController = {
       )
     }),
   ],
+
+  // ------------------------------------------------------------------
+  // Integrations (encrypted provider credentials — Admin → Integrations)
+  // ------------------------------------------------------------------
+
+  listIntegrations: asyncHandler(async (_req, res) => {
+    res.json(await listIntegrations())
+  }),
+
+  getIntegration: asyncHandler(async (req, res) => {
+    res.json(await getIntegration(req.params.provider as string))
+  }),
+
+  saveIntegration: [
+    validate(integrationSaveBodySchema),
+    asyncHandler(async (req, res) => {
+      const provider = req.params.provider as string
+      const view = await saveIntegration(provider, req.body, {
+        id: req.admin?.sub,
+        email: req.admin?.email,
+      })
+      await logIntegrationAudit({
+        actorId: req.admin?.sub ?? '',
+        actorEmail: req.admin?.email,
+        provider,
+        action: 'integration.save',
+        details: { displayName: view.displayName, enabled: view.enabled },
+      })
+      res.json(view)
+    }),
+  ],
+
+  deleteIntegration: asyncHandler(async (req, res) => {
+    const provider = req.params.provider as string
+    await deleteIntegration(provider, { id: req.admin?.sub, email: req.admin?.email })
+    await logIntegrationAudit({
+      actorId: req.admin?.sub ?? '',
+      actorEmail: req.admin?.email,
+      provider,
+      action: 'integration.delete',
+    })
+    res.json({ deleted: true, provider })
+  }),
+
+  setIntegrationEnabled: [
+    validate(integrationEnableBodySchema),
+    asyncHandler(async (req, res) => {
+      const provider = req.params.provider as string
+      const enabled = Boolean(req.body.enabled)
+      const view = await setEnabled(provider, enabled, {
+        id: req.admin?.sub,
+        email: req.admin?.email,
+      })
+      await logIntegrationAudit({
+        actorId: req.admin?.sub ?? '',
+        actorEmail: req.admin?.email,
+        provider,
+        action: enabled ? 'integration.enabled' : 'integration.disabled',
+      })
+      res.json(view)
+    }),
+  ],
+
+  testIntegration: asyncHandler(async (req, res) => {
+    const provider = req.params.provider as string
+    const outcome = await testConnection(provider, {
+      id: req.admin?.sub,
+      email: req.admin?.email,
+    })
+    await logIntegrationAudit({
+      actorId: req.admin?.sub ?? '',
+      actorEmail: req.admin?.email,
+      provider,
+      action: 'integration.test',
+      details: {
+        success: outcome.success,
+        latencyMs: outcome.latencyMs,
+        ...(outcome.errorCode ? { errorCode: outcome.errorCode } : {}),
+      },
+    })
+    res.json(outcome)
+  }),
+
+  sendTelegramTestMessage: asyncHandler(async (req, res) => {
+    const result = await sendTelegramTestMessage({ id: req.admin?.sub, email: req.admin?.email })
+    await logIntegrationAudit({
+      actorId: req.admin?.sub ?? '',
+      actorEmail: req.admin?.email,
+      provider: 'telegram',
+      action: 'integration.test_message',
+    })
+    res.json(result)
+  }),
 
   // ------------------------------------------------------------------
   // Services

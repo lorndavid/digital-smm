@@ -9,9 +9,39 @@ export interface AuditEntry {
     | 'admin.remove_role'
     | 'admin.bulk_services'
     | 'admin.order_again'
+    | 'integration.save'
+    | 'integration.delete'
+    | 'integration.enabled'
+    | 'integration.disabled'
+    | 'integration.test'
+    | 'integration.test_message'
   targetId?: string | null
   targetEmail?: string
   details?: Record<string, unknown>
+}
+
+/** Audit integration actions (never contains secret values). */
+export async function logIntegrationAudit(entry: {
+  actorId: string
+  actorEmail?: string
+  provider: string
+  action:
+    | 'integration.save'
+    | 'integration.delete'
+    | 'integration.enabled'
+    | 'integration.disabled'
+    | 'integration.test'
+    | 'integration.test_message'
+  details?: Record<string, unknown>
+}): Promise<void> {
+  await logAdminAction({
+    actorId: entry.actorId,
+    actorEmail: entry.actorEmail,
+    action: entry.action,
+    targetId: entry.provider,
+    targetEmail: '',
+    details: entry.details ?? {},
+  })
 }
 
 /** Persist a sensitive admin action for the audit trail. */

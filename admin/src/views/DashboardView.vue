@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
+  ArrowRight,
   Banknote,
   Boxes,
   DollarSign,
@@ -9,6 +11,8 @@ import {
   Users,
   Wallet,
 } from '@lucide/vue'
+import { ALL_INTEGRATION_PROVIDERS } from '@/utils/integrations'
+import type { IntegrationSummary } from '@/types/models'
 import { adminApi } from '@/api/admin.api'
 import { useToast } from '@/composables/useToast'
 import { formatCompact, formatMoney, formatNumber } from '@/utils/format'
@@ -19,10 +23,24 @@ import BaseBadge from '@/components/ui/BaseBadge.vue'
 import BaseSkeleton from '@/components/ui/BaseSkeleton.vue'
 
 const toast = useToast()
+const router = useRouter()
 const stats = ref<DashboardStats | null>(null)
+const integrations = ref<IntegrationSummary[]>([])
 const loading = ref(true)
 const syncing = ref(false)
 const error = ref('')
+
+function integrationStatus(key: string): IntegrationSummary | undefined {
+  return integrations.value.find((i) => i.provider === key)
+}
+
+function statusDot(key: string): { dot: string; label: string } {
+  const s = integrationStatus(key)
+  if (s?.status === 'CONNECTED') return { dot: 'bg-emerald-400', label: 'Connected' }
+  if (s?.status === 'DISABLED') return { dot: 'bg-amber-400', label: 'Disabled' }
+  if (s?.status === 'CONNECTION_FAILED') return { dot: 'bg-rose-400', label: 'Needs attention' }
+  return { dot: 'bg-(--a-muted-3)', label: 'Not configured' }
+}
 
 const revenue = computed(() => stats.value?.orders.revenue ?? 0)
 const paidRevenue = computed(
@@ -33,7 +51,12 @@ async function load(): Promise<void> {
   loading.value = true
   error.value = ''
   try {
-    stats.value = await adminApi.stats()
+    const [statsData, integrationData] = await Promise.all([
+      adminApi.stats(),
+      adminApi.listIntegrations().catch(() => [] as IntegrationSummary[]),
+    ])
+    stats.value = statsData
+    integrations.value = integrationData
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load stats'
   } finally {
@@ -111,6 +134,38 @@ onMounted(() => void load())
           </div>
           <p class="font-display mt-1.5 text-xl font-bold text-(--a-text)">{{ formatNumber(stats.services.total) }}</p>
           <p class="mt-0.5 text-xs text-(--a-muted-2)">{{ formatNumber(stats.services.active) }} active · {{ stats.categories }} categories</p>
+        </div>
+      </div>
+
+      <!-- Integration health -->
+      <div class="glass rounded-xl p-5 shadow-card">
+        <div class="flex items-center justify-between">
+          <h2 class="font-display text-sm font-semibold text-(--a-text)">Integration Health</h2>
+          <button
+            class="inline-flex items-center gap-1 text-xs font-medium text-brand-300 transition-colors hover:text-brand-200"
+            @click="router.push('/integrations')"
+          >
+            Manage <ArrowRight class="h-3.5 w-3.5" />
+          </button>
+        </div>
+        <div class="mt-3 grid gap-3 sm:grid-cols-3">
+          <button
+            v-for="meta in ALL_INTEGRATION_PROVIDERS"
+            :key="meta.key"
+            class="flex items-center gap-3 rounded-lg border border-(--a-border) p-3 text-left transition-colors hover:border-brand-400/40 hover:bg-(--a-soft)"
+            @click="router.push(`/integrations/${meta.key}`)"
+          >
+            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-500/15 text-brand-300">
+              <component :is="meta.icon" class="h-4 w-4" />
+            </span>
+            <span class="min-w-0 flex-1">
+              <span class="block truncate text-[13px] font-medium text-(--a-text)">{{ meta.name }}</span>
+              <span class="flex items-center gap-1.5 text-xs" :class="statusDot(meta.key).label === 'Needs attention' ? 'text-rose-300' : 'text-(--a-muted-2)'">
+                <span class="h-1.5 w-1.5 rounded-full" :class="statusDot(meta.key).dot" />
+                {{ statusDot(meta.key).label }}
+              </span>
+            </span>
+          </button>
         </div>
       </div>
 

@@ -460,7 +460,8 @@ state**, never button clicks. See `docs/analytics.md` and
 - **Health endpoints** — `/api/health` (liveness), `/api/ready` (readiness),
   `/api/health/deps` (dependency detail), `/api/version` (deployment identity).
 - **Admin UI** — Admin → Insights → Analytics, Admin → System → System Health /
-  Incidents / Deployments.
+  Incidents / Deployments, Admin → Integrations (encrypted provider credentials
+  for Telegram / SMM / Culture API — see `docs/integrations.md`).
 
 See `docs/monitoring.md`, `docs/telegram-alerts.md`, `docs/alerting.md` and
 `docs/incident-management.md`.

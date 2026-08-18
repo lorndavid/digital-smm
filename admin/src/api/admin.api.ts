@@ -10,6 +10,10 @@ import type {
   DashboardStats,
   DeploymentRecord,
   Incident,
+  IntegrationProviderKey,
+  IntegrationSavePayload,
+  IntegrationSummary,
+  IntegrationTestResult,
   ManagedRole,
   Order,
   OrderStatus,
@@ -172,4 +176,26 @@ export const adminApi = {
   listSettings: async (): Promise<Setting[]> => (await apiClient.get('/admin/settings')).data,
   setSetting: async (data: { key: string; value: unknown; description?: string }): Promise<Setting> =>
     (await apiClient.put('/admin/settings', data)).data,
+
+  // Integrations (encrypted provider credentials)
+  listIntegrations: async (): Promise<IntegrationSummary[]> =>
+    (await apiClient.get('/admin/integrations')).data,
+  getIntegration: async (provider: IntegrationProviderKey): Promise<IntegrationSummary> =>
+    (await apiClient.get(`/admin/integrations/${provider}`)).data,
+  saveIntegration: async (
+    provider: IntegrationProviderKey,
+    payload: IntegrationSavePayload,
+  ): Promise<IntegrationSummary> =>
+    (await apiClient.put(`/admin/integrations/${provider}`, payload)).data,
+  deleteIntegration: async (provider: IntegrationProviderKey): Promise<{ deleted: boolean; provider: string }> =>
+    (await apiClient.delete(`/admin/integrations/${provider}`)).data,
+  setIntegrationEnabled: async (
+    provider: IntegrationProviderKey,
+    enabled: boolean,
+  ): Promise<IntegrationSummary> =>
+    (await apiClient.post(`/admin/integrations/${provider}/enable`, { enabled })).data,
+  testIntegration: async (provider: IntegrationProviderKey): Promise<IntegrationTestResult> =>
+    (await apiClient.post(`/admin/integrations/${provider}/test`)).data,
+  sendTelegramTestMessage: async (): Promise<{ messageId: number }> =>
+    (await apiClient.post('/admin/integrations/telegram/test-message')).data,
 }

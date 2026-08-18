@@ -11,6 +11,7 @@ import {
   Megaphone,
   Moon,
   Package,
+  Plug,
   Receipt,
   RotateCcw,
   Settings,
@@ -70,6 +71,10 @@ const navGroups: NavGroup[] = [
   {
     title: 'Insights',
     items: [{ to: '/analytics', label: 'Analytics', icon: BarChart3 }],
+  },
+  {
+    title: 'Integrations',
+    items: [{ to: '/integrations', label: 'Integrations', icon: Plug }],
   },
   {
     title: 'System',

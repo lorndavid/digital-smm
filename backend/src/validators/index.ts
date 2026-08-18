@@ -264,3 +264,63 @@ export const serviceBulkBodySchema = z.object({
   }),
 })
 
+// ---------------------------------------------------------------------------
+// Admin: integrations (encrypted credentials)
+// ---------------------------------------------------------------------------
+
+/**
+ * Telegram bot tokens look like `<bot_id>:<base64url key>` — a lenient
+ * shape check catches copy-paste mistakes without over-restricting.
+ */
+const telegramTokenSchema = z
+  .string()
+  .trim()
+  .min(8, 'Bot token looks too short')
+  .max(512)
+  .regex(/^\d{6,}:[A-Za-z0-9_-]{30,}$/, 'Bot token format looks invalid (expected 123456789:AA...)') as z.ZodType<string>
+
+/**
+ * Telegram destinations: numeric ids (private, group, supergroup, channel)
+ * or @username. Kept lenient — the real validation happens at test time.
+ */
+const telegramChatIdSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(128)
+  .regex(/^(@[A-Za-z0-9_]{3,}|-?\d{5,})$/, 'Chat ID must be a numeric id or @username') as z.ZodType<string>
+
+const baseUrlSchema = z
+  .string()
+  .trim()
+  .max(512)
+  .refine((v) => v === '' || /^https?:\/\//.test(v), 'Base URL must start with http:// or https://') as z.ZodType<string>
+
+/** Non-secret config shared by every provider. */
+const integrationConfigSchema = z.object({
+  baseUrl: baseUrlSchema.optional(),
+  providerName: z.string().trim().max(120).optional(),
+  destinationType: z.enum(['private', 'group', 'supergroup', 'channel']).optional(),
+})
+
+/** Secret values: undefined = keep, '' = clear, value = replace. */
+const integrationSecretsSchema = z.object({
+  botToken: telegramTokenSchema.optional(),
+  chatId: telegramChatIdSchema.optional(),
+  apiKey: z.string().trim().min(8).max(512).optional(),
+  apiSecret: z.string().trim().min(1).max(512).optional(),
+  webhookSecret: z.string().trim().min(1).max(512).optional(),
+})
+
+/** Upsert body for any provider (fields validated; provider-specific rules in code). */
+export const integrationSaveBodySchema = z.object({
+  displayName: z.string().trim().max(120).optional(),
+  isEnabled: z.boolean().optional(),
+  secrets: integrationSecretsSchema.optional(),
+  config: integrationConfigSchema.optional(),
+})
+
+export const integrationEnableBodySchema = z.object({
+  enabled: z.boolean(),
+})
+

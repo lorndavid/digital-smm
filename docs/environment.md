@@ -44,7 +44,7 @@ analytics environment label — it has **no effect on business logic**.
 | `VITE_API_BASE_URL`      | Public, req. | Backend origin (`/api` in dev via Vite proxy; e.g. `https://api.digitalsmm.shop` in prod). The client appends `/api` automatically. |
 | `VITE_APP_ENV`           | Public     | `development` \| `staging` \| `production`. Sentry/analytics label.     |
 | `VITE_GA_MEASUREMENT_ID` | Public, opt. | GA4 Measurement ID (e.g. `G-XXXXXXXXXX`). Empty → analytics disabled.  |
-| `VITE_SENTRY_DSN`        | Public, opt. | Frontend Sentry DSN. Empty → Sentry disabled.                          |
+| `VITE_SENTRY_DSN`        | Public, opt. | Frontend Sentry DSN. Empty → falls back to the DSN baked into the bundle. |
 
 ## Admin panel (`admin/.env` — all **public**)
 
@@ -52,7 +52,7 @@ analytics environment label — it has **no effect on business logic**.
 |--------------------------|------------|------------------------------------------------------------------------|
 | `VITE_API_BASE_URL`      | Public, req. | Backend origin for the admin API.                                      |
 | `VITE_APP_ENV`           | Public     | `development` \| `staging` \| `production`.                            |
-| `VITE_SENTRY_DSN`        | Public, opt. | Admin Sentry DSN. Empty → disabled.                                    |
+| `VITE_SENTRY_DSN`        | Public, opt. | Admin Sentry DSN. Empty → falls back to the DSN baked into the bundle.  |
 
 ## Backend (`backend/.env`)
 
@@ -90,13 +90,16 @@ analytics environment label — it has **no effect on business logic**.
 | `REDIS_URL`                  | Server-only, opt. | Enables cross-instance SSE + distributed rate limiting.                |
 | `ENABLE_ORDER_SYNC_JOB`      | Server-only  | `true`/`false` — provider order-status sync job.                              |
 | `ORDER_SYNC_INTERVAL_MS`     | Server-only  | Sync interval (default `60000`).                                             |
+| `CREDENTIAL_ENCRYPTION_KEY`  | **Secret**, req. (prod) | Master key (AES-256-GCM) for Admin Integration credentials stored in MongoDB. Generate with `openssl rand -hex 32`. Required in production — boot fails without it. |
+| `ENABLE_INTEGRATION_HEALTH_JOB` | Server-only  | `true`/`false` — background health probes for configured integrations (default `true`). |
+| `INTEGRATION_HEALTH_INTERVAL_MS` | Server-only  | Health probe interval (default `1800000` = 30 min).                         |
 
 ---
 
 ## Secrets never to expose
 
 The following must **never** appear in a `VITE_*` variable, analytics events, Sentry
-breadcrumbs or client-side storage:
+breadcrumbs, client-side storage or logs:
 
 - `MONGODB_URI` (database credentials)
 - `CUSTOMER_JWT_SECRET` / `ADMIN_JWT_SECRET` (JWT signing secrets)
@@ -105,9 +108,13 @@ breadcrumbs or client-side storage:
 - `CUTLUY_WEBHOOK_SECRET` / any webhook secret
 - `SUPER_ADMIN_PASSWORD`
 - `SENTRY_DSN` for the backend (a backend DSN can be used to *read* events)
+- `CREDENTIAL_ENCRYPTION_KEY` (master key — losing it means stored integration credentials can never be decrypted)
+- Any integration credential stored via **Admin → Integrations** (bot tokens, API keys) — these are encrypted at rest in MongoDB and returned to the browser only as masked previews
 
 Frontend `VITE_SENTRY_DSN` and `VITE_GA_MEASUREMENT_ID` are public by design — the
-browser must know where to send data. The **backend** Sentry DSN is different: it is
+browser must know where to send data. The client DSN is baked into the bundle by
+default (`frontend/src/monitoring/sentry.ts`, `admin/src/monitoring/sentry.ts`), so
+`VITE_SENTRY_DSN` is only needed to override it. The **backend** Sentry DSN is different: it is
 a server-side secret that allows reading project events, so it stays out of the
 browser bundle.
 
@@ -127,4 +134,6 @@ browser bundle.
 | `PAYMENT_PROVIDER`            | `mock`      | `cutluy`  | `cutluy`              |
 | `REDIS_URL`                   | (empty)     | set       | set (multi-replica)   |
 | `ENABLE_ORDER_SYNC_JOB`       | `false`     | `true`    | `true`                |
+| `CREDENTIAL_ENCRYPTION_KEY`   | (ephemeral in dev) | set | **set** (required)  |
+| `ENABLE_INTEGRATION_HEALTH_JOB` | `true`    | `true`    | `true`                |
 | `CORS_ORIGINS`                | localhost   | staging origins | `https://digitalsmm.shop,https://www.digitalsmm.shop,https://admin.digitalsmm.shop` |

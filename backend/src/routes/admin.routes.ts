@@ -1,7 +1,11 @@
 import { Router } from 'express'
 import { adminController } from '../controllers/admin.controller.js'
 import { adminOnly, requireSuperAdmin } from '../middleware/admin.middleware.js'
-import { adminMutationLimiter, loginLimiter } from '../middleware/rate-limit.middleware.js'
+import {
+  adminMutationLimiter,
+  integrationTestLimiter,
+  loginLimiter,
+} from '../middleware/rate-limit.middleware.js'
 import { validate } from '../middleware/validate.middleware.js'
 
 export const adminRoutes = Router()
@@ -99,5 +103,24 @@ adminRoutes.delete('/admin/announcements/:id', adminController.deleteAnnouncemen
 adminRoutes.get('/admin/settings', adminController.listSettings)
 adminRoutes.get('/admin/settings/:key', adminController.getSetting)
 adminRoutes.put('/admin/settings', ...adminController.setSetting)
+
+// Integrations (encrypted provider credentials)
+// All mutations require an authenticated admin (adminOnly already ran for
+// the /admin prefix). Test endpoints carry their own strict limiter.
+adminRoutes.get('/admin/integrations', adminController.listIntegrations)
+adminRoutes.get('/admin/integrations/:provider', adminController.getIntegration)
+adminRoutes.put('/admin/integrations/:provider', ...adminController.saveIntegration)
+adminRoutes.delete('/admin/integrations/:provider', adminController.deleteIntegration)
+adminRoutes.post('/admin/integrations/:provider/enable', ...adminController.setIntegrationEnabled)
+adminRoutes.post(
+  '/admin/integrations/:provider/test',
+  integrationTestLimiter,
+  adminController.testIntegration,
+)
+adminRoutes.post(
+  '/admin/integrations/telegram/test-message',
+  integrationTestLimiter,
+  adminController.sendTelegramTestMessage,
+)
 
 

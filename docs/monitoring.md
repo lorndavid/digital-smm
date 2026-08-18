@@ -10,7 +10,8 @@ disables the corresponding layer.
 |---------------------------|--------------------------------------------|--------------------------------------------------------------|
 | Frontend RUM              | `frontend/src/monitoring/`                 | LCP / CLS / INP / TTFB → `web_vitals` analytics event.       |
 | Frontend errors           | `frontend/src/monitoring/errors.ts`        | Uncaught exceptions, unhandled rejections, Vue errors → Sentry. |
-| Frontend Sentry           | `frontend/src/monitoring/sentry.ts`        | `VITE_SENTRY_DSN` + Vue/router integration.                  |
+| Frontend Sentry           | `frontend/src/monitoring/sentry.ts`        | DSN baked in + Vue/router tracing + session replay.          |
+| Admin Sentry              | `admin/src/monitoring/sentry.ts`           | DSN baked in + Vue/router tracing + session replay.          |
 | Backend Sentry            | `backend/src/config/sentry.ts`             | `SENTRY_DSN` + request-id correlation, scrubbed headers.     |
 | Request metrics           | `backend/src/middleware/request-metrics.middleware.ts` | method/route/status/duration, p50/p95/p99.      |
 | Structured logging        | `backend/src/utils/logger.ts`              | JSON lines with `requestId`, correlation across logs/errors. |
@@ -26,7 +27,7 @@ disables the corresponding layer.
 
 | Variable             | App       | Purpose                                              |
 |----------------------|-----------|------------------------------------------------------|
-| `VITE_SENTRY_DSN`    | frontend/admin | Client-side Sentry (public DSN).                 |
+| `VITE_SENTRY_DSN`    | frontend/admin | Override for the baked-in client DSN (optional, public). |
 | `SENTRY_DSN`         | backend   | Server-side Sentry (secret).                         |
 | `SENTRY_ENVIRONMENT` | backend   | Environment label (defaults to `NODE_ENV`).          |
 | `VITE_APP_ENV`       | frontend/admin | Sentry + analytics environment label.           |

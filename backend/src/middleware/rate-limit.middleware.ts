@@ -73,3 +73,16 @@ export const loginLimiter = rateLimit({
   legacyHeaders: false,
   store: createDistributedStore('digitalsmm:rl:login:'),
 })
+
+/**
+ * Integration connection-test limiter — 5 tests per minute per admin so a
+ * user can never accidentally hammer an external provider API (Telegram /
+ * SMM rate limits are far lower than ours).
+ */
+export const integrationTestLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 5,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  store: createDistributedStore('digitalsmm:rl:integration-test:'),
+})

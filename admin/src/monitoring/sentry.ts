@@ -1,10 +1,9 @@
 import * as Sentry from '@sentry/vue'
 import type { App } from 'vue'
 import type { Router } from 'vue-router'
-import { analyticsConfig } from '@/analytics/config'
 
 /**
- * Sentry frontend initialization.
+ * Sentry admin-panel initialization.
  *
  * The DSN is a PUBLIC value — the browser must know where to send events, so
  * it ships in the bundle by design. The default below is the project DSN;
@@ -16,6 +15,15 @@ import { analyticsConfig } from '@/analytics/config'
 /** Default Sentry DSN — public by design (embedded in the client bundle). */
 export const DEFAULT_SENTRY_DSN =
   'https://7ecd64e4a52e3f77d0c7a93814c304d8@o4511930120601600.ingest.us.sentry.io/4511930127286272'
+
+function detectEnvironment(): string {
+  const raw = (import.meta.env.VITE_APP_ENV ?? '').trim().toLowerCase()
+  if (raw === 'staging' || raw === 'production') return raw
+  // In production builds without an explicit tag, be conservative and tag
+  // as production so events are never mislabelled as development.
+  if (import.meta.env.PROD) return 'production'
+  return 'development'
+}
 
 let initialized = false
 
@@ -31,13 +39,13 @@ export function initializeSentry(app?: App<Element>, router?: Router): void {
     Sentry.init({
       app,
       dsn,
-      environment: analyticsConfig.environment,
-      release: `digitalsmm-frontend@${import.meta.env.VITE_APP_ENV ?? 'dev'}`,
+      environment: detectEnvironment(),
+      release: `digitalsmm-admin@${import.meta.env.VITE_APP_ENV ?? 'dev'}`,
       integrations: [
         // Distributed tracing: captures page-load navigations and SPA route
         // changes as transactions (requires the router instance).
         Sentry.browserTracingIntegration({ router }),
-        // Session Replay: watchable video of real user sessions.
+        // Session Replay: watchable video of real admin sessions.
         Sentry.replayIntegration(),
       ],
       // Tracing — capture 100% of transactions in production.

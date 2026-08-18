@@ -147,7 +147,7 @@ onUnmounted(() => {
           <div><span class="text-(--a-muted)">Service</span> <span class="ml-2 font-medium text-(--a-text)">{{ health.service }}</span></div>
           <div><span class="text-(--a-muted)">Version</span> <span class="ml-2 font-medium text-(--a-text)">{{ health.version }}</span></div>
           <div><span class="text-(--a-muted)">Environment</span> <span class="ml-2 font-medium text-(--a-text)">{{ health.environment }}</span></div>
-          <div><span class="text-(--a-muted)">Sentry</span> <span class="ml-2 font-medium text-(--a-text)">{{ health.sentryEnabled ? 'Enabled' : 'Disabled' }}</span></div>
+          <div><span class="text-(--a-muted)">Backend Sentry</span> <span class="ml-2 font-medium text-(--a-text)">{{ health.sentryEnabled ? 'Enabled' : 'Disabled' }}</span></div>
         </div>
       </div>
 

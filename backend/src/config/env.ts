@@ -150,6 +150,25 @@ const envSchema = z.object({
   // Local wall-clock time in DAILY_REPORT_TZ, e.g. '22:00'.
   DAILY_REPORT_TIME: z.string().default('22:00'),
   DAILY_REPORT_TZ: z.string().default('Asia/Phnom_Penh'),
+
+  // --- Admin Integrations: encrypted API credentials ---
+  // Master key for AES-256-GCM encryption of provider credentials stored in
+  // MongoDB (Telegram bot tokens, SMM API keys, ...). NEVER committed to git,
+  // never stored in the database — only in backend/.env on the VPS. Any
+  // string is accepted (hashed to a 32-byte key); prefer 64 hex chars.
+  // REQUIRED in production: without it the server refuses to boot. In
+  // development/test a random ephemeral key is generated (credentials do not
+  // survive a restart — fine for local work).
+  CREDENTIAL_ENCRYPTION_KEY: z.string().min(8).optional(),
+
+  // Background health checks for configured integrations (Telegram getMe,
+  // SMM balance) — every INTEGRATION_HEALTH_INTERVAL_MS, guarded by a Mongo
+  // distributed lock so one replica owns the check.
+  ENABLE_INTEGRATION_HEALTH_JOB: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
+  INTEGRATION_HEALTH_INTERVAL_MS: z.coerce.number().default(30 * 60 * 1000),
 })
 
 const parsed = envSchema.safeParse(process.env)
