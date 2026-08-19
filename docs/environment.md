@@ -87,10 +87,10 @@ analytics environment label — it has **no effect on business logic**.
 | `RATE_LIMIT_WINDOW_MS`       | Server-only  | Rate-limit window (default `900000`).                                        |
 | `RATE_LIMIT_MAX`             | Server-only  | Global API quota per window (default `3000`).                                |
 | `RATE_LIMIT_CATALOGUE_MAX`   | Server-only  | Storefront catalogue quota per window (default `10000`).                     |
-| `REDIS_URL`                  | Server-only, opt. | Enables cross-instance SSE + distributed rate limiting.                |
+| `REDIS_URL`                  | Server-only, opt. | Enables cross-instance SSE, distributed rate limiting, and caching. |
 | `ENABLE_ORDER_SYNC_JOB`      | Server-only  | `true`/`false` — provider order-status sync job.                              |
 | `ORDER_SYNC_INTERVAL_MS`     | Server-only  | Sync interval (default `60000`).                                             |
-| `CREDENTIAL_ENCRYPTION_KEY`  | **Secret**, req. (prod) | Master key (AES-256-GCM) for Admin Integration credentials stored in MongoDB. Generate with `openssl rand -hex 32`. Required in production — boot fails without it. |
+| `REDIS_PASSWORD`             | **Secret**, opt. | Redis authentication password. Required when `REDIS_URL` doesn't include auth. |
 | `ENABLE_INTEGRATION_HEALTH_JOB` | Server-only  | `true`/`false` — background health probes for configured integrations (default `true`). |
 | `INTEGRATION_HEALTH_INTERVAL_MS` | Server-only  | Health probe interval (default `1800000` = 30 min).                         |
 
@@ -109,6 +109,7 @@ breadcrumbs, client-side storage or logs:
 - `SUPER_ADMIN_PASSWORD`
 - `SENTRY_DSN` for the backend (a backend DSN can be used to *read* events)
 - `CREDENTIAL_ENCRYPTION_KEY` (master key — losing it means stored integration credentials can never be decrypted)
+- `REDIS_PASSWORD` (Redis authentication — allows full access to cached data and pub/sub channels)
 - Any integration credential stored via **Admin → Integrations** (bot tokens, API keys) — these are encrypted at rest in MongoDB and returned to the browser only as masked previews
 
 Frontend `VITE_SENTRY_DSN` and `VITE_GA_MEASUREMENT_ID` are public by design — the
@@ -132,6 +133,8 @@ browser bundle.
 | `SENTRY_DSN` (backend)        | (empty)     | set       | set                   |
 | `SMM_PROVIDER`                | `mock`      | `smmwiz`  | `smmwiz`              |
 | `PAYMENT_PROVIDER`            | `mock`      | `cutluy`  | `cutluy`              |
+| `CREDENTIAL_ENCRYPTION_KEY`  | **Secret**, req. (prod) | Master key (AES-256-GCM) for Admin Integration credentials stored in MongoDB. Generate with `openssl rand -hex 32`. Required in production — boot fails without it. |
+| `REDIS_PASSWORD`              | (empty)     | set       | set (auth required)   |
 | `REDIS_URL`                   | (empty)     | set       | set (multi-replica)   |
 | `ENABLE_ORDER_SYNC_JOB`       | `false`     | `true`    | `true`                |
 | `CREDENTIAL_ENCRYPTION_KEY`   | (ephemeral in dev) | set | **set** (required)  |

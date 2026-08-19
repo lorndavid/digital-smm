@@ -3,6 +3,7 @@ import { env } from '../config/env.js'
 import { asyncHandler } from '../utils/async-handler.js'
 import { getAppVersion } from '../utils/version.js'
 import { getRedisClient } from '../services/redis/redis.client.js'
+import { cacheStats } from '../services/cache.service.js'
 import { metricsStore } from '../services/monitoring/metrics.store.js'
 import { getSmmProvider } from '../services/smm/provider.factory.js'
 
@@ -112,6 +113,7 @@ export const healthController = {
         },
         paymentProvider: { status: 'ok', provider: env.PAYMENT_PROVIDER },
       },
+      cache: cacheStats(),
       time: new Date().toISOString(),
     })
   }),

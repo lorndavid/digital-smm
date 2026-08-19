@@ -11,6 +11,7 @@ import {
 import { shutdownRedis } from './services/payment/events.bus.js'
 import { shutdownOrderRedis } from './services/order/events.bus.js'
 import { shutdownRedisClient } from './services/redis/redis.client.js'
+import { shutdownCache } from './services/cache.service.js'
 import { seedSuperAdmin } from './services/admin-auth.service.js'
 import { recordBootDeployment } from './services/monitoring/deployment.service.js'
 import { isTelegramConfigured } from './modules/notifications/index.js'
@@ -62,6 +63,7 @@ async function bootstrap(): Promise<void> {
     await shutdownRedis() // payment SSE bus pub/sub clients
     await shutdownOrderRedis() // order SSE bus pub/sub clients
     await shutdownRedisClient() // distributed rate limiter client
+    await shutdownCache() // analytics/catalog cache
     await disconnectDatabase()
     process.exit(0)
   }

@@ -11,6 +11,7 @@ import { getAppVersion } from '../utils/version.js'
 import { getRedisClient } from '../services/redis/redis.client.js'
 import { isDatabaseConnected } from '../config/database.js'
 import { env } from '../config/env.js'
+import { cacheStats } from '../services/cache.service.js'
 import { getSmmProvider } from '../services/smm/provider.factory.js'
 import {
   announcementRepository,
@@ -96,7 +97,7 @@ export const adminController = {
   analyticsRevenue: asyncHandler(async (req, res) => {
     const { range = '30d', start, end } = req.query
     res.json(
-      await analyticsService.revenue(
+      await analyticsService.cachedRevenue(
         range as AnalyticsRange,
         typeof start === 'string' ? start : undefined,
         typeof end === 'string' ? end : undefined,
@@ -107,7 +108,7 @@ export const adminController = {
   analyticsOverview: asyncHandler(async (req, res) => {
     const { range = '30d', start, end } = req.query
     res.json(
-      await analyticsService.overview(
+      await analyticsService.cachedOverview(
         range as AnalyticsRange,
         typeof start === 'string' ? start : undefined,
         typeof end === 'string' ? end : undefined,
@@ -118,7 +119,7 @@ export const adminController = {
   analyticsServices: asyncHandler(async (req, res) => {
     const { range = '30d', start, end } = req.query
     res.json(
-      await analyticsService.services(
+      await analyticsService.cachedServices(
         range as AnalyticsRange,
         typeof start === 'string' ? start : undefined,
         typeof end === 'string' ? end : undefined,
@@ -167,6 +168,7 @@ export const adminController = {
         paymentProvider: { status: 'ok', provider: env.PAYMENT_PROVIDER },
       },
       metrics,
+      cache: cacheStats(),
       time: new Date().toISOString(),
     })
   }),

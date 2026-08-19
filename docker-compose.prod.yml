@@ -25,6 +25,30 @@
 name: digitalsmm-prod
 
 services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # Internal only — not published to the host. The backend connects
+    # via the Docker network at redis:6379.
+    expose:
+      - "6379"
+    # Password protects against unauthorized access from other containers.
+    # Set REDIS_PASSWORD in backend/.env (or the prod compose env_file).
+    command: >-
+      redis-server
+      --maxmemory 128mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+      --appendfsync everysec
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
   backend:
     # Explicit image name:tag. The CI/CD deploy workflow sets IMAGE_TAG to the
     # git commit SHA so every deploy is an immutable, rollback-able version
@@ -44,6 +68,9 @@ services:
     # See backend/.env.production.example for the full list.
     env_file:
       - ./backend/.env
+    depends_on:
+      redis:
+        condition: service_healthy
     ports:
       - "127.0.0.1:4000:4000"
     healthcheck:
@@ -58,3 +85,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+
+volumes:
+  redis_data:

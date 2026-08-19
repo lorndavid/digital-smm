@@ -18,4 +18,7 @@ const auditLogSchema = new Schema(
 export type AuditLog = InferSchemaType<typeof auditLogSchema>
 export type AuditLogDoc = HydratedDocument<AuditLog>
 
+// Time-based queries: admin audit log list sorts by createdAt descending.
+auditLogSchema.index({ createdAt: -1 })
+
 export const AuditLogModel = model('AuditLog', auditLogSchema)

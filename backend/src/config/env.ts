@@ -102,11 +102,12 @@ const envSchema = z.object({
   // global quota that also covers writes and admin traffic.
   RATE_LIMIT_CATALOGUE_MAX: z.coerce.number().default(10000),
 
-  // Optional Redis — enables cross-instance SSE delivery AND a distributed
-  // rate limiter (global quotas across all backend instances) when running
-  // multiple instances behind a load balancer. Leave empty for in-memory
-  // only (single instance / local dev). e.g. redis://localhost:6379
+  // Optional Redis — enables cross-instance SSE delivery, distributed rate
+  // limiting AND caching for analytics/catalog. Leave empty for in-memory
+  // only (single instance / local dev).
   REDIS_URL: optionalString(z.url()),
+  // Redis password — only needed when REDIS_URL doesn't include auth.
+  REDIS_PASSWORD: optionalString(z.string().min(1)),
 
   // Background jobs
   ENABLE_ORDER_SYNC_JOB: z

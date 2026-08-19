@@ -3,6 +3,7 @@ import { PaymentModel } from '../models/payment.model.js'
 import { UserModel } from '../models/user.model.js'
 import { ServiceModel } from '../models/service.model.js'
 import { CategoryModel } from '../models/category.model.js'
+import { cacheOrCompute, CACHE_TTL, cacheKeys } from './cache.service.js'
 
 /**
  * Admin analytics — the DATABASE is the business source of truth. Revenue,
@@ -108,6 +109,31 @@ export class AnalyticsService {
       averageOrderValue: Math.round(averageOrderValue * 100) / 100,
       byPurpose: purpose,
     }
+  }
+
+  /**
+   * Cached wrapper — analytics revenue is a heavy aggregation that runs on
+   * every admin dashboard load. Cached for CACHE_TTL.ANALYTICS (2 min).
+   */
+  async cachedRevenue(range: AnalyticsRange, customStart?: string, customEnd?: string) {
+    const start = rangeStart(range, customStart, customEnd)
+    const end = rangeEnd(range, customEnd)
+    const key = cacheKeys.analyticsRevenue(range, start.toISOString(), end.toISOString())
+    return cacheOrCompute(key, CACHE_TTL.ANALYTICS, () => this.revenue(range, customStart, customEnd))
+  }
+
+  async cachedOverview(range: AnalyticsRange, customStart?: string, customEnd?: string) {
+    const start = rangeStart(range, customStart, customEnd)
+    const end = rangeEnd(range, customEnd)
+    const key = cacheKeys.analyticsOverview(range, start.toISOString(), end.toISOString())
+    return cacheOrCompute(key, CACHE_TTL.ANALYTICS, () => this.overview(range, customStart, customEnd))
+  }
+
+  async cachedServices(range: AnalyticsRange, customStart?: string, customEnd?: string) {
+    const start = rangeStart(range, customStart, customEnd)
+    const end = rangeEnd(range, customEnd)
+    const key = cacheKeys.analyticsServices(range, start.toISOString(), end.toISOString())
+    return cacheOrCompute(key, CACHE_TTL.ANALYTICS, () => this.services(range, customStart, customEnd))
   }
 
   /** Orders, users + conversion KPIs for a range. */

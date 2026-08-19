@@ -74,13 +74,38 @@ export async function connectDatabase(): Promise<void> {
 
   try {
     await mongoose.connect(env.MONGODB_URI, {
-      serverSelectionTimeoutMS: 2000,
-      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 5000,
+      maxPoolSize: 20,
+      minPoolSize: 2,
+      retryWrites: true,
+      retryReads: true,
+      // SRV+TLS for MongoDB Atlas — enabled automatically when URI starts
+      // with mongodb+srv://, but explicit here for clarity and safety.
+      tls: env.MONGODB_URI.startsWith('mongodb+srv'),
     })
     initialAttemptComplete = true
+
+    // Connection pool monitoring — logs slow/acquired connections at debug
+    // level so we can detect pool exhaustion in production. Fires at most
+    // once per 30s to avoid log spam.
+    let lastPoolWarnAt = 0
+    mongoose.connection.on('connectionPoolReady', () => {
+      logger.info('[db] MongoDB connection pool ready')
+    })
+    mongoose.connection.on('serverHeartbeatSucceeded', (ev) => {
+      if (ev.durationMS > 2000) {
+        const now = Date.now()
+        if (now - lastPoolWarnAt > 30_000) {
+          lastPoolWarnAt = now
+          logger.warn('[db] MongoDB heartbeat slow', { durationMs: Math.round(ev.durationMS) })
+        }
+      }
+    })
   } catch (err) {
+    // Never log the full URI (contains credentials). Mask it for diagnostics.
+    const maskedUri = env.MONGODB_URI.replace(/:\/\/[^@]+@/, ':/***@')
     logger.warn(
-      `[db] Could not connect to primary MONGODB_URI (${env.MONGODB_URI}). ` +
+      `[db] Could not connect to MongoDB (${maskedUri}). ` +
         'Starting zero-config in-memory MongoDB server...',
     )
     try {
